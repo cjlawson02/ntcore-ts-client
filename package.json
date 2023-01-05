@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "prepublish": "npm run build && npm run test",
+    "prepublish": "npm run format:check && npm run test && npm run build",
     "build": "tsc --build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -14,8 +14,7 @@
     "format": "npm run prettier:fix && npm run lint:fix",
     "format:check": "npm run prettier && npm run lint",
     "test": "jest",
-    "prepare": "husky install && npm run build",
-    "release": "npm run format:check && npm run test && npm run build"
+    "prepare": "husky install && npm run build"
   },
   "repository": {
     "type": "git",
@@ -29,7 +28,7 @@
   },
   "homepage": "https://github.com/Chris2fourlaw/ntcore-ts#readme",
   "lint-staged": {
-    "*.{js,ts,json}": ["npm run format"]
+    "*.{js,ts,json, yml}": ["npm run format"]
   },
   "dependencies": {
     "@msgpack/msgpack": "^2.8.0",
