@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "prepublish": "npm run format:check && npm run test && npm run build",
+    "prepublish": "npm run build && npm run format:check && npm run test",
     "build": "tsc --build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
