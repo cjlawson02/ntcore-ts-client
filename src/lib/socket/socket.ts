@@ -44,8 +44,13 @@ export class NetworkTablesSocket {
 
     /**
      * Creates a new NetworkTables socket.
+     *
      * @param serverUrl - The URL of the server to connect to.
-     * @param client - The client to notify of socket events.
+     * @param onSocketOpen - Called when the socket is opened.
+     * @param onSocketClose - Called when the socket is closed.
+     * @param onTopicUpdate - Called when a topic is updated.
+     * @param onAnnounce - Called when a topic is announced.
+     * @param onUnannounce - Called when a topic is unannounced.
      */
     private constructor(
         serverUrl: string,
@@ -67,6 +72,17 @@ export class NetworkTablesSocket {
         this.init();
     }
 
+    /**
+     * Gets the instance of the NetworkTables socket.
+     *
+     * @param serverUrl - The URL of the server to connect to.
+     * @param onSocketOpen - Called when the socket is opened.
+     * @param onSocketClose - Called when the socket is closed.
+     * @param onTopicUpdate - Called when a topic is updated.
+     * @param onAnnounce - Called when a topic is announced.
+     * @param onUnannounce - Called when a topic is unannounced.
+     * @returns The instance of the NetworkTables socket.
+     */
     static getInstance(
         serverUrl: string,
         onSocketOpen: () => void,
@@ -134,6 +150,7 @@ export class NetworkTablesSocket {
 
     /**
      * Reset the socket and reconnect to the server.
+     *
      * @param serverUrl - The URL of the server to connect to.
      */
     reinstantiate(serverUrl: string) {
@@ -145,6 +162,7 @@ export class NetworkTablesSocket {
 
     /**
      * Returns whether the socket is connected.
+     *
      * @returns Whether the socket is connected.
      */
     isConnected() {
@@ -153,6 +171,7 @@ export class NetworkTablesSocket {
 
     /**
      * Returns whether the socket is connecting.
+     *
      * @returns Whether the socket is connecting.
      */
     isConnecting() {
@@ -161,6 +180,7 @@ export class NetworkTablesSocket {
 
     /**
      * Returns whether the socket is closing.
+     *
      * @returns Whether the socket is closing.
      */
     isClosing() {
@@ -169,6 +189,7 @@ export class NetworkTablesSocket {
 
     /**
      * Returns whether the socket is closed.
+     *
      * @returns Whether the socket is closed.
      */
     isClosed() {
@@ -177,6 +198,7 @@ export class NetworkTablesSocket {
 
     /**
      * Create a connection listener.
+     *
      * @param callback - Called when the connection state changes.
      * @param immediateNotify - Whether to immediately notify the callback of the current connection state.
      * @returns A function that removes the listener.
@@ -214,6 +236,7 @@ export class NetworkTablesSocket {
 
     /**
      * Handle a message from the websocket.
+     *
      * @param event - The message event.
      */
     private onMessage(event: MessageEvent) {
@@ -228,6 +251,7 @@ export class NetworkTablesSocket {
 
     /**
      * Handle an error from the websocket.
+     *
      * @param event - The error event.
      */
     private onError(event: Event) {
@@ -237,6 +261,7 @@ export class NetworkTablesSocket {
 
     /**
      * Handle a binary frame from the websocket.
+     *
      * @param frame - The frame.
      */
     private handleBinaryFrame(frame: ArrayBuffer | Uint8Array) {
@@ -265,6 +290,7 @@ export class NetworkTablesSocket {
 
     /**
      * Handle a text frame from the websocket.
+     *
      * @param frame - The frame.
      */
     private handleTextFrame(frame: string) {
@@ -292,6 +318,7 @@ export class NetworkTablesSocket {
 
     /**
      * Handle an announce message from the server.
+     *
      * @param params - The message params.
      */
     private handleAnnounceParams(params: AnnounceMessageParams) {
@@ -300,6 +327,7 @@ export class NetworkTablesSocket {
 
     /**
      * Handle an unannounce message from the server.
+     *
      * @param params - The message params.
      */
     private handleUnannounceParams(params: UnannounceMessageParams) {
@@ -308,6 +336,7 @@ export class NetworkTablesSocket {
 
     /**
      * Handle a properties message from the server.
+     *
      * @param params - The message params.
      */
     private handlePropertiesParams(params: PropertiesMessageParams) {
@@ -320,6 +349,7 @@ export class NetworkTablesSocket {
 
     /**
      * Send a text frame to the server.
+     *
      * @param message - The message to send.
      */
     sendTextFrame(message: Message) {
@@ -333,6 +363,7 @@ export class NetworkTablesSocket {
 
     /**
      * Send a binary frame to the server.
+     *
      * @param message - The message to send.
      */
     private sendBinaryFrame(message: BinaryMessage) {
@@ -362,8 +393,11 @@ export class NetworkTablesSocket {
 
     /**
      * Send a message to a topic.
-     * @param topic - The topic ID or the pubuid.
+     *
+     * @param id - The topic ID.
      * @param value - The value to send.
+     * @param typeInfo - The type info for the value.
+     * @returns The time the message was sent.
      */
     sendValueToTopic(id: number, value: NetworkTableTypes, typeInfo?: NetworkTableTypeInfo) {
         const time = Math.ceil(this.getServerTime());
@@ -386,6 +420,7 @@ export class NetworkTablesSocket {
      *
      * This is used to calculate the offset between the client and server time
      * in order to estimate the current server time for binary messages.
+     *
      * @param serverTime - The server time.
      */
     private handleRTT(serverTime: number) {
@@ -398,6 +433,7 @@ export class NetworkTablesSocket {
 
     /**
      * Get the current server time.
+     *
      * @returns The current server time.
      */
     private getServerTime() {
@@ -406,6 +442,7 @@ export class NetworkTablesSocket {
 
     /**
      * Calculate the time delta between the current time and a given time.
+     *
      * @param sentDate - The time to calculate the delta from.
      * @returns The time delta.
      */

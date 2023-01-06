@@ -30,42 +30,74 @@ export class Topic<T extends NetworkTableTypes> {
         }
     >;
 
-    /** The ID of the topic. */
+    /**
+     * Gets the ID of the topic.
+     *
+     * @returns The ID of the topic.
+     */
     get id() {
         return this._id;
     }
 
-    /** The name of the topic. */
+    /**
+     * Gets the name of the topic.
+     *
+     * @returns The name of the topic.
+     */
     get name() {
         return this._name;
     }
 
-    /** The type info for the topic. */
+    /**
+     * Gets the type info for the topic.
+     *
+     * @returns The type info for the topic.
+     */
     get typeInfo(): NetworkTableTypeInfo {
         return this._typeInfo;
     }
 
-    /** The server time of the last value change. */
+    /**
+     * Gets the server time of the last value change.
+     *
+     * @returns The server time of the last value change.
+     */
     get lastChangedTime() {
         return this._lastChangedTime;
     }
 
-    /** Whether the topic has been announced. */
+    /**
+     * Whether the topic has been announced.
+     *
+     * @returns Whether the topic has been announced.
+     */
     get announced() {
         return this._announced;
     }
 
-    /** Whether the client is the publisher of the topic. */
+    /**
+     * Gets whether the client is the publisher of the topic.
+     *
+     * @returns Whether the client is the publisher of the topic.
+     */
     get publisher() {
         return this._publisher;
     }
 
-    /** The UID of the publisher. */
+    /**
+     * Gets the UID of the publisher.
+     *
+     * @returns The UID of the publisher, or null if the client is not the publisher.
+     */
     get pubuid() {
         return this._pubuid;
     }
 
-    /** The subscribers to the topic. */
+    /**
+     * Gets the subscribers to the topic.
+     *
+     * @returns The subscribers to the topic.
+     */
     get subscribers() {
         return this._subscribers;
     }
@@ -131,11 +163,15 @@ export class Topic<T extends NetworkTableTypes> {
         this.notifySubscribers();
     }
 
-    /** ***************/
+    /** */
     /* ANNOUNCEMENTS */
-    /** ***************/
+    /** */
 
-    /** Marks the topic as announced. This should only be called by the PubSubClient. */
+    /**
+     * Marks the topic as announced. This should only be called by the PubSubClient.
+     *
+     * @param id - The ID of the topic.
+     */
     announce(id: number) {
         this._announced = true;
         this._id = id;
@@ -147,11 +183,20 @@ export class Topic<T extends NetworkTableTypes> {
         this._id = null;
     }
 
-    /** *************/
+    /** */
     /* SUBSCRIBING */
-    /** *************/
+    /** */
 
-    /** Creates a new subscriber. This should only be called by the PubSubClient. */
+    /**
+     * Creates a new subscriber. This should only be called by the PubSubClient.
+     *
+     * @param callback - The callback to call when the topic value changes.
+     * @param immediateNotify - Whether to immediately notify the subscriber of the current value.
+     * @param options - The options for the subscriber.
+     * @param id - The UID of the subscriber.
+     * @param save - Whether to save the subscriber.
+     * @returns The UID of the subscriber.
+     */
     subscribe(
         callback: (_: T | null) => void,
         immediateNotify = false,
@@ -177,7 +222,9 @@ export class Topic<T extends NetworkTableTypes> {
 
     /**
      * Removes a subscriber
+     *
      * @param subuid - The UID of the subscriber.
+     * @param removeCallback - Whether to remove the callback. Leave this as true unless you know what you're doing.
      */
     unsubscribe(subuid: number, removeCallback = true) {
         this.client.messenger.unsubscribe(subuid);
@@ -193,6 +240,8 @@ export class Topic<T extends NetworkTableTypes> {
 
     /**
      * Resubscribes all local subscribers.
+     *
+     * @param client - The client to resubscribe with.
      */
     resubscribeAll(client: PubSubClient) {
         this.client = client;
@@ -208,13 +257,15 @@ export class Topic<T extends NetworkTableTypes> {
         this.subscribers.forEach((info) => info.callback(this.value));
     }
 
-    /** ************/
+    /** */
     /* PUBLISHING */
-    /** ************/
+    /** */
 
     /**
      * Publishes the topic.
+     *
      * @param properties - The properties to publish the topic with.
+     * @param id - The UID of the publisher.
      */
     publish(properties: TopicProperties = {}, id?: number) {
         if (this.publisher) return;
@@ -247,6 +298,8 @@ export class Topic<T extends NetworkTableTypes> {
 
     /**
      * Republishes the topic.
+     *
+     * @param client - The client to republish with.
      */
     republish(client: PubSubClient) {
         this.client = client;
@@ -259,6 +312,7 @@ export class Topic<T extends NetworkTableTypes> {
 
     /**
      * Sets the properties of the topic.
+     *
      * @param persistent - If true, the last set value will be periodically saved to persistent storage on the server and be restored during server startup. Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
      * @param retained - Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
      */

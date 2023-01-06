@@ -1,4 +1,4 @@
-import Messenger from 'src/lib/socket/messenger';
+import { Messenger } from 'src/lib/socket/messenger';
 
 import type { Topic } from './topic';
 import type {
@@ -8,6 +8,7 @@ import type {
     UnannounceMessageParams,
 } from 'src/lib/types/types';
 
+/** The client for the PubSub protocol. */
 export class PubSubClient {
     private readonly _messenger: Messenger;
     private topics: Map<string, Topic<any>>;
@@ -33,6 +34,7 @@ export class PubSubClient {
 
     /**
      * Gets the instance of the NetworkTables client.
+     *
      * @param serverUrl - The URL of the server to connect to. This is not used after the first call.
      * @returns The instance of the NetworkTables client.
      */
@@ -47,8 +49,8 @@ export class PubSubClient {
     /**
      * Reinstantiates the client by resubscribing to all previously subscribed topics
      * and republishing for all previously published topics.
+     *
      * @param url - The URL of the server to connect to.
-     * @returns The new instance of the NetworkTables client.
      */
     reinstantiate(url: string) {
         this._messenger.reinstantiate(url);
@@ -56,6 +58,7 @@ export class PubSubClient {
 
     /**
      * Registers a topic with this PubSubClient.
+     *
      * @param topic - The topic to register
      */
     registerTopic<T extends NetworkTableTypes>(topic: Topic<T>) {
@@ -67,6 +70,7 @@ export class PubSubClient {
 
     /**
      * Called by the messenger when a topic is updated.
+     *
      * @param message - The message data.
      */
     private onTopicUpdate = (message: BinaryMessageData) => {
@@ -80,6 +84,7 @@ export class PubSubClient {
 
     /**
      * Called by the messenger when a topic is announced.
+     *
      * @param params - The announce message parameters.
      */
     private onTopicAnnounce = (params: AnnounceMessageParams) => {
@@ -93,6 +98,7 @@ export class PubSubClient {
 
     /**
      * Called by the messenger when a topic is unannounced.
+     *
      * @param params - The unannounce message parameters.
      */
     private onTopicUnannounce = (params: UnannounceMessageParams) => {
@@ -106,6 +112,7 @@ export class PubSubClient {
 
     /**
      * Marks a topic as announced
+     *
      * @param topicId - The ID of the topic to announce
      * @param topicName - The name of the topic to announce
      */
@@ -120,6 +127,7 @@ export class PubSubClient {
 
     /**
      * Marks a topic as unannounced
+     *
      * @param topicName - The name of the topic to unannounce
      */
     private unannounce(topicName: string) {
@@ -133,10 +141,10 @@ export class PubSubClient {
 
     /**
      * Updates a topic with a new value
+     *
      * @param topicName - The name of the topic to update
      * @param value - The new value of the topic
      * @param lastChangedTime - The server time the topic was last changed
-     * @returns The updated topic
      */
     private updateTopic(topicName: string, value: NetworkTableTypes, lastChangedTime: number) {
         const topic = this.topics.get(topicName);
@@ -149,6 +157,7 @@ export class PubSubClient {
 
     /**
      * Updates the value of a topic on the server.
+     *
      * @param topic - The topic to update.
      * @param value - The new value of the topic.
      */
@@ -158,6 +167,7 @@ export class PubSubClient {
 
     /**
      * Gets the topic with the given ID.
+     *
      * @param topicId - The ID of the topic to get.
      * @returns The topic with the given ID, or null if no topic with that ID exists.
      */
@@ -172,6 +182,7 @@ export class PubSubClient {
 
     /**
      * Gets the topic with the given name.
+     *
      * @param topicName - The name of the topic to get.
      * @returns The topic with the given name, or null if no topic with that name exists.
      */

@@ -6,7 +6,7 @@ import type { Linter } from '@typescript-eslint/utils/dist/ts-eslint';
 
 const config: Linter.Config = {
     root: true,
-    ignorePatterns: ['node_modules/', 'dist/', 'coverage/', 'build/'],
+    ignorePatterns: ['node_modules/', 'dist/', 'coverage/', 'build/', 'docs/'],
     env: {
         browser: true,
     },

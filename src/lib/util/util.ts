@@ -12,6 +12,7 @@ export class Util {
 
     /**
      * Get the DOM time in microseconds.
+     *
      * @returns The current microseconds of the DOM.
      */
     static getMicros() {
@@ -20,6 +21,7 @@ export class Util {
 
     /**
      * Given a number, determine if it is a double
+     *
      * @param x - A number.
      * @returns Whether it is a double.
      */
@@ -33,6 +35,7 @@ export class Util {
 
     /**
      * Given a value, find the NT type number.
+     *
      * @param data - The value.
      * @returns The NT type number.
      */
@@ -92,6 +95,7 @@ export class Util {
 
     /**
      * Get the type info from a type string.
+     *
      * @param typeString - The type string.
      * @returns The type info.
      */
@@ -122,7 +126,11 @@ export class Util {
 
     /**
      * Create a binary message from a topic.
-     * @param topic - The topic.
+     *
+     * @param topicId - The topic ID.
+     * @param timestamp - The timestamp of the message, matching the server.
+     * @param data - The data.
+     * @param typeInfo - The type info.
      * @returns The binary message.
      */
     static createBinaryMessage(
@@ -162,6 +170,7 @@ export class Util {
 
     /**
      * Splits an ArrayBuffer into chunks of a specified size.
+     *
      * @param buffer - The ArrayBuffer to split.
      * @param chunkSize - The size of each chunk, in bytes.
      * @returns An array of ArrayBuffer chunks.

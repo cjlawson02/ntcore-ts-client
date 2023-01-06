@@ -4,9 +4,13 @@ import { Util } from './util/util';
 
 import type { NetworkTableTypeInfo, NetworkTableTypes } from './types/types';
 
+/** Properties for creating the NetworkTables class. */
 interface NT_PROPS {
+    /** The team number of the robot (overrides FQDN). */
     team?: number;
+    /** The FQDN of the robot (not used if team is specified). */
     fqdn?: string;
+    /** The port to connect to the robot on. */
     port: number;
 }
 
@@ -23,11 +27,21 @@ export class NetworkTables {
     /** The instance of the NetworkTables class. */
     private static instance: NetworkTables;
 
-    /** Gets the PubSubClient instance used to establish and manage the connection to the robot. */
+    /**
+     * Gets the PubSubClient instance used to establish and manage the connection to the robot.
+     *
+     * @returns The PubSubClient instance.
+     */
     get client() {
         return this._client;
     }
 
+    /**
+     * Creates a new NetworkTables instance.
+     *
+     * @param props - The properties to use to create the instance.
+     * @throws Error if the team number or FQDN is not provided.
+     */
     private constructor(props: NT_PROPS) {
         if (props.team) {
             this.fqdn = `roborio-frc-${props.team}.local`;
@@ -44,6 +58,7 @@ export class NetworkTables {
 
     /**
      * Creates a new NetworkTables instance if it does not exist.
+     *
      * @param team - The team number of the robot.
      * @param port - The port to connect to the robot on. Defaults to 5810.
      * @returns The NetworkTables instance.
@@ -58,6 +73,7 @@ export class NetworkTables {
 
     /**
      * Creates a new NetworkTables instance if it does not exist.
+     *
      * @param fqdn - The FQDN of the robot.
      * @param port - The port to connect to the robot on. Defaults to 5810.
      * @returns The NetworkTables instance.
@@ -72,6 +88,7 @@ export class NetworkTables {
 
     /**
      * Gets the NetworkTables instance if it has been created.
+     *
      * @returns The NetworkTables instance.
      * @throws Error if the instance has not been created yet.
      */
@@ -83,6 +100,7 @@ export class NetworkTables {
 
     /**
      * Returns the URL of the server to connect to.
+     *
      * @returns The server URL.
      */
     getServerUrl(): string {
@@ -91,6 +109,7 @@ export class NetworkTables {
 
     /**
      * Returns the FQDN of the server.
+     *
      * @returns The robot address.
      */
     getFQDN(): string {
@@ -104,6 +123,7 @@ export class NetworkTables {
 
     /**
      * Returns the port to connect to the robot on.
+     *
      * @returns The port number.
      */
     getPort() {
@@ -112,6 +132,7 @@ export class NetworkTables {
 
     /**
      * Returns whether the robot is currently connected.
+     *
      * @returns Whether the robot is connected.
      */
     isRobotConnected() {
@@ -120,6 +141,7 @@ export class NetworkTables {
 
     /**
      * Returns whether the robot is currently connecting.
+     *
      * @returns Whether the robot is connecting.
      */
     isRobotConnecting() {
@@ -128,6 +150,7 @@ export class NetworkTables {
 
     /**
      * Adds a listener for robot connection status updates.
+     *
      * @param callback - The callback to call when the connection status changes.
      * @param immediateNotify - Whether to immediately notify the callback of the current connection status.
      * @returns A function to remove the listener.
@@ -138,6 +161,7 @@ export class NetworkTables {
 
     /**
      * Creates a new topic.
+     *
      * @param name - The name of the topic.
      * @param typeInfo - The type information of the topic.
      * @param defaultValue - The default value of the topic.

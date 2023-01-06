@@ -17,21 +17,29 @@ import type {
 } from 'src/lib/types/types';
 
 /** NetworkTables client. */
-export default class Messenger {
+export class Messenger {
     private readonly _socket: NetworkTablesSocket;
     private readonly publications = new Map<number, PublishMessageParams>();
     private readonly subscriptions = new Map<number, SubscribeMessageParams>();
     private readonly pendingMessages = new Map<string, NetworkTableTypes>();
-    private serverUrl: string;
     private static _instance: Messenger;
 
+    /**
+     * Gets the NetworkTablesSocket used by the Messenger.
+     *
+     * @returns The NetworkTablesSocket used by the Messenger.
+     */
     get socket() {
         return this._socket;
     }
 
     /**
      * Creates a new NetworkTables client.
+     *
      * @param serverUrl - The URL of the server to connect to.
+     * @param onTopicUpdate - Called when a topic is updated.
+     * @param onAnnounce - Called when a topic is announced.
+     * @param onUnannounce - Called when a topic is unannounced.
      */
     private constructor(
         serverUrl: string,
@@ -39,7 +47,6 @@ export default class Messenger {
         onAnnounce: (_: AnnounceMessageParams) => void,
         onUnannounce: (_: UnannounceMessageParams) => void
     ) {
-        this.serverUrl = serverUrl;
         this._socket = NetworkTablesSocket.getInstance(
             serverUrl,
             this.onSocketOpen,
@@ -52,7 +59,11 @@ export default class Messenger {
 
     /**
      * Gets the instance of the NetworkTables client.
+     *
      * @param serverUrl - The URL of the server to connect to. This is not needed after the first call.
+     * @param onTopicUpdate - Called when a topic is updated.
+     * @param onAnnounce - Called when a topic is announced.
+     * @param onUnannounce - Called when a topic is unannounced.
      * @returns The instance of the NetworkTables client.
      */
     static getInstance(
@@ -68,23 +79,37 @@ export default class Messenger {
         return Messenger._instance;
     }
 
+    /**
+     * Reinstantiates the messenger by resetting the socket with a new URL.
+     *
+     * @param serverUrl - The URL of the server to connect to.
+     */
     reinstantiate(serverUrl: string) {
-        this.serverUrl = serverUrl;
         this._socket.stopAutoConnect();
         this._socket.reinstantiate(serverUrl);
         this._socket.startAutoConnect();
     }
 
+    /**
+     * Gets all publications.
+     *
+     * @returns An iterator of all publications in the form [id, params].
+     */
     getPublications() {
         return this.publications.entries();
     }
 
+    /**
+     * Gets all subscriptions.
+     *
+     * @returns An iterator of all subscriptions in the form [id, params].
+     */
     getSubscriptions() {
         return this.subscriptions.entries();
     }
 
     /**
-     *  Called when the socket opens.
+     * Called when the socket opens.
      */
     onSocketOpen = () => {
         // Send all subscriptions
@@ -106,7 +131,9 @@ export default class Messenger {
 
     /**
      * Publishes a topic to the server.
-     * @param topic - The topic to publish.
+     *
+     * @param params - The publication parameters.
+     * @param force - Whether to force the publication.
      */
     publish(params: PublishMessageParams, force?: boolean) {
         // Check if the topic is already published
@@ -126,7 +153,8 @@ export default class Messenger {
 
     /**
      * Unpublishes a topic from the server.
-     * @param pubuid - The publication ID to unpublish
+     *
+     * @param pubuid - The publication ID to unpublish.
      */
     unpublish(pubuid: number) {
         // Check if the topic is not published
@@ -145,7 +173,9 @@ export default class Messenger {
 
     /**
      * Subscribes to a topic.
-     * @param params - The subscription parameters
+     *
+     * @param params - The subscription parameters.
+     * @param force - Whether to force the subscription.
      */
     subscribe(params: SubscribeMessageParams, force?: boolean) {
         if (this.subscriptions.has(params.subuid) && !force) return;
@@ -164,7 +194,8 @@ export default class Messenger {
 
     /**
      * Unsubscribes from a topic.
-     * @param subuid - The subscription ID to unsubscribe from
+     *
+     * @param subuid - The subscription ID to unsubscribe from.
      */
     unsubscribe(subuid: number) {
         // Check if the topic is not subscribed
@@ -186,6 +217,7 @@ export default class Messenger {
 
     /**
      * Sets the properties of a topic.
+     *
      * @param params - The parameters to set
      */
     setProperties(params: SetPropertiesMessageParams) {
