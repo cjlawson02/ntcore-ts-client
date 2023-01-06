@@ -1,5 +1,6 @@
-node_modules/
-dist/
-coverage/
-package-lock.json
-docs/
+# Add files here to ignore them from prettier formatting
+
+/dist
+/coverage
+/package-lock.json
+/docs

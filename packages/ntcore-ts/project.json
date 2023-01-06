@@ -1,0 +1,51 @@
+{
+  "name": "ntcore-ts",
+  "implicitDependencies": ["eslint-config"],
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ntcore-ts/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nrwl/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/ntcore-ts",
+        "main": "packages/ntcore-ts/src/index.ts",
+        "tsConfig": "packages/ntcore-ts/tsconfig.lib.json",
+        "assets": ["packages/ntcore-ts/*.md"]
+      }
+    },
+    "publish": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/scripts/publish.mjs ntcore-ts {args.ver} {args.tag}"
+      },
+      "dependsOn": ["build"]
+    },
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "dependsOn": [{ "projects": "dependencies", "target": "build" }],
+      "options": {
+        "lintFilePatterns": ["packages/ntcore-ts/**/*.ts"]
+      }
+    },
+    "lint:fix": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "fix": true,
+        "lintFilePatterns": ["packages/ntcore-ts/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/ntcore-ts/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  },
+  "tags": []
+}
