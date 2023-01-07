@@ -1,5 +1,8 @@
 {
   "name": "ntcore-ts",
-  "version": "0.0.1",
-  "type": "module"
+  "version": "0.0.1-beta.0",
+  "type": "module",
+  "scripts": {
+    "test": "npx nx run ntcore-ts:test"
+  }
 }

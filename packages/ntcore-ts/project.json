@@ -50,7 +50,7 @@
     "docs": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx typedoc packages/ntcore-ts/src/index.ts --tsconfig packages/ntcore-ts/tsconfig.json --excludeExternals true --readme none"
+        "command": "npx typedoc packages/ntcore-ts/src/index.ts --tsconfig packages/ntcore-ts/tsconfig.json --excludeExternals true --readme none && git add docs/"
       }
     }
   },

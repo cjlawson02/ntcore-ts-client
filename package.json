@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "license": "ISC",
   "scripts": {
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "test": "npx nx run test"
   },
   "private": true,
   "lint-staged": {
