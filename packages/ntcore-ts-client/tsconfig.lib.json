@@ -1,6 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "target": "ES5",
+    "module": "CommonJS",
+    "downlevelIteration": true,
     "outDir": "../../dist/out-tsc",
     "declaration": true,
     "types": ["node"]

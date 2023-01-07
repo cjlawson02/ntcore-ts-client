@@ -1,8 +1,19 @@
 {
   "name": "ntcore-ts-client",
-  "version": "0.0.1-beta.0",
-  "type": "module",
-  "scripts": {
-    "test": "npx nx run ntcore-ts-client:test"
-  }
+  "version": "0.0.1-beta.4",
+  "license": "ISC",
+  "keywords": [
+    "ntcore",
+    "networktables",
+    "frc",
+    "robot",
+    "robotics",
+    "first",
+    "first robotics",
+    "first robotics competition",
+    "wpilib",
+    "nt",
+    "network",
+    "tables"
+  ]
 }

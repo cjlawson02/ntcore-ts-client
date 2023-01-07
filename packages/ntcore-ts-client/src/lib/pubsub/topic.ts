@@ -1,7 +1,7 @@
 import { Util } from '../util/util';
 
 import type {
-  NetworkTableTypeInfo,
+  NetworkTablesTypeInfo,
   NetworkTableTypes,
   PublishMessageParams,
   SetPropertiesMessageParams,
@@ -11,11 +11,11 @@ import type {
 } from '../types/types';
 import type { PubSubClient } from './pubsub';
 
-export class Topic<T extends NetworkTableTypes> {
+export class NetworkTablesTopic<T extends NetworkTableTypes> {
   private client: PubSubClient;
   private _id?: number;
   private readonly _name: string;
-  private readonly _typeInfo: NetworkTableTypeInfo;
+  private readonly _typeInfo: NetworkTablesTypeInfo;
   private value: T | null;
   private _lastChangedTime?: number;
   private _announced: boolean;
@@ -53,7 +53,7 @@ export class Topic<T extends NetworkTableTypes> {
    *
    * @returns The type info for the topic.
    */
-  get typeInfo(): NetworkTableTypeInfo {
+  get typeInfo(): NetworkTablesTypeInfo {
     return this._typeInfo;
   }
 
@@ -111,7 +111,7 @@ export class Topic<T extends NetworkTableTypes> {
    * @param typeInfo - The type info for the topic.
    * @param defaultValue - The default value for the topic.
    */
-  constructor(client: PubSubClient, name: string, typeInfo: NetworkTableTypeInfo, defaultValue?: T) {
+  constructor(client: PubSubClient, name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
     this.client = client;
     this._name = name;
     this._typeInfo = typeInfo;
@@ -122,7 +122,7 @@ export class Topic<T extends NetworkTableTypes> {
 
     const existingTopic = this.client.getTopicFromName(name);
     if (existingTopic) {
-      return existingTopic as Topic<T>;
+      return existingTopic as NetworkTablesTopic<T>;
     }
 
     this.client.registerTopic(this);

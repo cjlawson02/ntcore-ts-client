@@ -1,17 +1,17 @@
 import { NetworkTableTypeInfos } from '../types/types';
 
 import { PubSubClient } from './pubsub';
-import { Topic } from './topic';
+import { NetworkTablesTopic } from './topic';
 
 import type { SubscribeMessageParams } from '../types/types';
 
 describe('Topic', () => {
-  let topic: Topic<string>;
+  let topic: NetworkTablesTopic<string>;
   beforeEach(() => {
     const serverUrl = 'ws://localhost:5810/nt/1234';
     const client = PubSubClient.getInstance(serverUrl);
 
-    topic = new Topic<string>(client, 'test', NetworkTableTypeInfos.kString, 'default');
+    topic = new NetworkTablesTopic<string>(client, 'test', NetworkTableTypeInfos.kString, 'default');
   });
 
   afterEach(() => {
@@ -21,12 +21,21 @@ describe('Topic', () => {
 
   describe('constructor', () => {
     it('returns the existing topic if it already exists', () => {
-      const newTopic = new Topic<string>(topic['client'], 'test', NetworkTableTypeInfos.kString, 'default');
+      const newTopic = new NetworkTablesTopic<string>(
+        topic['client'],
+        'test',
+        NetworkTableTypeInfos.kString,
+        'default'
+      );
       expect(topic).toBe(newTopic);
     });
 
     it('should return null if there is no default value', () => {
-      const newTopic = new Topic<string>(topic['client'], 'test-no-default', NetworkTableTypeInfos.kString);
+      const newTopic = new NetworkTablesTopic<string>(
+        topic['client'],
+        'test-no-default',
+        NetworkTableTypeInfos.kString
+      );
       expect(newTopic.getValue()).toBeNull();
     });
   });

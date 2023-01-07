@@ -18,7 +18,7 @@ import type { z } from 'zod';
 
 export type TypeString = z.infer<typeof typeStringSchema>;
 export type TypeNum = z.infer<typeof typeNumSchema>;
-export type NetworkTableTypeInfo = [TypeNum, TypeString];
+export type NetworkTablesTypeInfo = [TypeNum, TypeString];
 
 export type PublishMessage = z.infer<typeof publishMessageSchema>;
 export type UnpublishMessage = z.infer<typeof unpublishMessageSchema>;
@@ -54,15 +54,15 @@ export type BinaryMessage = z.infer<typeof msgPackSchema>;
 export type TopicProperties = z.infer<typeof topicPropertiesSchema>;
 
 export class NetworkTableTypeInfos {
-  static readonly kBoolean: NetworkTableTypeInfo = [0, 'boolean'];
-  static readonly kDouble: NetworkTableTypeInfo = [1, 'double'];
-  static readonly kInteger: NetworkTableTypeInfo = [2, 'int'];
-  static readonly kString: NetworkTableTypeInfo = [4, 'string'];
-  static readonly kArrayBuffer: NetworkTableTypeInfo = [3, 'raw'];
-  static readonly kBooleanArray: NetworkTableTypeInfo = [16, 'boolean[]'];
-  static readonly kDoubleArray: NetworkTableTypeInfo = [17, 'double[]'];
-  static readonly kIntegerArray: NetworkTableTypeInfo = [18, 'int[]'];
-  static readonly kStringArray: NetworkTableTypeInfo = [20, 'string[]'];
+  static readonly kBoolean: NetworkTablesTypeInfo = [0, 'boolean'];
+  static readonly kDouble: NetworkTablesTypeInfo = [1, 'double'];
+  static readonly kInteger: NetworkTablesTypeInfo = [2, 'int'];
+  static readonly kString: NetworkTablesTypeInfo = [4, 'string'];
+  static readonly kArrayBuffer: NetworkTablesTypeInfo = [3, 'raw'];
+  static readonly kBooleanArray: NetworkTablesTypeInfo = [16, 'boolean[]'];
+  static readonly kDoubleArray: NetworkTablesTypeInfo = [17, 'double[]'];
+  static readonly kIntegerArray: NetworkTablesTypeInfo = [18, 'int[]'];
+  static readonly kStringArray: NetworkTablesTypeInfo = [20, 'string[]'];
 }
 
 export interface BinaryMessageData {

@@ -11,7 +11,7 @@ import type {
   PropertiesMessageParams,
   UnannounceMessageParams,
   NetworkTableTypes,
-  NetworkTableTypeInfo,
+  NetworkTablesTypeInfo,
   BinaryMessageData,
 } from '../types/types';
 
@@ -399,7 +399,7 @@ export class NetworkTablesSocket {
    * @param typeInfo - The type info for the value.
    * @returns The time the message was sent.
    */
-  sendValueToTopic(id: number, value: NetworkTableTypes, typeInfo?: NetworkTableTypeInfo) {
+  sendValueToTopic(id: number, value: NetworkTableTypes, typeInfo?: NetworkTablesTypeInfo) {
     const time = Math.ceil(this.getServerTime());
     const message = Util.createBinaryMessage(id, time, value, typeInfo);
     this.sendBinaryFrame(message);

@@ -1,6 +1,6 @@
 import { NetworkTablesSocket } from './socket';
 
-import type { Topic } from '../pubsub/topic';
+import type { NetworkTablesTopic } from '../pubsub/topic';
 import type {
   Message,
   PublishMessage,
@@ -239,7 +239,7 @@ export class Messenger {
    * @param value - The value to update the topic to.
    * @returns The timestamp of the update, or -1 if the topic is not announced.
    */
-  sendToTopic<T extends NetworkTableTypes>(topic: Topic<T>, value: T) {
+  sendToTopic<T extends NetworkTableTypes>(topic: NetworkTablesTopic<T>, value: T) {
     const typeInfo = topic.typeInfo;
 
     if (!topic.publisher || !topic.pubuid) {

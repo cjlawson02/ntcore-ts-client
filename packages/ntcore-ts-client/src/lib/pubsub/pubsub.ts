@@ -6,12 +6,12 @@ import type {
   NetworkTableTypes,
   UnannounceMessageParams,
 } from '../types/types';
-import type { Topic } from './topic';
+import type { NetworkTablesTopic } from './topic';
 
 /** The client for the PubSub protocol. */
 export class PubSubClient {
   private readonly _messenger: Messenger;
-  private topics: Map<string, Topic<any>>;
+  private topics: Map<string, NetworkTablesTopic<any>>;
   private static _instance: PubSubClient;
 
   get messenger() {
@@ -61,7 +61,7 @@ export class PubSubClient {
    *
    * @param topic - The topic to register
    */
-  registerTopic<T extends NetworkTableTypes>(topic: Topic<T>) {
+  registerTopic<T extends NetworkTableTypes>(topic: NetworkTablesTopic<T>) {
     if (this.topics.has(topic.name)) {
       throw new Error(`Topic ${topic.name} already exists. Cannot register a topic with the same name.`);
     }
@@ -161,7 +161,7 @@ export class PubSubClient {
    * @param topic - The topic to update.
    * @param value - The new value of the topic.
    */
-  updateServer<T extends NetworkTableTypes>(topic: Topic<T>, value: T) {
+  updateServer<T extends NetworkTableTypes>(topic: NetworkTablesTopic<T>, value: T) {
     this._messenger.sendToTopic(topic, value);
   }
 
