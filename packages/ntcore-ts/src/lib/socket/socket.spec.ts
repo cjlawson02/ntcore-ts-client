@@ -1,301 +1,301 @@
 import { NetworkTablesSocket } from './socket';
 
 describe('NetworkTablesSocket', () => {
-    let socket: NetworkTablesSocket;
-    let serverUrl: string;
-    let onSocketOpen: jest.Mock;
-    let onSocketClose: jest.Mock;
-    let onTopicUpdate: jest.Mock;
-    let onAnnounce: jest.Mock;
-    let onUnannounce: jest.Mock;
+  let socket: NetworkTablesSocket;
+  let serverUrl: string;
+  let onSocketOpen: jest.Mock;
+  let onSocketClose: jest.Mock;
+  let onTopicUpdate: jest.Mock;
+  let onAnnounce: jest.Mock;
+  let onUnannounce: jest.Mock;
 
-    beforeEach(() => {
-        // Create a mock server URL and mock event handlers
-        serverUrl = 'ws://localhost:5810/nt/1234';
-        onSocketOpen = jest.fn();
-        onSocketClose = jest.fn();
-        onTopicUpdate = jest.fn();
-        onAnnounce = jest.fn();
-        onUnannounce = jest.fn();
+  beforeEach(() => {
+    // Create a mock server URL and mock event handlers
+    serverUrl = 'ws://localhost:5810/nt/1234';
+    onSocketOpen = jest.fn();
+    onSocketClose = jest.fn();
+    onTopicUpdate = jest.fn();
+    onAnnounce = jest.fn();
+    onUnannounce = jest.fn();
 
-        // Create an instance of the NetworkTablesSocket class
-        socket = NetworkTablesSocket.getInstance(
-            serverUrl,
-            onSocketOpen,
-            onSocketClose,
-            onTopicUpdate,
-            onAnnounce,
-            onUnannounce
-        );
+    // Create an instance of the NetworkTablesSocket class
+    socket = NetworkTablesSocket.getInstance(
+      serverUrl,
+      onSocketOpen,
+      onSocketClose,
+      onTopicUpdate,
+      onAnnounce,
+      onUnannounce
+    );
 
-        // Use jest.spyOn to mock the socket property
-        jest.spyOn(socket, 'websocket', 'get').mockImplementation(() => {
-            // Create a new WebSocket object
-            const mockSocket = new WebSocket(serverUrl);
+    // Use jest.spyOn to mock the socket property
+    jest.spyOn(socket, 'websocket', 'get').mockImplementation(() => {
+      // Create a new WebSocket object
+      const mockSocket = new WebSocket(serverUrl);
 
-            // Assign the send mock function and the readyState property to the socket object
-            mockSocket.send = jest.fn();
-            jest.spyOn(mockSocket, 'readyState', 'get').mockReturnValue(WebSocket.OPEN);
+      // Assign the send mock function and the readyState property to the socket object
+      mockSocket.send = jest.fn();
+      jest.spyOn(mockSocket, 'readyState', 'get').mockReturnValue(WebSocket.OPEN);
 
-            return mockSocket;
-        });
+      return mockSocket;
+    });
+  });
+
+  describe('constructor', () => {
+    it('should create a new WebSocket instance with the provided server URL', () => {
+      expect(socket.websocket).toBeInstanceOf(WebSocket);
+      expect(socket.websocket.url).toBe(serverUrl);
+    });
+  });
+
+  describe('isConnected', () => {
+    it('should return true if the WebSocket is open', () => {
+      // Mock the WebSocket's `readyState` property to be `WebSocket.OPEN`
+      socket.websocket = {
+        ...socket.websocket,
+        readyState: WebSocket.OPEN,
+      };
+
+      expect(socket.isConnected()).toBe(true);
     });
 
-    describe('constructor', () => {
-        it('should create a new WebSocket instance with the provided server URL', () => {
-            expect(socket.websocket).toBeInstanceOf(WebSocket);
-            expect(socket.websocket.url).toBe(serverUrl);
-        });
+    it('should return false if the WebSocket is closed', () => {
+      // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSED`
+      socket.websocket = {
+        ...socket.websocket,
+        readyState: WebSocket.CLOSED,
+      };
+
+      expect(socket.isConnected()).toBe(false);
+    });
+  });
+
+  describe('isClosing', () => {
+    it('should return true if the WebSocket is closing', () => {
+      // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSING`
+      socket.websocket = {
+        ...socket.websocket,
+        readyState: WebSocket.CLOSING,
+      };
+
+      expect(socket.isClosing()).toBe(true);
     });
 
-    describe('isConnected', () => {
-        it('should return true if the WebSocket is open', () => {
-            // Mock the WebSocket's `readyState` property to be `WebSocket.OPEN`
-            socket.websocket = {
-                ...socket.websocket,
-                readyState: WebSocket.OPEN,
-            };
+    it('should return false if the WebSocket is not closing', () => {
+      // Mock the WebSocket's `readyState` property to be `WebSocket.OPEN`
+      socket.websocket = {
+        ...socket.websocket,
+        readyState: WebSocket.OPEN,
+      };
 
-            expect(socket.isConnected()).toBe(true);
-        });
+      expect(socket.isClosing()).toBe(false);
+    });
+  });
 
-        it('should return false if the WebSocket is closed', () => {
-            // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSED`
-            socket.websocket = {
-                ...socket.websocket,
-                readyState: WebSocket.CLOSED,
-            };
+  describe('isClosed', () => {
+    it('should return true if the WebSocket is closed', () => {
+      // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSED`
+      socket.websocket = {
+        ...socket.websocket,
+        readyState: WebSocket.CLOSED,
+      };
 
-            expect(socket.isConnected()).toBe(false);
-        });
+      expect(socket.isClosed()).toBe(true);
     });
 
-    describe('isClosing', () => {
-        it('should return true if the WebSocket is closing', () => {
-            // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSING`
-            socket.websocket = {
-                ...socket.websocket,
-                readyState: WebSocket.CLOSING,
-            };
+    it('should return false if the WebSocket is not closed', () => {
+      // Mock the WebSocket's `readyState` property to be `WebSocket.OPEN`
+      socket.websocket = {
+        ...socket.websocket,
+        readyState: WebSocket.OPEN,
+      };
 
-            expect(socket.isClosing()).toBe(true);
-        });
+      expect(socket.isClosed()).toBe(false);
+    });
+  });
 
-        it('should return false if the WebSocket is not closing', () => {
-            // Mock the WebSocket's `readyState` property to be `WebSocket.OPEN`
-            socket.websocket = {
-                ...socket.websocket,
-                readyState: WebSocket.OPEN,
-            };
+  describe('send', () => {
+    it('should send a message through the WebSocket', () => {
+      // Mock the WebSocket's `send` method
+      const send = jest.fn();
+      socket.websocket = {
+        ...socket.websocket,
+        send,
+      };
 
-            expect(socket.isClosing()).toBe(false);
-        });
+      // Send a message
+      const message = 'Hello, world!';
+      send(message);
+
+      expect(send).toHaveBeenCalledWith(message);
     });
 
-    describe('isClosed', () => {
-        it('should return true if the WebSocket is closed', () => {
-            // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSED`
-            socket.websocket = {
-                ...socket.websocket,
-                readyState: WebSocket.CLOSED,
-            };
+    it('should send the message through the WebSocket if it is open', () => {
+      // Mock the WebSocket's `send` method
+      const send = jest.fn();
+      socket.websocket = {
+        ...socket.websocket,
+        send,
+      };
 
-            expect(socket.isClosed()).toBe(true);
-        });
+      // Set the WebSocket's `readyState` property to be `WebSocket.OPEN`
+      Object.defineProperty(NetworkTablesSocket.prototype, 'readyState', {
+        value: WebSocket.OPEN,
+      });
 
-        it('should return false if the WebSocket is not closed', () => {
-            // Mock the WebSocket's `readyState` property to be `WebSocket.OPEN`
-            socket.websocket = {
-                ...socket.websocket,
-                readyState: WebSocket.OPEN,
-            };
+      // Send a message
+      const message = 'Hello, world!';
+      send(message);
 
-            expect(socket.isClosed()).toBe(false);
-        });
+      expect(send).toHaveBeenCalledWith(message);
+    });
+  });
+
+  describe('sendQueuedMessages', () => {
+    it('should send all queued messages through the WebSocket', () => {
+      // Mock the WebSocket's `send` method
+      const send = jest.fn();
+      socket.websocket = {
+        ...socket.websocket,
+        send,
+      };
+
+      // Queue some messages
+      const messages = ['Hello, world!', 'Foo', 'Bar'];
+      socket['messageQueue'].push(...messages);
+
+      // Send the queued messages
+      socket['sendQueuedMessages']();
+
+      expect(send).toHaveBeenCalledTimes(messages.length);
+      messages.forEach((message) => {
+        expect(send).toHaveBeenCalledWith(message);
+      });
+      expect(socket['messageQueue']).toHaveLength(0);
     });
 
-    describe('send', () => {
-        it('should send a message through the WebSocket', () => {
-            // Mock the WebSocket's `send` method
-            const send = jest.fn();
-            socket.websocket = {
-                ...socket.websocket,
-                send,
-            };
+    it('should not send any messages if the WebSocket is not open', () => {
+      // Mock the WebSocket's `send` method
+      const send = jest.fn();
+      socket.websocket = {
+        ...socket.websocket,
+        send,
+      };
 
-            // Send a message
-            const message = 'Hello, world!';
-            send(message);
+      // Queue some messages
+      const messages = ['Hello, world!', 'Foo', 'Bar'];
+      socket['messageQueue'].push(...messages);
 
-            expect(send).toHaveBeenCalledWith(message);
-        });
+      // Set the WebSocket's `readyState` property to be `WebSocket.CONNECTING`
+      socket.websocket = {
+        ...socket.websocket,
+        readyState: WebSocket.CONNECTING,
+      };
 
-        it('should send the message through the WebSocket if it is open', () => {
-            // Mock the WebSocket's `send` method
-            const send = jest.fn();
-            socket.websocket = {
-                ...socket.websocket,
-                send,
-            };
+      // Send the queued messages
+      socket['sendQueuedMessages']();
 
-            // Set the WebSocket's `readyState` property to be `WebSocket.OPEN`
-            Object.defineProperty(NetworkTablesSocket.prototype, 'readyState', {
-                value: WebSocket.OPEN,
-            });
-
-            // Send a message
-            const message = 'Hello, world!';
-            send(message);
-
-            expect(send).toHaveBeenCalledWith(message);
-        });
+      expect(send).not.toHaveBeenCalled();
+      expect(socket['messageQueue']).toHaveLength(messages.length);
     });
+  });
 
-    describe('sendQueuedMessages', () => {
-        it('should send all queued messages through the WebSocket', () => {
-            // Mock the WebSocket's `send` method
-            const send = jest.fn();
-            socket.websocket = {
-                ...socket.websocket,
-                send,
-            };
+  describe('heartbeat', () => {
+    it('should send a heartbeat message through the WebSocket', () => {
+      // Mock the WebSocket's `send` method
+      const send = jest.fn();
+      socket.websocket = {
+        ...socket.websocket,
+        send,
+      };
+      // Send a heartbeat message
+      socket['heartbeat']();
 
-            // Queue some messages
-            const messages = ['Hello, world!', 'Foo', 'Bar'];
-            socket['messageQueue'].push(...messages);
-
-            // Send the queued messages
-            socket['sendQueuedMessages']();
-
-            expect(send).toHaveBeenCalledTimes(messages.length);
-            messages.forEach((message) => {
-                expect(send).toHaveBeenCalledWith(message);
-            });
-            expect(socket['messageQueue']).toHaveLength(0);
-        });
-
-        it('should not send any messages if the WebSocket is not open', () => {
-            // Mock the WebSocket's `send` method
-            const send = jest.fn();
-            socket.websocket = {
-                ...socket.websocket,
-                send,
-            };
-
-            // Queue some messages
-            const messages = ['Hello, world!', 'Foo', 'Bar'];
-            socket['messageQueue'].push(...messages);
-
-            // Set the WebSocket's `readyState` property to be `WebSocket.CONNECTING`
-            socket.websocket = {
-                ...socket.websocket,
-                readyState: WebSocket.CONNECTING,
-            };
-
-            // Send the queued messages
-            socket['sendQueuedMessages']();
-
-            expect(send).not.toHaveBeenCalled();
-            expect(socket['messageQueue']).toHaveLength(messages.length);
-        });
+      expect(send).toHaveBeenCalled();
     });
+  });
 
-    describe('heartbeat', () => {
-        it('should send a heartbeat message through the WebSocket', () => {
-            // Mock the WebSocket's `send` method
-            const send = jest.fn();
-            socket.websocket = {
-                ...socket.websocket,
-                send,
-            };
-            // Send a heartbeat message
-            socket['heartbeat']();
+  describe('updateConnectionListeners', () => {
+    it('should call all connection listeners with the current connection status', () => {
+      const listeners = [jest.fn(), jest.fn()];
+      listeners.forEach((listener) => socket['connectionListeners'].add(listener));
 
-            expect(send).toHaveBeenCalled();
-        });
+      // Mock the WebSocket's `readyState` property to be `WebSocket.OPEN`
+      socket.websocket = {
+        ...socket.websocket,
+        readyState: WebSocket.OPEN,
+      };
+      socket['updateConnectionListeners']();
+
+      expect(listeners[0]).toHaveBeenCalledWith(true);
+      expect(listeners[1]).toHaveBeenCalledWith(true);
+
+      // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSED`
+      socket.websocket = {
+        ...socket.websocket,
+        readyState: WebSocket.CLOSED,
+      };
+      socket['updateConnectionListeners']();
+
+      expect(listeners[0]).toHaveBeenCalledWith(false);
+      expect(listeners[1]).toHaveBeenCalledWith(false);
     });
+  });
 
-    describe('updateConnectionListeners', () => {
-        it('should call all connection listeners with the current connection status', () => {
-            const listeners = [jest.fn(), jest.fn()];
-            listeners.forEach((listener) => socket['connectionListeners'].add(listener));
+  // describe('onmessage', () => {
+  //     it('should call the binary frame handler for a binary message', () => {
+  //         const message: BinaryMessage = [0, 0, 1, 1.0];
 
-            // Mock the WebSocket's `readyState` property to be `WebSocket.OPEN`
-            socket.websocket = {
-                ...socket.websocket,
-                readyState: WebSocket.OPEN,
-            };
-            socket['updateConnectionListeners']();
+  //         // Trigger the onmessage event
+  //         socket['onMessage']({
+  //             data: encode(message) as ArrayBuffer,
+  //         } as MessageEvent);
 
-            expect(listeners[0]).toHaveBeenCalledWith(true);
-            expect(listeners[1]).toHaveBeenCalledWith(true);
+  //         expect(onTopicUpdate).toHaveBeenCalledWith({
+  //             topicId: message[0],
+  //             serverTime: message[1],
+  //             typeInfo: Util.getNetworkTableTypeFromTypeNum(message[2]),
+  //             value: message[3],
+  //         });
+  //     });
 
-            // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSED`
-            socket.websocket = {
-                ...socket.websocket,
-                readyState: WebSocket.CLOSED,
-            };
-            socket['updateConnectionListeners']();
+  //     it('should call the onAnnounce handler for an announce message', () => {
+  //         const params: AnnounceMessageParams = {
+  //             type: 'boolean',
+  //             name: 'foo',
+  //             id: 0,
+  //             properties: {},
+  //         };
+  //         const message: AnnounceMessage = {
+  //             method: 'announce',
+  //             params,
+  //         };
 
-            expect(listeners[0]).toHaveBeenCalledWith(false);
-            expect(listeners[1]).toHaveBeenCalledWith(false);
-        });
-    });
+  //         // Trigger the onmessage event
+  //         socket['onMessage']({
+  //             data: JSON.stringify([message]),
+  //         } as MessageEvent);
 
-    // describe('onmessage', () => {
-    //     it('should call the binary frame handler for a binary message', () => {
-    //         const message: BinaryMessage = [0, 0, 1, 1.0];
+  //         expect(onAnnounce).toHaveBeenCalledWith(params);
+  //     });
 
-    //         // Trigger the onmessage event
-    //         socket['onMessage']({
-    //             data: encode(message) as ArrayBuffer,
-    //         } as MessageEvent);
+  //     it('should call the onUnannounce handler for an unannounce message', () => {
+  //         const params: UnannounceMessageParams = {
+  //             name: 'foo',
+  //             id: 0,
+  //         };
 
-    //         expect(onTopicUpdate).toHaveBeenCalledWith({
-    //             topicId: message[0],
-    //             serverTime: message[1],
-    //             typeInfo: Util.getNetworkTableTypeFromTypeNum(message[2]),
-    //             value: message[3],
-    //         });
-    //     });
+  //         const message: UnannounceMessage = {
+  //             method: 'unannounce',
+  //             params,
+  //         };
 
-    //     it('should call the onAnnounce handler for an announce message', () => {
-    //         const params: AnnounceMessageParams = {
-    //             type: 'boolean',
-    //             name: 'foo',
-    //             id: 0,
-    //             properties: {},
-    //         };
-    //         const message: AnnounceMessage = {
-    //             method: 'announce',
-    //             params,
-    //         };
+  //         // Trigger the onmessage event
+  //         socket['onMessage']({
+  //             data: JSON.stringify([message]),
+  //         } as MessageEvent);
 
-    //         // Trigger the onmessage event
-    //         socket['onMessage']({
-    //             data: JSON.stringify([message]),
-    //         } as MessageEvent);
-
-    //         expect(onAnnounce).toHaveBeenCalledWith(params);
-    //     });
-
-    //     it('should call the onUnannounce handler for an unannounce message', () => {
-    //         const params: UnannounceMessageParams = {
-    //             name: 'foo',
-    //             id: 0,
-    //         };
-
-    //         const message: UnannounceMessage = {
-    //             method: 'unannounce',
-    //             params,
-    //         };
-
-    //         // Trigger the onmessage event
-    //         socket['onMessage']({
-    //             data: JSON.stringify([message]),
-    //         } as MessageEvent);
-
-    //         expect(onUnannounce).toHaveBeenCalledWith(params);
-    //     });
-    // });
+  //         expect(onUnannounce).toHaveBeenCalledWith(params);
+  //     });
+  // });
 });

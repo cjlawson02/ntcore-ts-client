@@ -6,6 +6,14 @@
     "prepare": "husky install"
   },
   "private": true,
+  "lint-staged": {
+    "*": [
+      "npx nx format:write --uncommitted",
+      "npx nx affected --target=lint-fix --uncommitted",
+      "npx nx affected --target=test --uncommitted",
+      "npx nx affected --target=build --uncommitted"
+    ]
+  },
   "dependencies": {
     "@msgpack/msgpack": "^2.8.0",
     "tslib": "^2.3.0",
