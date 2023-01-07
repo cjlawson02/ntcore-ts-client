@@ -1,6 +1,5 @@
 {
   "name": "ntcore-ts-client",
-  "implicitDependencies": ["eslint-config"],
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/ntcore-ts-client/src",
   "projectType": "library",
@@ -12,6 +11,7 @@
         "outputPath": "dist/packages/ntcore-ts-client",
         "main": "packages/ntcore-ts-client/src/index.ts",
         "tsConfig": "packages/ntcore-ts-client/tsconfig.lib.json",
+        "buildableProjectDepsInPackageJsonType": "dependencies",
         "assets": ["packages/ntcore-ts-client/*.md"]
       }
     },
@@ -25,7 +25,6 @@
     "lint": {
       "executor": "@nrwl/linter:eslint",
       "outputs": ["{options.outputFile}"],
-      "dependsOn": [{ "projects": "dependencies", "target": "build" }],
       "options": {
         "lintFilePatterns": ["packages/ntcore-ts-client/**/*.ts"]
       }
@@ -33,7 +32,6 @@
     "lint:fix": {
       "executor": "@nrwl/linter:eslint",
       "outputs": ["{options.outputFile}"],
-      "dependsOn": [{ "projects": "dependencies", "target": "build" }],
       "options": {
         "fix": true,
         "lintFilePatterns": ["packages/ntcore-ts-client/**/*.ts"]
