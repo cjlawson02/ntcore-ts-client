@@ -12,6 +12,9 @@
       "npx nx affected --target=lint-fix --uncommitted",
       "npx nx affected --target=test --uncommitted",
       "npx nx affected --target=build --uncommitted"
+    ],
+    "packages/ntcore-ts/*": [
+      "npx nx run ntcore-ts:docs"
     ]
   },
   "dependencies": {
@@ -49,6 +52,7 @@
     "ts-jest": "28.0.5",
     "ts-node": "10.9.1",
     "typedoc": "^0.23.23",
+    "typedoc-plugin-missing-exports": "^1.0.0",
     "typescript": "~4.8.2"
   }
 }

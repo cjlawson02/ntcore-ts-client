@@ -1,6 +1,6 @@
 # ntcore-ts
 
-This library was generated with [Nx](https://nx.dev).
+For a quick start guide on how to use the library, view this [README](https://github.com/Chris2fourlaw/ntcore-ts/blob/main/README.md) and this [documentation website](https://ntcore.chrislawson.dev).
 
 ## Building
 

@@ -46,6 +46,12 @@
         "jestConfig": "packages/ntcore-ts/jest.config.ts",
         "passWithNoTests": true
       }
+    },
+    "docs": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx typedoc packages/ntcore-ts/src/index.ts --tsconfig packages/ntcore-ts/tsconfig.json --excludeExternals true --readme none"
+      }
     }
   },
   "tags": []
