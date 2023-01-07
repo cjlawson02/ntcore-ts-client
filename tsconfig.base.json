@@ -16,7 +16,7 @@
     "baseUrl": ".",
     "paths": {
       "eslint-config": ["packages/eslint-config/src/index.ts"],
-      "ntcore-ts": ["packages/ntcore-ts/src/index.ts"]
+      "ntcore-ts-client": ["packages/ntcore-ts-client/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

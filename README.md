@@ -1,4 +1,4 @@
-# ntcore-ts
+# ntcore-ts-client
 
 A TypeScript library for communication over [WPILib's NetworkTables 4.0 protocol](https://github.com/wpilibsuite/allwpilib/blob/main/ntcore/doc/networktables4.adoc).
 
@@ -23,7 +23,7 @@ This section will help get you started with sending and receiving data over Netw
 
 ### Installation
 
-`npm install --save ntcore-ts`
+`npm install --save ntcore-ts-client`
 
 ### Connecting to the NetworkTables Server
 
@@ -92,7 +92,7 @@ publish(properties: TopicProperties = {}, id?: number)
 For example, here's a subscription for a Gyro:
 
 ```typescript
-import { NetworkTables } from 'ntcore-ts';
+import { NetworkTables } from 'ntcore-ts-client';
 
 // Create the NT client instance
 const ntcore = NetworkTables.createInstanceByTeam(973);
@@ -109,7 +109,7 @@ gyroTopic.subscribe((value) => {
 Or a publisher for an auto mode:
 
 ```typescript
-import { NetworkTables } from 'ntcore-ts';
+import { NetworkTables } from 'ntcore-ts-client';
 
 // We're assuming we have already done a createInstance in our app, or this will throw an error!
 const ntcore = NetworkTables.getInstance();

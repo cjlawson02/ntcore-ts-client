@@ -1,4 +1,4 @@
-import { NetworkTables } from './ntcore-ts';
+import { NetworkTables } from './ntcore-ts-client';
 import { PubSubClient } from './pubsub/pubsub';
 import { NetworkTableTypeInfos } from './types/types';
 

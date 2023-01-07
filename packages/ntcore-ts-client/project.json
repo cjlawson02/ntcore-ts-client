@@ -1,24 +1,24 @@
 {
-  "name": "ntcore-ts",
+  "name": "ntcore-ts-client",
   "implicitDependencies": ["eslint-config"],
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "packages/ntcore-ts/src",
+  "sourceRoot": "packages/ntcore-ts-client/src",
   "projectType": "library",
   "targets": {
     "build": {
       "executor": "@nrwl/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/packages/ntcore-ts",
-        "main": "packages/ntcore-ts/src/index.ts",
-        "tsConfig": "packages/ntcore-ts/tsconfig.lib.json",
-        "assets": ["packages/ntcore-ts/*.md"]
+        "outputPath": "dist/packages/ntcore-ts-client",
+        "main": "packages/ntcore-ts-client/src/index.ts",
+        "tsConfig": "packages/ntcore-ts-client/tsconfig.lib.json",
+        "assets": ["packages/ntcore-ts-client/*.md"]
       }
     },
     "publish": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node tools/scripts/publish.mjs ntcore-ts {args.ver} {args.tag}"
+        "command": "node tools/scripts/publish.mjs ntcore-ts-client {args.ver} {args.tag}"
       },
       "dependsOn": ["build"]
     },
@@ -27,7 +27,7 @@
       "outputs": ["{options.outputFile}"],
       "dependsOn": [{ "projects": "dependencies", "target": "build" }],
       "options": {
-        "lintFilePatterns": ["packages/ntcore-ts/**/*.ts"]
+        "lintFilePatterns": ["packages/ntcore-ts-client/**/*.ts"]
       }
     },
     "lint:fix": {
@@ -36,21 +36,21 @@
       "dependsOn": [{ "projects": "dependencies", "target": "build" }],
       "options": {
         "fix": true,
-        "lintFilePatterns": ["packages/ntcore-ts/**/*.ts"]
+        "lintFilePatterns": ["packages/ntcore-ts-client/**/*.ts"]
       }
     },
     "test": {
       "executor": "@nrwl/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
-        "jestConfig": "packages/ntcore-ts/jest.config.ts",
+        "jestConfig": "packages/ntcore-ts-client/jest.config.ts",
         "passWithNoTests": true
       }
     },
     "docs": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx typedoc packages/ntcore-ts/src/index.ts --tsconfig packages/ntcore-ts/tsconfig.json --excludeExternals true --readme none && git add docs/"
+        "command": "npx typedoc packages/ntcore-ts-client/src/index.ts --tsconfig packages/ntcore-ts-client/tsconfig.json --excludeExternals true --readme none && git add docs/"
       }
     }
   },

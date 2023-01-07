@@ -1,10 +1,10 @@
 {
-  "name": "ntcore-ts-monorepo",
+  "name": "ntcore-ts-client-monorepo",
   "version": "0.0.0",
   "license": "ISC",
   "scripts": {
     "prepare": "husky install",
-    "test": "npx nx run ntcore-ts:test"
+    "test": "npx nx run ntcore-ts-client:test"
   },
   "private": true,
   "lint-staged": {
@@ -13,7 +13,7 @@
       "npx nx affected --target=lint-fix --uncommitted",
       "npx nx affected --target=test --uncommitted",
       "npx nx affected --target=build --uncommitted",
-      "npx nx run ntcore-ts:docs"
+      "npx nx run ntcore-ts-client:docs"
     ]
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 /* eslint-disable */
 export default {
-  displayName: 'ntcore-ts',
+  displayName: 'ntcore-ts-client',
   preset: '../../jest.preset.js',
   transform: {
     '^.+\\.[tj]sx?$': [
@@ -11,5 +11,5 @@ export default {
     ],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
-  coverageDirectory: '../../coverage/packages/ntcore-ts',
+  coverageDirectory: '../../coverage/packages/ntcore-ts-client',
 };
