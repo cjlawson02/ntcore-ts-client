@@ -98,7 +98,7 @@ import { NetworkTables } from 'ntcore-ts-client';
 const ntcore = NetworkTables.createInstanceByTeam(973);
 
 // Create the gyro topic
-const gyroTopic = ntcore.createTopic<number>('/MyTable/Gyro', NetworkTableTypeInfo.kDouble);
+const gyroTopic = ntcore.createTopic<number>('/MyTable/Gyro', NetworkTablesTypeInfo.kDouble);
 
 // Subscribe and immediately call the callback with the current value
 gyroTopic.subscribe((value) => {
@@ -115,7 +115,7 @@ import { NetworkTables } from 'ntcore-ts-client';
 const ntcore = NetworkTables.getInstance();
 
 // Create the autoMode topic w/ a default return value of 'No Auto'
-const autoModeTopic = ntcore.createTopic<string>('/MyTable/autoMode', NetworkTableTypeInfo.kString, 'No Auto');
+const autoModeTopic = ntcore.createTopic<string>('/MyTable/autoMode', NetworkTablesTypeInfo.kString, 'No Auto');
 
 // Make us the publisher
 autoModeTopic.publish();
