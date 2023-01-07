@@ -3,7 +3,7 @@ import { NetworkTableTypeInfos } from '../types/types';
 
 import { Util } from './util';
 
-import type { NetworkTableTypes, TypeNum, TypeString } from '../types/types';
+import type { NetworkTablesTypes, TypeNum, TypeString } from '../types/types';
 
 describe('Util', () => {
   describe('getMicros', () => {
@@ -67,7 +67,7 @@ describe('Util', () => {
     });
 
     it('should throw an error for an invalid data type', () => {
-      expect(() => Util.getNetworkTableTypeFromObject({} as unknown as NetworkTableTypes)).toThrow();
+      expect(() => Util.getNetworkTableTypeFromObject({} as unknown as NetworkTablesTypes)).toThrow();
     });
   });
 

@@ -49,7 +49,7 @@ export type AnnounceMessageParams = AnnounceMessage['params'];
 export type UnannounceMessageParams = UnannounceMessage['params'];
 export type PropertiesMessageParams = PropertiesMessage['params'];
 
-export type NetworkTableTypes = z.infer<typeof msgPackValueSchema>;
+export type NetworkTablesTypes = z.infer<typeof msgPackValueSchema>;
 export type BinaryMessage = z.infer<typeof msgPackSchema>;
 export type TopicProperties = z.infer<typeof topicPropertiesSchema>;
 
@@ -69,5 +69,5 @@ export interface BinaryMessageData {
   topicId: number;
   serverTime: number;
   typeInfo: NetworkTableTypeInfos;
-  value: NetworkTableTypes;
+  value: NetworkTablesTypes;
 }

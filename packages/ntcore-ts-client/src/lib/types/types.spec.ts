@@ -3,7 +3,7 @@ import { NetworkTableTypeInfos } from './types';
 import type {
   AnnounceMessage,
   BinaryMessageData,
-  NetworkTableTypes,
+  NetworkTablesTypes,
   PropertiesMessage,
   PublishMessage,
   SetPropertiesMessage,
@@ -177,29 +177,29 @@ describe('Message', () => {
   });
 });
 
-describe('NetworkTableTypes', () => {
+describe('NetworkTablesTypes', () => {
   it('should have the correct shape for a number', () => {
-    const number: NetworkTableTypes = 1;
+    const number: NetworkTablesTypes = 1;
     expect(number).toEqual(expect.any(Number));
   });
 
   it('should have the correct shape for a boolean', () => {
-    const boolean: NetworkTableTypes = true;
+    const boolean: NetworkTablesTypes = true;
     expect(boolean).toEqual(expect.any(Boolean));
   });
 
   it('should have the correct shape for a string', () => {
-    const string: NetworkTableTypes = 'some string';
+    const string: NetworkTablesTypes = 'some string';
     expect(string).toEqual(expect.any(String));
   });
 
   it('should have the correct shape for a number array', () => {
-    const numberArray: NetworkTableTypes = [1, 2, 3];
+    const numberArray: NetworkTablesTypes = [1, 2, 3];
     expect(numberArray).toEqual(expect.any(Array));
   });
 
   it('should have the correct shape for a boolean array', () => {
-    const booleanArray: NetworkTableTypes = [true, false, true];
+    const booleanArray: NetworkTablesTypes = [true, false, true];
     expect(booleanArray).toEqual(expect.any(Array));
     expect(booleanArray[0]).toEqual(expect.any(Boolean));
     expect(booleanArray[1]).toEqual(expect.any(Boolean));
@@ -207,7 +207,7 @@ describe('NetworkTableTypes', () => {
   });
 
   it('should have the correct shape for a string array', () => {
-    const stringArray: NetworkTableTypes = ['some string', 'another string'];
+    const stringArray: NetworkTablesTypes = ['some string', 'another string'];
 
     expect(stringArray).toEqual(expect.any(Array));
     expect(stringArray[0]).toEqual(expect.any(String));
@@ -215,7 +215,7 @@ describe('NetworkTableTypes', () => {
   });
 
   it('should have the correct shape for an array buffer', () => {
-    const arrayBuffer: NetworkTableTypes = new ArrayBuffer(10);
+    const arrayBuffer: NetworkTablesTypes = new ArrayBuffer(10);
 
     expect(arrayBuffer).toEqual(expect.any(ArrayBuffer));
   });

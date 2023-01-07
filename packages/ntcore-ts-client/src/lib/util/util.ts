@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { NetworkTableTypeInfos } from '../types/types';
 
-import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTableTypes, TypeNum, TypeString } from '../types/types';
+import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTablesTypes, TypeNum, TypeString } from '../types/types';
 
 /**
  * Class for holding utility functions.
@@ -39,7 +39,7 @@ export class Util {
    * @param data - The value.
    * @returns The NT type number.
    */
-  static getNetworkTableTypeFromObject(data: NetworkTableTypes): NetworkTablesTypeInfo {
+  static getNetworkTableTypeFromObject(data: NetworkTablesTypes): NetworkTablesTypeInfo {
     if (typeof data === 'boolean') {
       return NetworkTableTypeInfos.kBoolean;
     } else if (typeof data === 'number') {
@@ -136,7 +136,7 @@ export class Util {
   static createBinaryMessage(
     topicId: number,
     timestamp: number,
-    data: NetworkTableTypes,
+    data: NetworkTablesTypes,
     typeInfo?: NetworkTablesTypeInfo
   ): BinaryMessage {
     const type = typeInfo ?? this.getNetworkTableTypeFromObject(data);

@@ -10,7 +10,7 @@ import type {
   SubscribeMessage,
   SubscribeMessageParams,
   UnpublishMessage,
-  NetworkTableTypes,
+  NetworkTablesTypes,
   BinaryMessageData,
   AnnounceMessageParams,
   UnannounceMessageParams,
@@ -21,7 +21,7 @@ export class Messenger {
   private readonly _socket: NetworkTablesSocket;
   private readonly publications = new Map<number, PublishMessageParams>();
   private readonly subscriptions = new Map<number, SubscribeMessageParams>();
-  private readonly pendingMessages = new Map<string, NetworkTableTypes>();
+  private readonly pendingMessages = new Map<string, NetworkTablesTypes>();
   private static _instance: Messenger;
 
   /**
@@ -239,7 +239,7 @@ export class Messenger {
    * @param value - The value to update the topic to.
    * @returns The timestamp of the update, or -1 if the topic is not announced.
    */
-  sendToTopic<T extends NetworkTableTypes>(topic: NetworkTablesTopic<T>, value: T) {
+  sendToTopic<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>, value: T) {
     const typeInfo = topic.typeInfo;
 
     if (!topic.publisher || !topic.pubuid) {

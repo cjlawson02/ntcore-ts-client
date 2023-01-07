@@ -2,7 +2,7 @@ import { Util } from '../util/util';
 
 import type {
   NetworkTablesTypeInfo,
-  NetworkTableTypes,
+  NetworkTablesTypes,
   PublishMessageParams,
   SetPropertiesMessageParams,
   SubscribeMessageParams,
@@ -11,7 +11,7 @@ import type {
 } from '../types/types';
 import type { PubSubClient } from './pubsub';
 
-export class NetworkTablesTopic<T extends NetworkTableTypes> {
+export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   private client: PubSubClient;
   private _id?: number;
   private readonly _name: string;

@@ -2,7 +2,7 @@ import { PubSubClient } from './pubsub/pubsub';
 import { NetworkTablesTopic } from './pubsub/topic';
 import { Util } from './util/util';
 
-import type { NetworkTablesTypeInfo, NetworkTableTypes } from './types/types';
+import type { NetworkTablesTypeInfo, NetworkTablesTypes } from './types/types';
 
 /** Properties for creating the NetworkTables class. */
 interface NT_PROPS {
@@ -167,7 +167,7 @@ export class NetworkTables {
    * @param defaultValue - The default value of the topic.
    * @returns The topic.
    */
-  createTopic<T extends NetworkTableTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
+  createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
     return new NetworkTablesTopic<T>(this._client, name, typeInfo, defaultValue);
   }
 }

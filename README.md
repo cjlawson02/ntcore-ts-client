@@ -54,22 +54,22 @@ NetworkTables.createInstanceByURI(uri: string, port?)
 To use a Topic, it must be created through the NetworkTables client using the function:
 
 ```typescript
-createTopic<T extends NetworkTableTypes>(name: string, typeInfo: NetworkTableTypeInfo, defaultValue?: T)
+createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T)
 ```
 
-> The valid `NetworkTableTypes` are `string | number | boolean | string[] | ArrayBuffer | boolean[] | number[]`
+> The valid `NetworkTablesTypes` are `string | number | boolean | string[] | ArrayBuffer | boolean[] | number[]`
 >
-> The valid `NetworkTableTypeInfo`s are:
+> The valid `NetworkTablesTypeInfo`s are:
 >
-> - `NetworkTableTypeInfo.kBoolean`
-> - `NetworkTableTypeInfo.kDouble`
-> - `NetworkTableTypeInfo.kInteger`
-> - `NetworkTableTypeInfo.kString`
-> - `NetworkTableTypeInfo.kArrayBuffer`
-> - `NetworkTableTypeInfo.kBooleanArray`
-> - `NetworkTableTypeInfo.kDoubleArray`
-> - `NetworkTableTypeInfo.kIntegerArray`
-> - `NetworkTableTypeInfo.kStringArray`
+> - `NetworkTablesTypeInfo.kBoolean`
+> - `NetworkTablesTypeInfo.kDouble`
+> - `NetworkTablesTypeInfo.kInteger`
+> - `NetworkTablesTypeInfo.kString`
+> - `NetworkTablesTypeInfo.kArrayBuffer`
+> - `NetworkTablesTypeInfo.kBooleanArray`
+> - `NetworkTablesTypeInfo.kDoubleArray`
+> - `NetworkTablesTypeInfo.kIntegerArray`
+> - `NetworkTablesTypeInfo.kStringArray`
 
 Once a topic has been created, it can be used as a subscriber:
 

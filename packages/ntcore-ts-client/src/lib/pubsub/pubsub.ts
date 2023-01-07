@@ -3,7 +3,7 @@ import { Messenger } from '../socket/messenger';
 import type {
   AnnounceMessageParams,
   BinaryMessageData,
-  NetworkTableTypes,
+  NetworkTablesTypes,
   UnannounceMessageParams,
 } from '../types/types';
 import type { NetworkTablesTopic } from './topic';
@@ -61,7 +61,7 @@ export class PubSubClient {
    *
    * @param topic - The topic to register
    */
-  registerTopic<T extends NetworkTableTypes>(topic: NetworkTablesTopic<T>) {
+  registerTopic<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>) {
     if (this.topics.has(topic.name)) {
       throw new Error(`Topic ${topic.name} already exists. Cannot register a topic with the same name.`);
     }
@@ -146,7 +146,7 @@ export class PubSubClient {
    * @param value - The new value of the topic
    * @param lastChangedTime - The server time the topic was last changed
    */
-  private updateTopic(topicName: string, value: NetworkTableTypes, lastChangedTime: number) {
+  private updateTopic(topicName: string, value: NetworkTablesTypes, lastChangedTime: number) {
     const topic = this.topics.get(topicName);
     if (!topic) {
       console.warn(`Topic ${topicName} was updated, but does not exist`);
@@ -161,7 +161,7 @@ export class PubSubClient {
    * @param topic - The topic to update.
    * @param value - The new value of the topic.
    */
-  updateServer<T extends NetworkTableTypes>(topic: NetworkTablesTopic<T>, value: T) {
+  updateServer<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>, value: T) {
     this._messenger.sendToTopic(topic, value);
   }
 
