@@ -17,7 +17,7 @@
     "lint": {
       "executor": "@nrwl/linter:eslint",
       "outputs": ["{options.outputFile}"],
-      "dependsOn": ["^build"],
+      "dependsOn": ["build"],
       "options": {
         "lintFilePatterns": ["packages/eslint-config/**/*.ts"]
       }
@@ -25,7 +25,7 @@
     "lint:fix": {
       "executor": "@nrwl/linter:eslint",
       "outputs": ["{options.outputFile}"],
-      "dependsOn": ["^build"],
+      "dependsOn": ["build"],
       "options": {
         "fix": true,
         "lintFilePatterns": ["packages/eslint-config/**/*.ts"]

@@ -33,6 +33,7 @@
     "lint:fix": {
       "executor": "@nrwl/linter:eslint",
       "outputs": ["{options.outputFile}"],
+      "dependsOn": [{ "projects": "dependencies", "target": "build" }],
       "options": {
         "fix": true,
         "lintFilePatterns": ["packages/ntcore-ts/**/*.ts"]
