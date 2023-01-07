@@ -4,7 +4,7 @@
   "license": "ISC",
   "scripts": {
     "prepare": "husky install",
-    "test": "npx nx run test"
+    "test": "npx nx run ntcore-ts:test"
   },
   "private": true,
   "lint-staged": {
@@ -12,9 +12,7 @@
       "npx nx format:write --uncommitted",
       "npx nx affected --target=lint-fix --uncommitted",
       "npx nx affected --target=test --uncommitted",
-      "npx nx affected --target=build --uncommitted"
-    ],
-    "packages/ntcore-ts/*": [
+      "npx nx affected --target=build --uncommitted",
       "npx nx run ntcore-ts:docs"
     ]
   },
