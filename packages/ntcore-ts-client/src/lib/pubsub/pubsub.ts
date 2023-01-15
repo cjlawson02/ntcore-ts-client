@@ -27,9 +27,12 @@ export class PubSubClient {
     );
     this.topics = new Map();
 
-    window.onbeforeunload = () => {
-      this.cleanup();
-    };
+    // In the DOM, auto-cleanup
+    if (typeof window !== 'undefined') {
+      window.onbeforeunload = () => {
+        this.cleanup();
+      };
+    }
   }
 
   /**
