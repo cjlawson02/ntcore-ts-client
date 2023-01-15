@@ -4,7 +4,7 @@ describe('PubSubClient', () => {
   let client: PubSubClient;
 
   beforeEach(() => {
-    client = PubSubClient.getInstance('ws://localhost:8888');
+    client = PubSubClient.getInstance('ws://localhost:5810');
   });
 
   afterEach(() => {
@@ -12,8 +12,8 @@ describe('PubSubClient', () => {
   });
 
   it('returns the same instance when calling getInstance multiple times', () => {
-    const instance1 = PubSubClient.getInstance('ws://localhost:8888');
-    const instance2 = PubSubClient.getInstance('ws://localhost:8888');
+    const instance1 = PubSubClient.getInstance('ws://localhost:5810');
+    const instance2 = PubSubClient.getInstance('ws://localhost:5810');
     expect(instance1).toBe(instance2);
   });
 
