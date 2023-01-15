@@ -4,6 +4,7 @@ A TypeScript library for communication over [WPILib's NetworkTables 4.0 protocol
 
 ## Features
 
+- NodeJS and DOM support
 - Togglable auto-reconnect
 - Callbacks for new data on subscriptions
 - Callbacks for connection listeners
@@ -128,10 +129,8 @@ autoModeTopic.setValue('25 Ball Auto and Climb');
 
 The API for Topics is much more exhaustive than this quick example. Feel free to view the docs at [https://ntcore.chrislawson.dev](https://ntcore.chrislawson.dev).
 
-## Limitations
+## Known Limitations
 
-- Only supports DOM at this time
-  - Node support may be added if there is interest
 - "Raw" type only supports ArrayBuffer
 
 ## Contributing
