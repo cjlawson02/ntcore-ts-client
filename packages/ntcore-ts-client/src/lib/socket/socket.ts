@@ -1,4 +1,5 @@
 import { encode, decodeMulti } from '@msgpack/msgpack';
+import WebSocket from 'isomorphic-ws';
 
 import { messageSchema, msgPackSchema } from '../types/schemas';
 import { NetworkTableTypeInfos } from '../types/types';
@@ -14,6 +15,7 @@ import type {
   NetworkTablesTypeInfo,
   BinaryMessageData,
 } from '../types/types';
+import type { CloseEvent as WS_CloseEvent, MessageEvent as WS_MessageEvent, ErrorEvent as WS_ErrorEvent } from 'ws';
 
 /** Socket for NetworkTables 4.0 */
 export class NetworkTablesSocket {
@@ -51,6 +53,7 @@ export class NetworkTablesSocket {
    * @param onTopicUpdate - Called when a topic is updated.
    * @param onAnnounce - Called when a topic is announced.
    * @param onUnannounce - Called when a topic is unannounced.
+   * @param autoConnect - Whether to automatically connect to the server.
    */
   private constructor(
     serverUrl: string,
@@ -58,7 +61,8 @@ export class NetworkTablesSocket {
     onSocketClose: () => void,
     onTopicUpdate: (_: BinaryMessageData) => void,
     onAnnounce: (_: AnnounceMessageParams) => void,
-    onUnannounce: (_: UnannounceMessageParams) => void
+    onUnannounce: (_: UnannounceMessageParams) => void,
+    autoConnect: boolean
   ) {
     // Connect to the server using the provided URL
     this._websocket = new WebSocket(serverUrl, 'networktables.first.wpi.edu');
@@ -68,6 +72,8 @@ export class NetworkTablesSocket {
     this.onTopicUpdate = onTopicUpdate;
     this.onAnnounce = onAnnounce;
     this.onUnannounce = onUnannounce;
+
+    this.autoConnect = autoConnect;
 
     this.init();
   }
@@ -81,6 +87,7 @@ export class NetworkTablesSocket {
    * @param onTopicUpdate - Called when a topic is updated.
    * @param onAnnounce - Called when a topic is announced.
    * @param onUnannounce - Called when a topic is unannounced.
+   * @param autoConnect - Whether to automatically connect to the server.
    * @returns The instance of the NetworkTables socket.
    */
   static getInstance(
@@ -89,10 +96,19 @@ export class NetworkTablesSocket {
     onSocketClose: () => void,
     onTopicUpdate: (_: BinaryMessageData) => void,
     onAnnounce: (_: AnnounceMessageParams) => void,
-    onUnannounce: (_: UnannounceMessageParams) => void
+    onUnannounce: (_: UnannounceMessageParams) => void,
+    autoConnect = true
   ): NetworkTablesSocket {
     if (!this.instance) {
-      this.instance = new this(serverUrl, onSocketOpen, onSocketClose, onTopicUpdate, onAnnounce, onUnannounce);
+      this.instance = new this(
+        serverUrl,
+        onSocketOpen,
+        onSocketClose,
+        onTopicUpdate,
+        onAnnounce,
+        onUnannounce,
+        autoConnect
+      );
     }
     return this.instance;
   }
@@ -122,17 +138,18 @@ export class NetworkTablesSocket {
       };
 
       // Close handler
-      this._websocket.onclose = (e) => {
+      this._websocket.onclose = (e: CloseEvent | WS_CloseEvent) => {
         // Notify client and cancel heartbeat
         this.updateConnectionListeners();
         this.onSocketClose();
         clearInterval(heartbeatInterval);
 
         // Lost connection message
-        console.warn('Unable to connect to Robot. Reconnect will be attempted in 1 second.', e.reason);
+        console.warn('Unable to connect to Robot', e.reason);
 
         // Attempt to reconnect
         if (this.autoConnect) {
+          console.warn('Reconnect will be attempted in 1 second.');
           setTimeout(() => {
             this._websocket = new WebSocket(this.serverUrl, 'networktables.first.wpi.edu');
             this.init();
@@ -143,8 +160,8 @@ export class NetworkTablesSocket {
       this._websocket.binaryType = 'arraybuffer';
 
       // Set up event listeners for messages and errors
-      this._websocket.onmessage = (event) => this.onMessage(event);
-      this._websocket.onerror = (event) => this.onError(event);
+      this._websocket.onmessage = (event: MessageEvent | WS_MessageEvent) => this.onMessage(event);
+      this._websocket.onerror = (event: Event | WS_ErrorEvent) => this.onError(event);
     }
   }
 
@@ -239,7 +256,7 @@ export class NetworkTablesSocket {
    *
    * @param event - The message event.
    */
-  private onMessage(event: MessageEvent) {
+  private onMessage(event: MessageEvent | WS_MessageEvent) {
     this.connectionListeners?.forEach((f) => f(this.isConnected()));
 
     if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
@@ -254,7 +271,7 @@ export class NetworkTablesSocket {
    *
    * @param event - The error event.
    */
-  private onError(event: Event) {
+  private onError(event: Event | WS_ErrorEvent) {
     // Log the error to the console
     console.error('WebSocket error:', event);
   }
