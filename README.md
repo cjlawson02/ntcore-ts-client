@@ -30,6 +30,14 @@ This section will help get you started with sending and receiving data over Netw
 
 The NetworkTables class is a singleton that will keep the same instance
 
+### Importing `NetworkTables`
+
+Use this at the top of your file:
+
+```typescript
+import { NetworkTables } from 'ntcore-ts-client'
+```
+
 ### With Team Number
 
 Use this function:
@@ -62,15 +70,15 @@ createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesT
 >
 > The valid `NetworkTablesTypeInfo`s are:
 >
-> - `NetworkTablesTypeInfo.kBoolean`
-> - `NetworkTablesTypeInfo.kDouble`
-> - `NetworkTablesTypeInfo.kInteger`
-> - `NetworkTablesTypeInfo.kString`
-> - `NetworkTablesTypeInfo.kArrayBuffer`
-> - `NetworkTablesTypeInfo.kBooleanArray`
-> - `NetworkTablesTypeInfo.kDoubleArray`
-> - `NetworkTablesTypeInfo.kIntegerArray`
-> - `NetworkTablesTypeInfo.kStringArray`
+> - `NetworkTablesTypeInfos.kBoolean`
+> - `NetworkTablesTypeInfos.kDouble`
+> - `NetworkTablesTypeInfos.kInteger`
+> - `NetworkTablesTypeInfos.kString`
+> - `NetworkTablesTypeInfos.kArrayBuffer`
+> - `NetworkTablesTypeInfos.kBooleanArray`
+> - `NetworkTablesTypeInfos.kDoubleArray`
+> - `NetworkTablesTypeInfos.kIntegerArray`
+> - `NetworkTablesTypeInfos.kStringArray`
 
 Once a topic has been created, it can be used as a subscriber:
 
@@ -93,13 +101,13 @@ publish(properties: TopicProperties = {}, id?: number)
 For example, here's a subscription for a Gyro:
 
 ```typescript
-import { NetworkTables } from 'ntcore-ts-client';
+import { NetworkTables, NetworkTableTypeInfos } from 'ntcore-ts-client';
 
 // Create the NT client instance
 const ntcore = NetworkTables.createInstanceByTeam(973);
 
 // Create the gyro topic
-const gyroTopic = ntcore.createTopic<number>('/MyTable/Gyro', NetworkTablesTypeInfo.kDouble);
+const gyroTopic = ntcore.createTopic<number>('/MyTable/Gyro', NetworkTableTypeInfos.kDouble);
 
 // Subscribe and immediately call the callback with the current value
 gyroTopic.subscribe((value) => {
@@ -110,13 +118,13 @@ gyroTopic.subscribe((value) => {
 Or a publisher for an auto mode:
 
 ```typescript
-import { NetworkTables } from 'ntcore-ts-client';
+import { NetworkTables, NetworkTableTypeInfos } from 'ntcore-ts-client';
 
 // We're assuming we have already done a createInstance in our app, or this will throw an error!
 const ntcore = NetworkTables.getInstance();
 
 // Create the autoMode topic w/ a default return value of 'No Auto'
-const autoModeTopic = ntcore.createTopic<string>('/MyTable/autoMode', NetworkTablesTypeInfo.kString, 'No Auto');
+const autoModeTopic = ntcore.createTopic<string>('/MyTable/autoMode', NetworkTableTypeInfos.kString, 'No Auto');
 
 // Make us the publisher
 autoModeTopic.publish();
