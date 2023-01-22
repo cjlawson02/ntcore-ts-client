@@ -70,15 +70,15 @@ createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesT
 >
 > The valid `NetworkTablesTypeInfo`s are:
 >
-> - `NetworkTablesTypeInfos.kBoolean`
-> - `NetworkTablesTypeInfos.kDouble`
-> - `NetworkTablesTypeInfos.kInteger`
-> - `NetworkTablesTypeInfos.kString`
-> - `NetworkTablesTypeInfos.kArrayBuffer`
-> - `NetworkTablesTypeInfos.kBooleanArray`
-> - `NetworkTablesTypeInfos.kDoubleArray`
-> - `NetworkTablesTypeInfos.kIntegerArray`
-> - `NetworkTablesTypeInfos.kStringArray`
+> - `NetworkTableTypeInfos.kBoolean`
+> - `NetworkTableTypeInfos.kDouble`
+> - `NetworkTableTypeInfos.kInteger`
+> - `NetworkTableTypeInfos.kString`
+> - `NetworkTableTypeInfos.kArrayBuffer`
+> - `NetworkTableTypeInfos.kBooleanArray`
+> - `NetworkTableTypeInfos.kDoubleArray`
+> - `NetworkTableTypeInfos.kIntegerArray`
+> - `NetworkTableTypeInfos.kStringArray`
 
 Once a topic has been created, it can be used as a subscriber:
 
