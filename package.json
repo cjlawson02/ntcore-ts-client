@@ -25,6 +25,8 @@
     "zod": "^3.20.2"
   },
   "devDependencies": {
+    "@commitlint/cli": "^17.4.2",
+    "@commitlint/config-conventional": "^17.4.2",
     "@nrwl/eslint-plugin-nx": "15.5.3",
     "@nrwl/jest": "15.5.3",
     "@nrwl/js": "15.5.3",
