@@ -21,7 +21,6 @@ export class Messenger {
   private readonly _socket: NetworkTablesSocket;
   private readonly publications = new Map<number, PublishMessageParams>();
   private readonly subscriptions = new Map<number, SubscribeMessageParams>();
-  private readonly pendingMessages = new Map<string, NetworkTablesTypes>();
   private static _instances = new Map<string, Messenger>();
 
   /**
@@ -247,13 +246,10 @@ export class Messenger {
       throw new Error(`Topic ${topic.name} is not a publisher, so it cannot be updated`);
     }
 
-    if (topic.announced) {
-      return this._socket.sendValueToTopic(topic.pubuid, value, typeInfo);
-    } else {
-      // TODO: is this needed?
-      console.warn(`Topic ${topic.name} is not announced, so it cannot be updated`);
-      this.pendingMessages.set(topic.name, value);
-      return -1;
+    if (!topic.announced) {
+      console.warn(`Topic ${topic.name} is not announced, but the new value will be queued`);
     }
+
+    return this._socket.sendValueToTopic(topic.pubuid, value, typeInfo);
   }
 }
