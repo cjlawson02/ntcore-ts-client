@@ -1,4 +1,4 @@
-import { NetworkTableTypeInfos } from './types';
+import { NetworkTablesTypeInfos } from './types';
 
 import type {
   AnnounceMessage,
@@ -13,17 +13,17 @@ import type {
   UnsubscribeMessage,
 } from './types';
 
-describe('NetworkTableTypeInfos', () => {
+describe('NetworkTablesTypeInfos', () => {
   it('should have the correct values', () => {
-    expect(NetworkTableTypeInfos.kBoolean).toEqual([0, 'boolean']);
-    expect(NetworkTableTypeInfos.kDouble).toEqual([1, 'double']);
-    expect(NetworkTableTypeInfos.kInteger).toEqual([2, 'int']);
-    expect(NetworkTableTypeInfos.kString).toEqual([4, 'string']);
-    expect(NetworkTableTypeInfos.kArrayBuffer).toEqual([3, 'raw']);
-    expect(NetworkTableTypeInfos.kBooleanArray).toEqual([16, 'boolean[]']);
-    expect(NetworkTableTypeInfos.kDoubleArray).toEqual([17, 'double[]']);
-    expect(NetworkTableTypeInfos.kIntegerArray).toEqual([18, 'int[]']);
-    expect(NetworkTableTypeInfos.kStringArray).toEqual([20, 'string[]']);
+    expect(NetworkTablesTypeInfos.kBoolean).toEqual([0, 'boolean']);
+    expect(NetworkTablesTypeInfos.kDouble).toEqual([1, 'double']);
+    expect(NetworkTablesTypeInfos.kInteger).toEqual([2, 'int']);
+    expect(NetworkTablesTypeInfos.kString).toEqual([4, 'string']);
+    expect(NetworkTablesTypeInfos.kArrayBuffer).toEqual([3, 'raw']);
+    expect(NetworkTablesTypeInfos.kBooleanArray).toEqual([16, 'boolean[]']);
+    expect(NetworkTablesTypeInfos.kDoubleArray).toEqual([17, 'double[]']);
+    expect(NetworkTablesTypeInfos.kIntegerArray).toEqual([18, 'int[]']);
+    expect(NetworkTablesTypeInfos.kStringArray).toEqual([20, 'string[]']);
   });
 });
 
@@ -32,7 +32,7 @@ describe('BinaryMessageData', () => {
     const binaryMessageData: BinaryMessageData = {
       topicId: 0,
       serverTime: 0,
-      typeInfo: NetworkTableTypeInfos.kString,
+      typeInfo: NetworkTablesTypeInfos.kString,
       value: 'some value',
     };
 

@@ -2,7 +2,7 @@ import { encode, decodeMulti } from '@msgpack/msgpack';
 import WebSocket from 'isomorphic-ws';
 
 import { messageSchema, msgPackSchema } from '../types/schemas';
-import { NetworkTableTypeInfos } from '../types/types';
+import { NetworkTablesTypeInfos } from '../types/types';
 import { Util } from '../util/util';
 
 import type {
@@ -284,7 +284,7 @@ export class NetworkTablesSocket {
       const messageData: BinaryMessageData = {
         topicId: message[0],
         serverTime: message[1],
-        typeInfo: Util.getNetworkTableTypeFromTypeNum(message[2]),
+        typeInfo: Util.getNetworkTablesTypeFromTypeNum(message[2]),
         value: message[3],
       };
 
@@ -423,7 +423,7 @@ export class NetworkTablesSocket {
    */
   private heartbeat() {
     const time = Util.getMicros();
-    this.sendValueToTopic(-1, time, NetworkTableTypeInfos.kDouble);
+    this.sendValueToTopic(-1, time, NetworkTablesTypeInfos.kDouble);
     this.lastHeartbeatDate = time;
   }
 

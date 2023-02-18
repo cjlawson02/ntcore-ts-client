@@ -53,7 +53,7 @@ export type NetworkTablesTypes = z.infer<typeof msgPackValueSchema>;
 export type BinaryMessage = z.infer<typeof msgPackSchema>;
 export type TopicProperties = z.infer<typeof topicPropertiesSchema>;
 
-export class NetworkTableTypeInfos {
+export class NetworkTablesTypeInfos {
   static readonly kBoolean: NetworkTablesTypeInfo = [0, 'boolean'];
   static readonly kDouble: NetworkTablesTypeInfo = [1, 'double'];
   static readonly kInteger: NetworkTablesTypeInfo = [2, 'int'];
@@ -64,10 +64,24 @@ export class NetworkTableTypeInfos {
   static readonly kIntegerArray: NetworkTablesTypeInfo = [18, 'int[]'];
   static readonly kStringArray: NetworkTablesTypeInfo = [20, 'string[]'];
 }
+/**
+ * @deprecated Use {@link NetworkTablesTypeInfos} instead.
+ */
+export class NetworkTableTypeInfos {
+  static readonly kBoolean = NetworkTablesTypeInfos.kBoolean;
+  static readonly kDouble = NetworkTablesTypeInfos.kDouble;
+  static readonly kInteger = NetworkTablesTypeInfos.kInteger;
+  static readonly kString = NetworkTablesTypeInfos.kString;
+  static readonly kArrayBuffer = NetworkTablesTypeInfos.kArrayBuffer;
+  static readonly kBooleanArray = NetworkTablesTypeInfos.kBooleanArray;
+  static readonly kDoubleArray = NetworkTablesTypeInfos.kDoubleArray;
+  static readonly kIntegerArray = NetworkTablesTypeInfos.kIntegerArray;
+  static readonly kStringArray = NetworkTablesTypeInfos.kStringArray;
+}
 
 export interface BinaryMessageData {
   topicId: number;
   serverTime: number;
-  typeInfo: NetworkTableTypeInfos;
+  typeInfo: NetworkTablesTypeInfos;
   value: NetworkTablesTypes;
 }

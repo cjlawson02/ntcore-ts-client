@@ -1,5 +1,5 @@
 import { NetworkTables } from './ntcore-ts-client';
-import { NetworkTableTypeInfos } from './types/types';
+import { NetworkTablesTypeInfos } from './types/types';
 
 describe('NetworkTables', () => {
   let networkTables: NetworkTables;
@@ -43,7 +43,7 @@ describe('NetworkTables', () => {
   });
 
   it('creates a topic', () => {
-    const topic = networkTables.createTopic<number>('/foo', NetworkTableTypeInfos.kDouble, 1.0);
+    const topic = networkTables.createTopic<number>('/foo', NetworkTablesTypeInfos.kDouble, 1.0);
     expect(topic).toBeDefined();
   });
 });

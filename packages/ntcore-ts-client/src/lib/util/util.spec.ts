@@ -1,5 +1,5 @@
 import { integerSchema } from '../types/schemas';
-import { NetworkTableTypeInfos } from '../types/types';
+import { NetworkTablesTypeInfos } from '../types/types';
 
 import { Util } from './util';
 
@@ -29,165 +29,165 @@ describe('Util', () => {
     });
   });
 
-  describe('getNetworkTableTypeFromObject', () => {
+  describe('getNetworkTablesTypeFromObject', () => {
     it('should return the correct NT type for a boolean value', () => {
-      expect(Util.getNetworkTableTypeFromObject(true)).toEqual(NetworkTableTypeInfos.kBoolean);
+      expect(Util.getNetworkTablesTypeFromObject(true)).toEqual(NetworkTablesTypeInfos.kBoolean);
     });
 
     it('should return the correct NT type for a double value', () => {
-      expect(Util.getNetworkTableTypeFromObject(1.23)).toEqual(NetworkTableTypeInfos.kDouble);
+      expect(Util.getNetworkTablesTypeFromObject(1.23)).toEqual(NetworkTablesTypeInfos.kDouble);
     });
 
     it('should return the correct NT type for an integer value', () => {
-      expect(Util.getNetworkTableTypeFromObject(123)).toEqual(NetworkTableTypeInfos.kInteger);
+      expect(Util.getNetworkTablesTypeFromObject(123)).toEqual(NetworkTablesTypeInfos.kInteger);
     });
 
     it('should return the correct NT type for a string value', () => {
-      expect(Util.getNetworkTableTypeFromObject('abc')).toEqual(NetworkTableTypeInfos.kString);
+      expect(Util.getNetworkTablesTypeFromObject('abc')).toEqual(NetworkTablesTypeInfos.kString);
     });
 
     it('should return the correct NT type for an ArrayBuffer value', () => {
-      expect(Util.getNetworkTableTypeFromObject(new ArrayBuffer(10))).toEqual(NetworkTableTypeInfos.kArrayBuffer);
+      expect(Util.getNetworkTablesTypeFromObject(new ArrayBuffer(10))).toEqual(NetworkTablesTypeInfos.kArrayBuffer);
     });
 
     it('should return the correct NT type for a boolean array value', () => {
-      expect(Util.getNetworkTableTypeFromObject([true, false])).toEqual(NetworkTableTypeInfos.kBooleanArray);
+      expect(Util.getNetworkTablesTypeFromObject([true, false])).toEqual(NetworkTablesTypeInfos.kBooleanArray);
     });
 
     it('should return the correct NT type for a double array value', () => {
-      expect(Util.getNetworkTableTypeFromObject([1.23, 4.56])).toEqual(NetworkTableTypeInfos.kDoubleArray);
+      expect(Util.getNetworkTablesTypeFromObject([1.23, 4.56])).toEqual(NetworkTablesTypeInfos.kDoubleArray);
     });
 
     it('should return the correct NT type for an integer array value', () => {
-      expect(Util.getNetworkTableTypeFromObject([1, 2, 3])).toEqual(NetworkTableTypeInfos.kIntegerArray);
+      expect(Util.getNetworkTablesTypeFromObject([1, 2, 3])).toEqual(NetworkTablesTypeInfos.kIntegerArray);
     });
 
     it('should return the correct NT type for a string array value', () => {
-      expect(Util.getNetworkTableTypeFromObject(['a', 'b', 'c'])).toEqual(NetworkTableTypeInfos.kStringArray);
+      expect(Util.getNetworkTablesTypeFromObject(['a', 'b', 'c'])).toEqual(NetworkTablesTypeInfos.kStringArray);
     });
 
     it('should throw an error for an invalid data type', () => {
-      expect(() => Util.getNetworkTableTypeFromObject({} as unknown as NetworkTablesTypes)).toThrow();
+      expect(() => Util.getNetworkTablesTypeFromObject({} as unknown as NetworkTablesTypes)).toThrow();
     });
   });
 
-  describe('getNetworkTableTypeFromTypeNum', () => {
+  describe('getNetworkTablesTypeFromTypeNum', () => {
     it('should return the correct NT type for a boolean value', () => {
-      expect(Util.getNetworkTableTypeFromTypeNum(NetworkTableTypeInfos.kBoolean[0])).toEqual(
-        NetworkTableTypeInfos.kBoolean
+      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kBoolean[0])).toEqual(
+        NetworkTablesTypeInfos.kBoolean
       );
     });
 
     it('should return the correct NT type for a double value', () => {
-      expect(Util.getNetworkTableTypeFromTypeNum(NetworkTableTypeInfos.kDouble[0])).toEqual(
-        NetworkTableTypeInfos.kDouble
+      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kDouble[0])).toEqual(
+        NetworkTablesTypeInfos.kDouble
       );
     });
 
     it('should return the correct NT type for an integer value', () => {
-      expect(Util.getNetworkTableTypeFromTypeNum(NetworkTableTypeInfos.kInteger[0])).toEqual(
-        NetworkTableTypeInfos.kInteger
+      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kInteger[0])).toEqual(
+        NetworkTablesTypeInfos.kInteger
       );
     });
 
     it('should return the correct NT type for a string value', () => {
-      expect(Util.getNetworkTableTypeFromTypeNum(NetworkTableTypeInfos.kString[0])).toEqual(
-        NetworkTableTypeInfos.kString
+      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kString[0])).toEqual(
+        NetworkTablesTypeInfos.kString
       );
     });
 
     it('should return the correct NT type for an ArrayBuffer value', () => {
-      expect(Util.getNetworkTableTypeFromTypeNum(NetworkTableTypeInfos.kArrayBuffer[0])).toEqual(
-        NetworkTableTypeInfos.kArrayBuffer
+      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kArrayBuffer[0])).toEqual(
+        NetworkTablesTypeInfos.kArrayBuffer
       );
     });
 
     it('should return the correct NT type for a boolean array value', () => {
-      expect(Util.getNetworkTableTypeFromTypeNum(NetworkTableTypeInfos.kBooleanArray[0])).toEqual(
-        NetworkTableTypeInfos.kBooleanArray
+      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kBooleanArray[0])).toEqual(
+        NetworkTablesTypeInfos.kBooleanArray
       );
     });
 
     it('should return the correct NT type for a double array value', () => {
-      expect(Util.getNetworkTableTypeFromTypeNum(NetworkTableTypeInfos.kDoubleArray[0])).toEqual(
-        NetworkTableTypeInfos.kDoubleArray
+      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kDoubleArray[0])).toEqual(
+        NetworkTablesTypeInfos.kDoubleArray
       );
     });
 
     it('should return the correct NT type for an integer array value', () => {
-      expect(Util.getNetworkTableTypeFromTypeNum(NetworkTableTypeInfos.kIntegerArray[0])).toEqual(
-        NetworkTableTypeInfos.kIntegerArray
+      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kIntegerArray[0])).toEqual(
+        NetworkTablesTypeInfos.kIntegerArray
       );
     });
 
     it('should return the correct NT type for a string array value', () => {
-      expect(Util.getNetworkTableTypeFromTypeNum(NetworkTableTypeInfos.kStringArray[0])).toEqual(
-        NetworkTableTypeInfos.kStringArray
+      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kStringArray[0])).toEqual(
+        NetworkTablesTypeInfos.kStringArray
       );
     });
 
     it('should throw an error for an invalid type number', () => {
-      expect(() => Util.getNetworkTableTypeFromTypeNum(999 as TypeNum)).toThrow();
+      expect(() => Util.getNetworkTablesTypeFromTypeNum(999 as TypeNum)).toThrow();
     });
   });
 
-  describe('getNetworkTableTypeFromTypeString', () => {
+  describe('getNetworkTablesTypeFromTypeString', () => {
     it('should return the correct NT type for a boolean value', () => {
-      expect(Util.getNetworkTableTypeFromTypeString(NetworkTableTypeInfos.kBoolean[1])).toEqual(
-        NetworkTableTypeInfos.kBoolean
+      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kBoolean[1])).toEqual(
+        NetworkTablesTypeInfos.kBoolean
       );
     });
 
     it('should return the correct NT type for a double value', () => {
-      expect(Util.getNetworkTableTypeFromTypeString(NetworkTableTypeInfos.kDouble[1])).toEqual(
-        NetworkTableTypeInfos.kDouble
+      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kDouble[1])).toEqual(
+        NetworkTablesTypeInfos.kDouble
       );
     });
 
     it('should return the correct NT type for an integer value', () => {
-      expect(Util.getNetworkTableTypeFromTypeString(NetworkTableTypeInfos.kInteger[1])).toEqual(
-        NetworkTableTypeInfos.kInteger
+      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kInteger[1])).toEqual(
+        NetworkTablesTypeInfos.kInteger
       );
     });
 
     it('should return the correct NT type for a string value', () => {
-      expect(Util.getNetworkTableTypeFromTypeString(NetworkTableTypeInfos.kString[1])).toEqual(
-        NetworkTableTypeInfos.kString
+      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kString[1])).toEqual(
+        NetworkTablesTypeInfos.kString
       );
     });
 
     it('should return the correct NT type for an ArrayBuffer value', () => {
-      expect(Util.getNetworkTableTypeFromTypeString(NetworkTableTypeInfos.kArrayBuffer[1])).toEqual(
-        NetworkTableTypeInfos.kArrayBuffer
+      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kArrayBuffer[1])).toEqual(
+        NetworkTablesTypeInfos.kArrayBuffer
       );
     });
 
     it('should return the correct NT type for a boolean array value', () => {
-      expect(Util.getNetworkTableTypeFromTypeString(NetworkTableTypeInfos.kBooleanArray[1])).toEqual(
-        NetworkTableTypeInfos.kBooleanArray
+      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kBooleanArray[1])).toEqual(
+        NetworkTablesTypeInfos.kBooleanArray
       );
     });
 
     it('should return the correct NT type for a double array value', () => {
-      expect(Util.getNetworkTableTypeFromTypeString(NetworkTableTypeInfos.kDoubleArray[1])).toEqual(
-        NetworkTableTypeInfos.kDoubleArray
+      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kDoubleArray[1])).toEqual(
+        NetworkTablesTypeInfos.kDoubleArray
       );
     });
 
     it('should return the correct NT type for an integer array value', () => {
-      expect(Util.getNetworkTableTypeFromTypeString(NetworkTableTypeInfos.kIntegerArray[1])).toEqual(
-        NetworkTableTypeInfos.kIntegerArray
+      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kIntegerArray[1])).toEqual(
+        NetworkTablesTypeInfos.kIntegerArray
       );
     });
 
     it('should return the correct NT type for a string array value', () => {
-      expect(Util.getNetworkTableTypeFromTypeString(NetworkTableTypeInfos.kStringArray[1])).toEqual(
-        NetworkTableTypeInfos.kStringArray
+      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kStringArray[1])).toEqual(
+        NetworkTablesTypeInfos.kStringArray
       );
     });
 
     it('should throw an error for an invalid type string', () => {
-      expect(() => Util.getNetworkTableTypeFromTypeString('invalid' as TypeString)).toThrow();
+      expect(() => Util.getNetworkTablesTypeFromTypeString('invalid' as TypeString)).toThrow();
     });
   });
 
@@ -195,7 +195,7 @@ describe('Util', () => {
     it('should create a binary message with the correct structure and values', () => {
       const message = Util.createBinaryMessage(1, 123456, 1.23);
 
-      expect(message).toEqual([1, 123456, NetworkTableTypeInfos.kDouble[0], 1.23]);
+      expect(message).toEqual([1, 123456, NetworkTablesTypeInfos.kDouble[0], 1.23]);
     });
   });
 

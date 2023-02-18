@@ -1,4 +1,4 @@
-import { NetworkTableTypeInfos } from '../types/types';
+import { NetworkTablesTypeInfos } from '../types/types';
 
 import { PubSubClient } from './pubsub';
 import { NetworkTablesTopic } from './topic';
@@ -11,7 +11,7 @@ describe('Topic', () => {
     const serverUrl = 'ws://localhost:5810/nt/1234';
     const client = PubSubClient.getInstance(serverUrl);
 
-    topic = new NetworkTablesTopic<string>(client, 'test', NetworkTableTypeInfos.kString, 'default');
+    topic = new NetworkTablesTopic<string>(client, 'test', NetworkTablesTypeInfos.kString, 'default');
   });
 
   afterEach(() => {
@@ -24,7 +24,7 @@ describe('Topic', () => {
       const newTopic = new NetworkTablesTopic<string>(
         topic['client'],
         'test',
-        NetworkTableTypeInfos.kString,
+        NetworkTablesTypeInfos.kString,
         'default'
       );
       expect(topic).toBe(newTopic);
@@ -34,7 +34,7 @@ describe('Topic', () => {
       const newTopic = new NetworkTablesTopic<string>(
         topic['client'],
         'test-no-default',
-        NetworkTableTypeInfos.kString
+        NetworkTablesTypeInfos.kString
       );
       expect(newTopic.getValue()).toBeNull();
     });

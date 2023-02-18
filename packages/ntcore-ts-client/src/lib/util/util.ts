@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
-import { NetworkTableTypeInfos } from '../types/types';
+import { NetworkTablesTypeInfos } from '../types/types';
 
 import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTablesTypes, TypeNum, TypeString } from '../types/types';
 
@@ -39,55 +39,55 @@ export class Util {
    * @param data - The value.
    * @returns The NT type number.
    */
-  static getNetworkTableTypeFromObject(data: NetworkTablesTypes): NetworkTablesTypeInfo {
+  static getNetworkTablesTypeFromObject(data: NetworkTablesTypes): NetworkTablesTypeInfo {
     if (typeof data === 'boolean') {
-      return NetworkTableTypeInfos.kBoolean;
+      return NetworkTablesTypeInfos.kBoolean;
     } else if (typeof data === 'number') {
       if (this.isDouble(data)) {
-        return NetworkTableTypeInfos.kDouble;
+        return NetworkTablesTypeInfos.kDouble;
       }
-      return NetworkTableTypeInfos.kInteger;
+      return NetworkTablesTypeInfos.kInteger;
     } else if (typeof data === 'string') {
-      return NetworkTableTypeInfos.kString;
+      return NetworkTablesTypeInfos.kString;
     } else if (data instanceof ArrayBuffer) {
-      return NetworkTableTypeInfos.kArrayBuffer;
+      return NetworkTablesTypeInfos.kArrayBuffer;
     } else if (Array.isArray(data)) {
       if (new Set(data.map((x) => typeof x)).size <= 1) {
         if (typeof data[0] === 'boolean') {
-          return NetworkTableTypeInfos.kBooleanArray;
+          return NetworkTablesTypeInfos.kBooleanArray;
         } else if (typeof data[0] === 'number') {
           if ((data as number[]).every((e) => this.isDouble(e))) {
-            return NetworkTableTypeInfos.kDoubleArray;
+            return NetworkTablesTypeInfos.kDoubleArray;
           }
-          return NetworkTableTypeInfos.kIntegerArray;
+          return NetworkTablesTypeInfos.kIntegerArray;
         } else if (typeof data[0] === 'string') {
-          return NetworkTableTypeInfos.kStringArray;
+          return NetworkTablesTypeInfos.kStringArray;
         }
       }
     }
     throw new Error(`Invalid data for NT: ${data}`);
   }
 
-  static getNetworkTableTypeFromTypeNum(typeNum: TypeNum) {
+  static getNetworkTablesTypeFromTypeNum(typeNum: TypeNum) {
     switch (typeNum) {
-      case NetworkTableTypeInfos.kBoolean[0]:
-        return NetworkTableTypeInfos.kBoolean;
-      case NetworkTableTypeInfos.kDouble[0]:
-        return NetworkTableTypeInfos.kDouble;
-      case NetworkTableTypeInfos.kInteger[0]:
-        return NetworkTableTypeInfos.kInteger;
-      case NetworkTableTypeInfos.kString[0]:
-        return NetworkTableTypeInfos.kString;
-      case NetworkTableTypeInfos.kArrayBuffer[0]:
-        return NetworkTableTypeInfos.kArrayBuffer;
-      case NetworkTableTypeInfos.kBooleanArray[0]:
-        return NetworkTableTypeInfos.kBooleanArray;
-      case NetworkTableTypeInfos.kDoubleArray[0]:
-        return NetworkTableTypeInfos.kDoubleArray;
-      case NetworkTableTypeInfos.kIntegerArray[0]:
-        return NetworkTableTypeInfos.kIntegerArray;
-      case NetworkTableTypeInfos.kStringArray[0]:
-        return NetworkTableTypeInfos.kStringArray;
+      case NetworkTablesTypeInfos.kBoolean[0]:
+        return NetworkTablesTypeInfos.kBoolean;
+      case NetworkTablesTypeInfos.kDouble[0]:
+        return NetworkTablesTypeInfos.kDouble;
+      case NetworkTablesTypeInfos.kInteger[0]:
+        return NetworkTablesTypeInfos.kInteger;
+      case NetworkTablesTypeInfos.kString[0]:
+        return NetworkTablesTypeInfos.kString;
+      case NetworkTablesTypeInfos.kArrayBuffer[0]:
+        return NetworkTablesTypeInfos.kArrayBuffer;
+      case NetworkTablesTypeInfos.kBooleanArray[0]:
+        return NetworkTablesTypeInfos.kBooleanArray;
+      case NetworkTablesTypeInfos.kDoubleArray[0]:
+        return NetworkTablesTypeInfos.kDoubleArray;
+      case NetworkTablesTypeInfos.kIntegerArray[0]:
+        return NetworkTablesTypeInfos.kIntegerArray;
+      case NetworkTablesTypeInfos.kStringArray[0]:
+        return NetworkTablesTypeInfos.kStringArray;
       default:
         throw new Error(`Invalid type number: ${typeNum}`);
     }
@@ -99,26 +99,26 @@ export class Util {
    * @param typeString - The type string.
    * @returns The type info.
    */
-  static getNetworkTableTypeFromTypeString(typeString: TypeString) {
+  static getNetworkTablesTypeFromTypeString(typeString: TypeString) {
     switch (typeString) {
-      case NetworkTableTypeInfos.kBoolean[1]:
-        return NetworkTableTypeInfos.kBoolean;
-      case NetworkTableTypeInfos.kDouble[1]:
-        return NetworkTableTypeInfos.kDouble;
-      case NetworkTableTypeInfos.kInteger[1]:
-        return NetworkTableTypeInfos.kInteger;
-      case NetworkTableTypeInfos.kString[1]:
-        return NetworkTableTypeInfos.kString;
-      case NetworkTableTypeInfos.kArrayBuffer[1]:
-        return NetworkTableTypeInfos.kArrayBuffer;
-      case NetworkTableTypeInfos.kBooleanArray[1]:
-        return NetworkTableTypeInfos.kBooleanArray;
-      case NetworkTableTypeInfos.kDoubleArray[1]:
-        return NetworkTableTypeInfos.kDoubleArray;
-      case NetworkTableTypeInfos.kIntegerArray[1]:
-        return NetworkTableTypeInfos.kIntegerArray;
-      case NetworkTableTypeInfos.kStringArray[1]:
-        return NetworkTableTypeInfos.kStringArray;
+      case NetworkTablesTypeInfos.kBoolean[1]:
+        return NetworkTablesTypeInfos.kBoolean;
+      case NetworkTablesTypeInfos.kDouble[1]:
+        return NetworkTablesTypeInfos.kDouble;
+      case NetworkTablesTypeInfos.kInteger[1]:
+        return NetworkTablesTypeInfos.kInteger;
+      case NetworkTablesTypeInfos.kString[1]:
+        return NetworkTablesTypeInfos.kString;
+      case NetworkTablesTypeInfos.kArrayBuffer[1]:
+        return NetworkTablesTypeInfos.kArrayBuffer;
+      case NetworkTablesTypeInfos.kBooleanArray[1]:
+        return NetworkTablesTypeInfos.kBooleanArray;
+      case NetworkTablesTypeInfos.kDoubleArray[1]:
+        return NetworkTablesTypeInfos.kDoubleArray;
+      case NetworkTablesTypeInfos.kIntegerArray[1]:
+        return NetworkTablesTypeInfos.kIntegerArray;
+      case NetworkTablesTypeInfos.kStringArray[1]:
+        return NetworkTablesTypeInfos.kStringArray;
       default:
         throw new Error(`Unsupported type string: ${typeString}`);
     }
@@ -139,7 +139,7 @@ export class Util {
     data: NetworkTablesTypes,
     typeInfo?: NetworkTablesTypeInfo
   ): BinaryMessage {
-    const type = typeInfo ?? this.getNetworkTableTypeFromObject(data);
+    const type = typeInfo ?? this.getNetworkTablesTypeFromObject(data);
     return [topicId, timestamp, type[0], data];
   }
 
