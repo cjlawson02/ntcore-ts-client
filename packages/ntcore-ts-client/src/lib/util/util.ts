@@ -191,6 +191,6 @@ export class Util {
   }
 
   static createServerUrl(uri: string, port: number): string {
-    return `ws://${uri}:${port}/nt/${Util.generateUid()}`;
+    return `ws://${uri}:${port}/nt/ntcore-ts-${Util.generateUid()}`;
   }
 }
