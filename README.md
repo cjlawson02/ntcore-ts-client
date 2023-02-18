@@ -28,14 +28,14 @@ This section will help get you started with sending and receiving data over Netw
 
 ### Connecting to the NetworkTables Server
 
-The NetworkTables class is a singleton that will keep the same instance
+The NetworkTables class is instance-based, but allows for connections to multiple teams/URIs.
 
 ### Importing `NetworkTables`
 
 Use this at the top of your file:
 
 ```typescript
-import { NetworkTables } from 'ntcore-ts-client'
+import { NetworkTables } from 'ntcore-ts-client';
 ```
 
 ### With Team Number
@@ -43,7 +43,7 @@ import { NetworkTables } from 'ntcore-ts-client'
 Use this function:
 
 ```typescript
-NetworkTables.createInstanceByTeam(team: number, port = 5810)
+NetworkTables.getInstanceByTeam(team: number, port = 5810)
 ```
 
 > This creates the instance using the team number. Connects to `roborio-frc-<team>.local`
@@ -53,7 +53,7 @@ NetworkTables.createInstanceByTeam(team: number, port = 5810)
 Use this function:
 
 ```typescript
-NetworkTables.createInstanceByURI(uri: string, port?)
+NetworkTables.getInstanceByURI(uri: string, port?)
 ```
 
 > This creates the instance using a custom URI, i.e. 127.0.0.1, localhost, google.com, etc.
@@ -103,8 +103,8 @@ For example, here's a subscription for a Gyro:
 ```typescript
 import { NetworkTables, NetworkTableTypeInfos } from 'ntcore-ts-client';
 
-// Create the NT client instance
-const ntcore = NetworkTables.createInstanceByTeam(973);
+// Get or create the NT client instance
+const ntcore = NetworkTables.getInstanceByTeam(973);
 
 // Create the gyro topic
 const gyroTopic = ntcore.createTopic<number>('/MyTable/Gyro', NetworkTableTypeInfos.kDouble);
@@ -120,8 +120,8 @@ Or a publisher for an auto mode:
 ```typescript
 import { NetworkTables, NetworkTableTypeInfos } from 'ntcore-ts-client';
 
-// We're assuming we have already done a createInstance in our app, or this will throw an error!
-const ntcore = NetworkTables.getInstance();
+// Get or create the NT client instance
+const ntcore = NetworkTables.getInstanceByTeam(973);
 
 // Create the autoMode topic w/ a default return value of 'No Auto'
 const autoModeTopic = ntcore.createTopic<string>('/MyTable/autoMode', NetworkTableTypeInfos.kString, 'No Auto');

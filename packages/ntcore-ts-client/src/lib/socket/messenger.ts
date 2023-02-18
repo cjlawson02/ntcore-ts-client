@@ -22,7 +22,7 @@ export class Messenger {
   private readonly publications = new Map<number, PublishMessageParams>();
   private readonly subscriptions = new Map<number, SubscribeMessageParams>();
   private readonly pendingMessages = new Map<string, NetworkTablesTypes>();
-  private static _instance: Messenger;
+  private static _instances = new Map<string, Messenger>();
 
   /**
    * Gets the NetworkTablesSocket used by the Messenger.
@@ -72,11 +72,12 @@ export class Messenger {
     onAnnounce: (_: AnnounceMessageParams) => void,
     onUnannounce: (_: UnannounceMessageParams) => void
   ): Messenger {
-    if (!this._instance) {
-      this._instance = new this(serverUrl, onTopicUpdate, onAnnounce, onUnannounce);
+    let instance = this._instances.get(serverUrl);
+    if (!instance) {
+      instance = new this(serverUrl, onTopicUpdate, onAnnounce, onUnannounce);
+      this._instances.set(serverUrl, instance);
     }
-
-    return Messenger._instance;
+    return instance;
   }
 
   /**

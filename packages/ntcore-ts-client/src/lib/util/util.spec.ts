@@ -241,4 +241,12 @@ describe('Util', () => {
       );
     });
   });
+
+  describe('createServerUrl', () => {
+    it('creates a new NetworkTables instance with the correct server URL', () => {
+      expect(Util.createServerUrl('roborio-frc-973.local', 5810)).toMatch(
+        /^ws:\/\/roborio-frc-973\.local:5810\/nt\/ntcore-ts-.+$/
+      );
+    });
+  });
 });

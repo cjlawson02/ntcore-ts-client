@@ -1,34 +1,21 @@
 import { NetworkTables } from './ntcore-ts-client';
-import { PubSubClient } from './pubsub/pubsub';
 import { NetworkTableTypeInfos } from './types/types';
-
-describe('uninitialized NetworkTables', () => {
-  it('throws an error when trying to get the instance', () => {
-    expect(() => NetworkTables.getInstance()).toThrowError();
-  });
-});
 
 describe('NetworkTables', () => {
   let networkTables: NetworkTables;
 
   beforeEach(() => {
-    networkTables = NetworkTables.createInstanceByTeam(973);
-  });
-
-  it('gets the instance', () => {
-    expect(NetworkTables.getInstance()).toBe(networkTables);
+    networkTables = NetworkTables.getInstanceByTeam(973);
   });
 
   it('gets the client', () => {
-    expect(networkTables.client).toBe(PubSubClient.getInstance(networkTables.getServerUrl()));
+    expect(networkTables.client).toBe(NetworkTables.getInstanceByTeam(973).client);
+    const anotherClient = NetworkTables.getInstanceByTeam(9973).client;
+    expect(anotherClient).not.toBe(networkTables.client);
   });
 
   it('creates a new NetworkTables instance with the correct port number', () => {
     expect(networkTables.getPort()).toBe(5810);
-  });
-
-  it('creates a new NetworkTables instance with the correct server URL', () => {
-    expect(networkTables.getServerUrl()).toMatch(/^ws:\/\/roborio-frc-973\.local:5810\/nt\/.+$/);
   });
 
   it('creates a new NetworkTables instance with the correct robot address', () => {

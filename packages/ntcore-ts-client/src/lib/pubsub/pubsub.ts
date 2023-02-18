@@ -1,18 +1,18 @@
 import { Messenger } from '../socket/messenger';
 
+import type { NetworkTablesTopic } from './topic';
 import type {
   AnnounceMessageParams,
   BinaryMessageData,
   NetworkTablesTypes,
   UnannounceMessageParams,
 } from '../types/types';
-import type { NetworkTablesTopic } from './topic';
 
 /** The client for the PubSub protocol. */
 export class PubSubClient {
   private readonly _messenger: Messenger;
   private topics: Map<string, NetworkTablesTopic<any>>;
-  private static _instance: PubSubClient;
+  private static _instances = new Map<string, PubSubClient>();
 
   get messenger() {
     return this._messenger;
@@ -42,11 +42,13 @@ export class PubSubClient {
    * @returns The instance of the NetworkTables client.
    */
   static getInstance(serverUrl: string): PubSubClient {
-    if (!this._instance) {
-      this._instance = new this(serverUrl);
+    let instance = this._instances.get(serverUrl);
+    if (!instance) {
+      instance = new PubSubClient(serverUrl);
+      this._instances.set(serverUrl, instance);
     }
 
-    return this._instance;
+    return instance;
   }
 
   /**
