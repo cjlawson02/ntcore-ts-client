@@ -19,12 +19,12 @@ describe('NetworkTables', () => {
   });
 
   it('creates a new NetworkTables instance with the correct robot address', () => {
-    expect(networkTables.getURI()).toBe('roborio-frc-973.local');
+    expect(networkTables.getURI()).toBe('roborio-973-frc.local');
   });
 
   it('lets you change the URI', () => {
-    networkTables.changeURI('roborio-frc-9973.local');
-    expect(networkTables.getURI()).toBe('roborio-frc-9973.local');
+    networkTables.changeURI('roborio-9973-frc.local');
+    expect(networkTables.getURI()).toBe('roborio-9973-frc.local');
   });
 
   it('returns the correct value for isRobotConnected', () => {

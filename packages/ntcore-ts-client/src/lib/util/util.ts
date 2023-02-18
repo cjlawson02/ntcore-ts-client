@@ -190,7 +190,24 @@ export class Util {
     return chunks;
   }
 
+  /**
+   * Create a server URL for connecting to the robot.
+   *
+   * @param uri - The URI of the robot.
+   * @param port - The port of NT server on the robot.
+   * @returns The server URL with a unique client ID.
+   */
   static createServerUrl(uri: string, port: number): string {
     return `ws://${uri}:${port}/nt/ntcore-ts-${Util.generateUid()}`;
+  }
+
+  /**
+   * Get the mDNS address of a robot.
+   *
+   * @param team - The team number.
+   * @returns The mDNS address of the robot.
+   */
+  static getRobotAddress(team: number): string {
+    return `roborio-${team}-frc.local`;
   }
 }

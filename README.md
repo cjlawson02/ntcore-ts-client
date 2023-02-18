@@ -46,7 +46,7 @@ Use this function:
 NetworkTables.getInstanceByTeam(team: number, port = 5810)
 ```
 
-> This creates the instance using the team number. Connects to `roborio-frc-<team>.local`
+> This creates the instance using the team number. Connects to `roborio-<team>-frc.local`
 
 ### With URI
 

@@ -44,7 +44,7 @@ export class NetworkTables {
    */
   private constructor(props: NT_PROPS) {
     if (props.team) {
-      this.uri = `roborio-frc-${props.team}.local`;
+      this.uri = Util.getRobotAddress(props.team);
     } else if (props.uri) {
       this.uri = props.uri;
     } else {
@@ -52,6 +52,8 @@ export class NetworkTables {
     }
 
     this.port = props.port;
+
+    NetworkTables._instances.set(`${this.uri}:${this.port}`, this);
 
     this._client = PubSubClient.getInstance(Util.createServerUrl(this.uri, this.port));
   }
@@ -78,10 +80,9 @@ export class NetworkTables {
    * @throws Error if the team number is not provided.
    */
   static getInstanceByTeam(team: number, port = 5810) {
-    let instance = this._instances.get(`team-${team}`);
+    let instance = this._instances.get(`${Util.getRobotAddress(team)}:${port}`);
     if (!instance) {
       instance = new this({ team, port });
-      this._instances.set(`team-${team}`, instance);
     }
     return instance;
   }
@@ -108,10 +109,9 @@ export class NetworkTables {
    * @throws Error if the URI is not provided.
    */
   static getInstanceByURI(uri: string, port = 5810) {
-    let instance = this._instances.get(`uri-${uri}`);
+    let instance = this._instances.get(`${uri}:${port}`);
     if (!instance) {
       instance = new this({ uri, port });
-      this._instances.set(`uri-${uri}`, instance);
     }
     return instance;
   }
