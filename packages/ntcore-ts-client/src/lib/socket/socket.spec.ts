@@ -179,7 +179,7 @@ describe('NetworkTablesSocket', () => {
   //     expect(onTopicUpdate).toHaveBeenCalledWith({
   //       topicId: message[0],
   //       serverTime: message[1],
-  //       typeInfo: Util.getNetworkTableTypeFromTypeNum(message[2]),
+  //       typeInfo: Util.getNetworkTablesTypeFromTypeNum(message[2]),
   //       value: message[3],
   //     });
   //   });

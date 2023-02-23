@@ -1,5 +1,6 @@
 import { Util } from '../util/util';
 
+import type { PubSubClient } from './pubsub';
 import type {
   NetworkTablesTypeInfo,
   NetworkTablesTypes,
@@ -9,7 +10,6 @@ import type {
   SubscribeOptions,
   TopicProperties,
 } from '../types/types';
-import type { PubSubClient } from './pubsub';
 
 export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   private client: PubSubClient;

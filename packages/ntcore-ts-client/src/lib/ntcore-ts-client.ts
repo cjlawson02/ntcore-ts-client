@@ -25,7 +25,7 @@ export class NetworkTables {
   private _client: PubSubClient;
 
   /** The instance of the NetworkTables class. */
-  private static instance: NetworkTables;
+  private static _instances = new Map<string, NetworkTables>();
 
   /**
    * Gets the PubSubClient instance used to establish and manage the connection to the robot.
@@ -44,7 +44,7 @@ export class NetworkTables {
    */
   private constructor(props: NT_PROPS) {
     if (props.team) {
-      this.uri = `roborio-frc-${props.team}.local`;
+      this.uri = Util.getRobotAddress(props.team);
     } else if (props.uri) {
       this.uri = props.uri;
     } else {
@@ -53,7 +53,22 @@ export class NetworkTables {
 
     this.port = props.port;
 
-    this._client = PubSubClient.getInstance(this.getServerUrl());
+    NetworkTables._instances.set(`${this.uri}:${this.port}`, this);
+
+    this._client = PubSubClient.getInstance(Util.createServerUrl(this.uri, this.port));
+  }
+
+  /**
+   * DEPRECATED: Creates a new NetworkTables instance if it does not exist.
+   *
+   * @deprecated Use {@link getInstanceByTeam} instead.
+   * @param team - The team number of the robot.
+   * @param port - The port to connect to the robot on. Defaults to 5810.
+   * @returns The NetworkTables instance.
+   * @throws Error if the team number is not provided.
+   */
+  static createInstanceByTeam(team: number, port = 5810) {
+    return this.getInstanceByTeam(team, port);
   }
 
   /**
@@ -64,11 +79,25 @@ export class NetworkTables {
    * @returns The NetworkTables instance.
    * @throws Error if the team number is not provided.
    */
-  static createInstanceByTeam(team: number, port = 5810) {
-    if (!this.instance) {
-      this.instance = new NetworkTables({ team, port });
+  static getInstanceByTeam(team: number, port = 5810) {
+    let instance = this._instances.get(`${Util.getRobotAddress(team)}:${port}`);
+    if (!instance) {
+      instance = new this({ team, port });
     }
-    return this.instance;
+    return instance;
+  }
+
+  /**
+   * DEPRECATED: Creates a new NetworkTables instance if it does not exist.
+   *
+   * @deprecated Use {@link getInstanceByURI} instead.
+   * @param uri - The URI of the robot.
+   * @param port - The port to connect to the robot on. Defaults to 5810.
+   * @returns The NetworkTables instance.
+   * @throws Error if the URI is not provided.
+   */
+  static createInstanceByURI(uri: string, port = 5810) {
+    return this.getInstanceByURI(uri, port);
   }
 
   /**
@@ -79,32 +108,12 @@ export class NetworkTables {
    * @returns The NetworkTables instance.
    * @throws Error if the URI is not provided.
    */
-  static createInstanceByURI(uri: string, port = 5810) {
-    if (!this.instance) {
-      this.instance = new NetworkTables({ uri, port });
+  static getInstanceByURI(uri: string, port = 5810) {
+    let instance = this._instances.get(`${uri}:${port}`);
+    if (!instance) {
+      instance = new this({ uri, port });
     }
-    return this.instance;
-  }
-
-  /**
-   * Gets the NetworkTables instance if it has been created.
-   *
-   * @returns The NetworkTables instance.
-   * @throws Error if the instance has not been created yet.
-   */
-  static getInstance() {
-    if (this.instance) return this.instance;
-
-    throw new Error('NetworkTables instance has not been created yet.');
-  }
-
-  /**
-   * Returns the URL of the server to connect to.
-   *
-   * @returns The server URL.
-   */
-  getServerUrl(): string {
-    return Util.createServerUrl(this.uri, this.port);
+    return instance;
   }
 
   /**
