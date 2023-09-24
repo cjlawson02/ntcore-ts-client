@@ -41,16 +41,16 @@ Note: there may be breaking changes between each beta version, but if a breaking
 
 ### Non-library changes
 
-- Improve docs by @Pokesi in <https://github.com/Chris2fourlaw/ntcore-ts-client/pull/15>
+- Improve docs by @Pokesi in <https://github.com/cjlawson02/ntcore-ts-client/pull/15>
 
-* fix(ci): temporarily disable linting through CI by @Chris2fourlaw in <https://github.com/Chris2fourlaw/ntcore-ts-client/pull/16>
-* chore: upgrade tslib and dev deps by @Chris2fourlaw in <https://github.com/Chris2fourlaw/ntcore-ts-client/pull/17>
-* feat(dev): add commitlint for conventional commits enforcement by @Chris2fourlaw in <https://github.com/Chris2fourlaw/ntcore-ts-client/pull/18>
-* build(deps-dev): bump @typescript-eslint/eslint-plugin from 5.48.2 to 5.49.0 by @dependabot in <https://github.com/Chris2fourlaw/ntcore-ts-client/pull/20>
-* build(deps-dev): bump @typescript-eslint/parser from 5.48.2 to 5.49.0 by @dependabot in <https://github.com/Chris2fourlaw/ntcore-ts-client/pull/19>
-* build(deps-dev): bump eslint-plugin-jsdoc from 39.6.7 to 40.0.0 by @dependabot in <https://github.com/Chris2fourlaw/ntcore-ts-client/pull/27>
-* build(deps): bump tslib from 2.4.1 to 2.5.0 by @dependabot in <https://github.com/Chris2fourlaw/ntcore-ts-client/pull/25>
-* build(deps-dev): bump jest and @types/jest by @dependabot in <https://github.com/Chris2fourlaw/ntcore-ts-client/pull/28>
+* fix(ci): temporarily disable linting through CI by @cjlawson02 in <https://github.com/cjlawson02/ntcore-ts-client/pull/16>
+* chore: upgrade tslib and dev deps by @cjlawson02 in <https://github.com/cjlawson02/ntcore-ts-client/pull/17>
+* feat(dev): add commitlint for conventional commits enforcement by @cjlawson02 in <https://github.com/cjlawson02/ntcore-ts-client/pull/18>
+* build(deps-dev): bump @typescript-eslint/eslint-plugin from 5.48.2 to 5.49.0 by @dependabot in <https://github.com/cjlawson02/ntcore-ts-client/pull/20>
+* build(deps-dev): bump @typescript-eslint/parser from 5.48.2 to 5.49.0 by @dependabot in <https://github.com/cjlawson02/ntcore-ts-client/pull/19>
+* build(deps-dev): bump eslint-plugin-jsdoc from 39.6.7 to 40.0.0 by @dependabot in <https://github.com/cjlawson02/ntcore-ts-client/pull/27>
+* build(deps): bump tslib from 2.4.1 to 2.5.0 by @dependabot in <https://github.com/cjlawson02/ntcore-ts-client/pull/25>
+* build(deps-dev): bump jest and @types/jest by @dependabot in <https://github.com/cjlawson02/ntcore-ts-client/pull/28>
 
 ## 0.0.1-beta.5
 

@@ -4,7 +4,7 @@ A TypeScript library for communication over [WPILib's NetworkTables 4.0 protocol
 
 ## Usage
 
-For a quick start guide on how to use the library, view this [README](https://github.com/Chris2fourlaw/ntcore-ts-client/blob/main/README.md) and this [documentation website](https://ntcore.chrislawson.dev).
+For a quick start guide on how to use the library, view this [README](https://github.com/cjlawson02/ntcore-ts-client/blob/main/README.md) and this [documentation website](https://ntcore.chrislawson.dev).
 
 ## Building
 
