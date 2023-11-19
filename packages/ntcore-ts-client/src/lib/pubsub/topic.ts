@@ -32,7 +32,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Gets the ID of the topic.
-   *
    * @returns The ID of the topic.
    */
   get id() {
@@ -41,7 +40,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Gets the name of the topic.
-   *
    * @returns The name of the topic.
    */
   get name() {
@@ -50,7 +48,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Gets the type info for the topic.
-   *
    * @returns The type info for the topic.
    */
   get typeInfo(): NetworkTablesTypeInfo {
@@ -59,7 +56,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Gets the server time of the last value change.
-   *
    * @returns The server time of the last value change.
    */
   get lastChangedTime() {
@@ -68,7 +64,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Whether the topic has been announced.
-   *
    * @returns Whether the topic has been announced.
    */
   get announced() {
@@ -77,7 +72,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Gets whether the client is the publisher of the topic.
-   *
    * @returns Whether the client is the publisher of the topic.
    */
   get publisher() {
@@ -86,7 +80,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Gets the UID of the publisher.
-   *
    * @returns The UID of the publisher, or undefined if the client is not the publisher.
    */
   get pubuid() {
@@ -95,7 +88,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Gets the subscribers to the topic.
-   *
    * @returns The subscribers to the topic.
    */
   get subscribers() {
@@ -105,7 +97,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   /**
    * Creates a new topic. This should only be done after the
    * base NTCore client has been initialized.
-   *
    * @param client - The client that owns the topic.
    * @param name - The name of the topic.
    * @param typeInfo - The type info for the topic.
@@ -122,7 +113,11 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
     const existingTopic = this.client.getTopicFromName(name);
     if (existingTopic) {
-      return existingTopic as NetworkTablesTopic<T>;
+      if (existingTopic.typeInfo[0] === typeInfo[0] && existingTopic.typeInfo[1] === typeInfo[1]) {
+        return existingTopic;
+      } else {
+        throw new Error(`Topic ${name} already exists, but with a different type.`);
+      }
     }
 
     this.client.registerTopic(this);
@@ -131,7 +126,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   /**
    * Sets the value of the topic.
    * The client must be the publisher of the topic to set the value.
-   *
    * @param value - The value to set.
    */
   setValue(value: T) {
@@ -150,7 +144,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   /**
    * Updates the value of the topic.
    * This should only be called by the PubSubClient.
-   *
    * @param value - The value to update.
    * @param lastChangedTime - The server time of the last value change.
    */
@@ -166,7 +159,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Marks the topic as announced. This should only be called by the PubSubClient.
-   *
    * @param id - The ID of the topic.
    */
   announce(id: number) {
@@ -186,7 +178,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Creates a new subscriber. This should only be called by the PubSubClient.
-   *
    * @param callback - The callback to call when the topic value changes.
    * @param immediateNotify - Whether to immediately notify the subscriber of the current value.
    * @param options - The options for the subscriber.
@@ -219,7 +210,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Removes a subscriber
-   *
    * @param subuid - The UID of the subscriber.
    * @param removeCallback - Whether to remove the callback. Leave this as true unless you know what you're doing.
    */
@@ -237,7 +227,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Resubscribes all local subscribers.
-   *
    * @param client - The client to resubscribe with.
    */
   resubscribeAll(client: PubSubClient) {
@@ -260,7 +249,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Publishes the topic.
-   *
    * @param properties - The properties to publish the topic with.
    * @param id - The UID of the publisher.
    */
@@ -295,7 +283,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Republishes the topic.
-   *
    * @param client - The client to republish with.
    */
   republish(client: PubSubClient) {
@@ -309,7 +296,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Sets the properties of the topic.
-   *
    * @param persistent - If true, the last set value will be periodically saved to persistent storage on the server and be restored during server startup. Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
    * @param retained - Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
    */

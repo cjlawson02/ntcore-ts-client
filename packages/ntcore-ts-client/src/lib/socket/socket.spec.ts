@@ -114,6 +114,7 @@ describe('NetworkTablesSocket', () => {
       socket.websocket = {
         ...socket.websocket,
         send,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
 
       // Queue some messages
@@ -141,6 +142,7 @@ describe('NetworkTablesSocket', () => {
       socket.websocket = {
         ...socket.websocket,
         send,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
       // Send a heartbeat message
       socket['heartbeat']();
