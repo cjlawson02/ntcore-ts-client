@@ -22,14 +22,14 @@
       "dependsOn": ["build"]
     },
     "lint": {
-      "executor": "@nx/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
         "lintFilePatterns": ["packages/ntcore-ts-client/**/*.ts"]
       }
     },
     "lint:fix": {
-      "executor": "@nx/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
         "fix": true,
@@ -40,8 +40,7 @@
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
-        "jestConfig": "packages/ntcore-ts-client/jest.config.ts",
-        "passWithNoTests": true
+        "jestConfig": "packages/ntcore-ts-client/jest.config.ts"
       }
     },
     "docs": {
