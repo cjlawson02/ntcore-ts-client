@@ -25,7 +25,6 @@ export class Messenger {
 
   /**
    * Gets the NetworkTablesSocket used by the Messenger.
-   *
    * @returns The NetworkTablesSocket used by the Messenger.
    */
   get socket() {
@@ -34,7 +33,6 @@ export class Messenger {
 
   /**
    * Creates a new NetworkTables client.
-   *
    * @param serverUrl - The URL of the server to connect to.
    * @param onTopicUpdate - Called when a topic is updated.
    * @param onAnnounce - Called when a topic is announced.
@@ -58,7 +56,6 @@ export class Messenger {
 
   /**
    * Gets the instance of the NetworkTables client.
-   *
    * @param serverUrl - The URL of the server to connect to. This is not needed after the first call.
    * @param onTopicUpdate - Called when a topic is updated.
    * @param onAnnounce - Called when a topic is announced.
@@ -81,7 +78,6 @@ export class Messenger {
 
   /**
    * Reinstantiates the messenger by resetting the socket with a new URL.
-   *
    * @param serverUrl - The URL of the server to connect to.
    */
   reinstantiate(serverUrl: string) {
@@ -92,7 +88,6 @@ export class Messenger {
 
   /**
    * Gets all publications.
-   *
    * @returns An iterator of all publications in the form [id, params].
    */
   getPublications() {
@@ -101,7 +96,6 @@ export class Messenger {
 
   /**
    * Gets all subscriptions.
-   *
    * @returns An iterator of all subscriptions in the form [id, params].
    */
   getSubscriptions() {
@@ -131,7 +125,6 @@ export class Messenger {
 
   /**
    * Publishes a topic to the server.
-   *
    * @param params - The publication parameters.
    * @param force - Whether to force the publication.
    */
@@ -153,7 +146,6 @@ export class Messenger {
 
   /**
    * Unpublishes a topic from the server.
-   *
    * @param pubuid - The publication ID to unpublish.
    */
   unpublish(pubuid: number) {
@@ -173,7 +165,6 @@ export class Messenger {
 
   /**
    * Subscribes to a topic.
-   *
    * @param params - The subscription parameters.
    * @param force - Whether to force the subscription.
    */
@@ -194,7 +185,6 @@ export class Messenger {
 
   /**
    * Unsubscribes from a topic.
-   *
    * @param subuid - The subscription ID to unsubscribe from.
    */
   unsubscribe(subuid: number) {
@@ -217,7 +207,6 @@ export class Messenger {
 
   /**
    * Sets the properties of a topic.
-   *
    * @param params - The parameters to set
    */
   setProperties(params: SetPropertiesMessageParams) {
@@ -234,7 +223,6 @@ export class Messenger {
   /**
    * Send data to a topic.
    * This should only be called by the PubSubClient.
-   *
    * @param topic - The topic to update.
    * @param value - The value to update the topic to.
    * @returns The timestamp of the update, or -1 if the topic is not announced.

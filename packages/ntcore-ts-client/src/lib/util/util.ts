@@ -12,7 +12,6 @@ export class Util {
 
   /**
    * Get the DOM time in microseconds.
-   *
    * @returns The current microseconds of the DOM.
    */
   static getMicros() {
@@ -21,7 +20,6 @@ export class Util {
 
   /**
    * Given a number, determine if it is a double
-   *
    * @param x - A number.
    * @returns Whether it is a double.
    */
@@ -35,7 +33,6 @@ export class Util {
 
   /**
    * Given a value, find the NT type number.
-   *
    * @param data - The value.
    * @returns The NT type number.
    */
@@ -95,7 +92,6 @@ export class Util {
 
   /**
    * Get the type info from a type string.
-   *
    * @param typeString - The type string.
    * @returns The type info.
    */
@@ -126,7 +122,6 @@ export class Util {
 
   /**
    * Create a binary message from a topic.
-   *
    * @param topicId - The topic ID.
    * @param timestamp - The timestamp of the message, matching the server.
    * @param data - The data.
@@ -147,7 +142,6 @@ export class Util {
    * Get a decently unique integer ID.
    *
    * It is not guaranteed to be unique, but it uses uuidv4 to generate an integer ID.
-   *
    * @returns An ID.
    */
   static generateUid(): number {
@@ -170,7 +164,6 @@ export class Util {
 
   /**
    * Splits an ArrayBuffer into chunks of a specified size.
-   *
    * @param buffer - The ArrayBuffer to split.
    * @param chunkSize - The size of each chunk, in bytes.
    * @returns An array of ArrayBuffer chunks.
@@ -192,7 +185,6 @@ export class Util {
 
   /**
    * Create a server URL for connecting to the robot.
-   *
    * @param uri - The URI of the robot.
    * @param port - The port of NT server on the robot.
    * @returns The server URL with a unique client ID.
@@ -203,7 +195,6 @@ export class Util {
 
   /**
    * Get the mDNS address of a robot.
-   *
    * @param team - The team number.
    * @returns The mDNS address of the robot.
    */

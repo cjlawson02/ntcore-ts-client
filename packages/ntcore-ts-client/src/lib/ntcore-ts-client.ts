@@ -29,7 +29,6 @@ export class NetworkTables {
 
   /**
    * Gets the PubSubClient instance used to establish and manage the connection to the robot.
-   *
    * @returns The PubSubClient instance.
    */
   get client() {
@@ -38,7 +37,6 @@ export class NetworkTables {
 
   /**
    * Creates a new NetworkTables instance.
-   *
    * @param props - The properties to use to create the instance.
    * @throws Error if the team number or URI is not provided.
    */
@@ -60,8 +58,7 @@ export class NetworkTables {
 
   /**
    * DEPRECATED: Creates a new NetworkTables instance if it does not exist.
-   *
-   * @deprecated Use {@link getInstanceByTeam} instead.
+   * @deprecated Use {@link NetworkTables#getInstanceByTeam} instead.
    * @param team - The team number of the robot.
    * @param port - The port to connect to the robot on. Defaults to 5810.
    * @returns The NetworkTables instance.
@@ -73,7 +70,6 @@ export class NetworkTables {
 
   /**
    * Creates a new NetworkTables instance if it does not exist.
-   *
    * @param team - The team number of the robot.
    * @param port - The port to connect to the robot on. Defaults to 5810.
    * @returns The NetworkTables instance.
@@ -89,8 +85,7 @@ export class NetworkTables {
 
   /**
    * DEPRECATED: Creates a new NetworkTables instance if it does not exist.
-   *
-   * @deprecated Use {@link getInstanceByURI} instead.
+   * @deprecated Use {@link NetworkTables#getInstanceByURI} instead.
    * @param uri - The URI of the robot.
    * @param port - The port to connect to the robot on. Defaults to 5810.
    * @returns The NetworkTables instance.
@@ -102,7 +97,6 @@ export class NetworkTables {
 
   /**
    * Creates a new NetworkTables instance if it does not exist.
-   *
    * @param uri - The URI of the robot.
    * @param port - The port to connect to the robot on. Defaults to 5810.
    * @returns The NetworkTables instance.
@@ -118,7 +112,6 @@ export class NetworkTables {
 
   /**
    * Returns the URI of the server.
-   *
    * @returns The robot address.
    */
   getURI(): string {
@@ -132,7 +125,6 @@ export class NetworkTables {
 
   /**
    * Returns the port to connect to the robot on.
-   *
    * @returns The port number.
    */
   getPort() {
@@ -141,7 +133,6 @@ export class NetworkTables {
 
   /**
    * Returns whether the robot is currently connected.
-   *
    * @returns Whether the robot is connected.
    */
   isRobotConnected() {
@@ -150,7 +141,6 @@ export class NetworkTables {
 
   /**
    * Returns whether the robot is currently connecting.
-   *
    * @returns Whether the robot is connecting.
    */
   isRobotConnecting() {
@@ -159,7 +149,6 @@ export class NetworkTables {
 
   /**
    * Adds a listener for robot connection status updates.
-   *
    * @param callback - The callback to call when the connection status changes.
    * @param immediateNotify - Whether to immediately notify the callback of the current connection status.
    * @returns A function to remove the listener.
@@ -170,7 +159,6 @@ export class NetworkTables {
 
   /**
    * Creates a new topic.
-   *
    * @param name - The name of the topic.
    * @param typeInfo - The type information of the topic.
    * @param defaultValue - The default value of the topic.

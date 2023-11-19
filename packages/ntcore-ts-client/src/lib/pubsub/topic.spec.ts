@@ -30,6 +30,15 @@ describe('Topic', () => {
       expect(topic).toBe(newTopic);
     });
 
+    it('should error if the existing topic has a different type', () => {
+      try {
+        new NetworkTablesTopic<boolean>(topic['client'], 'test', NetworkTablesTypeInfos.kBoolean, true);
+        fail('Should have thrown an error');
+      } catch (e) {
+        expect((e as Error).message).toEqual('Topic test already exists, but with a different type.');
+      }
+    });
+
     it('should return null if there is no default value', () => {
       const newTopic = new NetworkTablesTopic<string>(
         topic['client'],
