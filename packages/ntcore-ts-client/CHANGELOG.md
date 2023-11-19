@@ -2,6 +2,22 @@
 
 Note: there may be breaking changes between each beta version, but if a breaking change is introduced out of beta, it will be a major version change
 
+## 1.0.0
+
+### Breaking Changes
+
+- **BREAKING CHANGE: removed NetworkTables.createInstance\*()**
+- Please use NetworkTables.getInstanceByTeam() and NetworkTables.getInstanceByURI()
+- **BREAKING CHANGE: removed NetworkTableTypeInfos**
+- Fixed typo: now called `NetworkTablesTypeInfos` (NetworkTables plural! With **S**!)
+
+## 0.2.2
+
+### Changes
+
+- Updated dependencies
+- Existing topics are type checked better
+
 ## 0.2.1
 
 ### Changes

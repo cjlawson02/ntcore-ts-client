@@ -64,20 +64,6 @@ export class NetworkTablesTypeInfos {
   static readonly kIntegerArray: NetworkTablesTypeInfo = [18, 'int[]'];
   static readonly kStringArray: NetworkTablesTypeInfo = [20, 'string[]'];
 }
-/**
- * @deprecated Use {@link NetworkTablesTypeInfos} instead.
- */
-export class NetworkTableTypeInfos {
-  static readonly kBoolean = NetworkTablesTypeInfos.kBoolean;
-  static readonly kDouble = NetworkTablesTypeInfos.kDouble;
-  static readonly kInteger = NetworkTablesTypeInfos.kInteger;
-  static readonly kString = NetworkTablesTypeInfos.kString;
-  static readonly kArrayBuffer = NetworkTablesTypeInfos.kArrayBuffer;
-  static readonly kBooleanArray = NetworkTablesTypeInfos.kBooleanArray;
-  static readonly kDoubleArray = NetworkTablesTypeInfos.kDoubleArray;
-  static readonly kIntegerArray = NetworkTablesTypeInfos.kIntegerArray;
-  static readonly kStringArray = NetworkTablesTypeInfos.kStringArray;
-}
 
 export interface BinaryMessageData {
   topicId: number;
