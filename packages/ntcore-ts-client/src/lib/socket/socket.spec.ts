@@ -10,6 +10,8 @@ import type {
   AnnounceMessage,
   AnnounceMessageParams,
   BinaryMessage,
+  PropertiesMessage,
+  PropertiesMessageParams,
   UnannounceMessage,
   UnannounceMessageParams,
 } from '../types/types';
@@ -23,6 +25,7 @@ describe('NetworkTablesSocket', () => {
   const onTopicUpdate = jest.fn();
   const onAnnounce = jest.fn();
   const onUnannounce = jest.fn();
+  const onProperties = jest.fn();
 
   beforeEach(async () => {
     server = new WSMock(serverUrl);
@@ -34,7 +37,8 @@ describe('NetworkTablesSocket', () => {
       onSocketClose,
       onTopicUpdate,
       onAnnounce,
-      onUnannounce
+      onUnannounce,
+      onProperties
     );
 
     await server.connected;
@@ -224,5 +228,21 @@ describe('NetworkTablesSocket', () => {
 
       expect(onUnannounce).toHaveBeenCalledWith(params);
     });
+  });
+
+  it('should call the onProperties handler for an properties message', () => {
+    const params: PropertiesMessageParams = {
+      name: 'foo',
+      ack: true,
+    };
+
+    const message: PropertiesMessage = {
+      method: 'properties',
+      params,
+    };
+
+    server.send(JSON.stringify([message]));
+
+    expect(onProperties).toHaveBeenCalledWith(params);
   });
 });

@@ -40,6 +40,7 @@ export class NetworkTablesSocket {
   private readonly onTopicUpdate: (_: BinaryMessageData) => void;
   private readonly onAnnounce: (_: AnnounceMessageParams) => void;
   private readonly onUnannounce: (_: UnannounceMessageParams) => void;
+  private readonly onProperties: (_: PropertiesMessageParams) => void;
 
   private autoConnect = true;
   private messageQueue: (string | ArrayBuffer)[] = [];
@@ -52,6 +53,7 @@ export class NetworkTablesSocket {
    * @param onTopicUpdate - Called when a topic is updated.
    * @param onAnnounce - Called when a topic is announced.
    * @param onUnannounce - Called when a topic is unannounced.
+   * @param onProperties - Called when a topic's properties are updated.
    * @param autoConnect - Whether to automatically connect to the server.
    */
   private constructor(
@@ -61,6 +63,7 @@ export class NetworkTablesSocket {
     onTopicUpdate: (_: BinaryMessageData) => void,
     onAnnounce: (_: AnnounceMessageParams) => void,
     onUnannounce: (_: UnannounceMessageParams) => void,
+    onProperties: (_: PropertiesMessageParams) => void,
     autoConnect: boolean
   ) {
     // Connect to the server using the provided URL
@@ -71,6 +74,7 @@ export class NetworkTablesSocket {
     this.onTopicUpdate = onTopicUpdate;
     this.onAnnounce = onAnnounce;
     this.onUnannounce = onUnannounce;
+    this.onProperties = onProperties;
 
     this.autoConnect = autoConnect;
 
@@ -85,6 +89,7 @@ export class NetworkTablesSocket {
    * @param onTopicUpdate - Called when a topic is updated.
    * @param onAnnounce - Called when a topic is announced.
    * @param onUnannounce - Called when a topic is unannounced.
+   * @param onProperties - Called when a topic's properties are updated.
    * @param autoConnect - Whether to automatically connect to the server.
    * @returns The instance of the NetworkTables socket.
    */
@@ -95,11 +100,21 @@ export class NetworkTablesSocket {
     onTopicUpdate: (_: BinaryMessageData) => void,
     onAnnounce: (_: AnnounceMessageParams) => void,
     onUnannounce: (_: UnannounceMessageParams) => void,
+    onProperties: (_: PropertiesMessageParams) => void,
     autoConnect = true
   ): NetworkTablesSocket {
     let instance = this.instances.get(serverUrl);
     if (!instance) {
-      instance = new this(serverUrl, onSocketOpen, onSocketClose, onTopicUpdate, onAnnounce, onUnannounce, autoConnect);
+      instance = new this(
+        serverUrl,
+        onSocketOpen,
+        onSocketClose,
+        onTopicUpdate,
+        onAnnounce,
+        onUnannounce,
+        onProperties,
+        autoConnect
+      );
       this.instances.set(serverUrl, instance);
     }
 
@@ -202,6 +217,26 @@ export class NetworkTablesSocket {
   }
 
   /**
+   * Wait for the socket to connect.
+   * @returns A promise that resolves when the socket is connected.
+   */
+  waitForConnection() {
+    return new Promise<void>((resolve) => {
+      if (this.isConnected()) {
+        resolve();
+      } else {
+        const listener = () => {
+          if (this.isConnected()) {
+            this.removeConnectionListener(listener);
+            resolve();
+          }
+        };
+        this.addConnectionListener(listener);
+      }
+    });
+  }
+
+  /**
    * Create a connection listener.
    * @param callback - Called when the connection state changes.
    * @param immediateNotify - Whether to immediately notify the callback of the current connection state.
@@ -214,7 +249,15 @@ export class NetworkTablesSocket {
       callback(this.isConnected());
     }
 
-    return () => this.connectionListeners.delete(callback);
+    return () => this.removeConnectionListener(callback);
+  }
+
+  /**
+   * Remove a connection listener.
+   * @param callback - The callback to remove.
+   */
+  removeConnectionListener(callback: (_: boolean) => void) {
+    this.connectionListeners.delete(callback);
   }
 
   /**
@@ -337,11 +380,7 @@ export class NetworkTablesSocket {
    * @param params - The message params.
    */
   private handlePropertiesParams(params: PropertiesMessageParams) {
-    // Extract the topic ID and properties from the params
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
-    const { name, ack } = params;
-
-    // TODO: Do we need to do something with this?
+    this.onProperties(params);
   }
 
   /**

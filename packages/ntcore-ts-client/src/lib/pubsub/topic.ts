@@ -23,6 +23,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   private _pubuid?: number;
   private _publishProperties?: TopicProperties;
   private _publishPromise?: (value?: void | PromiseLike<void> | undefined) => void;
+  private _propertyPromise?: (value?: void | PromiseLike<void> | undefined) => void;
   private _subscribers: Map<
     number,
     {
@@ -179,6 +180,11 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
     this._id = undefined;
   }
 
+  /** Called after a setProperties message is ack by the server */
+  ackProperties() {
+    this._propertyPromise?.();
+  }
+
   /** */
   /* SUBSCRIBING */
   /** */
@@ -284,9 +290,9 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
       if (this.client.messenger.socket.isConnected()) {
         setTimeout(() => {
           if (!this.announced) {
-            reject(new Error(`Topic ${this.name} was not announced within 5 seconds`));
+            reject(new Error(`Topic ${this.name} was not announced within 3 seconds`));
           }
-        }, 5000);
+        }, 3000);
       }
     });
   }
@@ -334,6 +340,21 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
       },
     };
 
-    this.client.messenger.setProperties(setPropertiesParams);
+    return new Promise<void>((resolve, reject) => {
+      // Register the promise resolver
+      this._propertyPromise = resolve;
+
+      // Send the set properties request
+      this.client.messenger.setProperties(setPropertiesParams);
+
+      // Set a timeout to reject the promise if the topic is not announced
+      if (this.client.messenger.socket.isConnected()) {
+        setTimeout(() => {
+          if (!this.announced) {
+            reject(new Error(`Topic ${this.name} property change was not acknowledged within 3 seconds`));
+          }
+        }, 3000);
+      }
+    });
   }
 }

@@ -5,6 +5,7 @@ import type {
   AnnounceMessageParams,
   BinaryMessageData,
   NetworkTablesTypes,
+  PropertiesMessageParams,
   UnannounceMessageParams,
 } from '../types/types';
 
@@ -24,7 +25,8 @@ export class PubSubClient {
       serverUrl,
       this.onTopicUpdate,
       this.onTopicAnnounce,
-      this.onTopicUnannounce
+      this.onTopicUnannounce,
+      this.onTopicProperties
     );
     this.topics = new Map();
 
@@ -112,6 +114,22 @@ export class PubSubClient {
       return;
     }
     topic.unannounce();
+  };
+
+  /**
+   * Called by the messenger when a topic's properties are updated.
+   * @param params - The properties message parameters.
+   */
+  private onTopicProperties = (params: PropertiesMessageParams) => {
+    const topic = this.topics.get(params.name);
+    if (params.ack) {
+      if (!topic) {
+        console.warn(`Topic ${params.name} properties were updated, but does not exist`);
+        return;
+      }
+
+      topic.ackProperties();
+    }
   };
 
   /**
