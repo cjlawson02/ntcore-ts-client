@@ -58,6 +58,10 @@ export class PubSubClient {
    */
   reinstantiate(url: string) {
     this._messenger.reinstantiate(url);
+    this.topics.forEach((topic) => {
+      topic.resubscribeAll(this);
+      if (topic.publisher) topic.republish(this);
+    });
   }
 
   /**

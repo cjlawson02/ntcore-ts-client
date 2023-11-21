@@ -281,11 +281,13 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
       this.client.messenger.publish(publishParams);
 
       // Set a timeout to reject the promise if the topic is not announced
-      setTimeout(() => {
-        if (!this.announced) {
-          reject(new Error(`Topic ${this.name} was not announced within 5 seconds`));
-        }
-      }, 5000);
+      if (this.client.messenger.socket.isConnected()) {
+        setTimeout(() => {
+          if (!this.announced) {
+            reject(new Error(`Topic ${this.name} was not announced within 5 seconds`));
+          }
+        }, 5000);
+      }
     });
   }
 
@@ -312,6 +314,8 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
     if (!this.publisher || !this._pubuid) {
       throw new Error('Cannot republish topic without being the publisher');
     }
+
+    this._publisher = false;
 
     this.publish(this._publishProperties, this._pubuid);
   }
