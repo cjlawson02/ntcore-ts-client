@@ -1,3 +1,5 @@
+import WSMock from 'jest-websocket-mock';
+
 import { NetworkTablesTypeInfos } from '../types/types';
 
 import { PubSubClient } from './pubsub';
@@ -7,9 +9,11 @@ import type { SubscribeMessageParams } from '../types/types';
 
 describe('Topic', () => {
   let topic: NetworkTablesTopic<string>;
+  let client: PubSubClient;
+  const serverUrl = 'ws://localhost:5810/nt/1234';
   beforeEach(() => {
-    const serverUrl = 'ws://localhost:5810/nt/1234';
-    const client = PubSubClient.getInstance(serverUrl);
+    client = PubSubClient.getInstance(serverUrl);
+    client.messenger.socket.stopAutoConnect();
 
     topic = new NetworkTablesTopic<string>(client, 'test', NetworkTablesTypeInfos.kString, 'default');
   });
@@ -17,6 +21,8 @@ describe('Topic', () => {
   afterEach(() => {
     topic['client']['topics'].clear();
     topic.subscribers.clear();
+    topic['_publisher'] = false;
+    topic['_pubuid'] = undefined;
   });
 
   describe('constructor', () => {
@@ -51,14 +57,17 @@ describe('Topic', () => {
 
   describe('setValue', () => {
     it('throws an error if the client is not the publisher', () => {
-      expect(() => topic.setValue('new value')).toThrowError('Cannot set value on topic without being the publisher');
+      expect(() => topic.setValue('new value')).toThrow('Cannot set value on topic without being the publisher');
     });
 
-    it('allows the value to be set if the client is the publisher', () => {
-      topic.publish();
-      topic.announce(1);
+    it('allows the value to be set if the client is the publisher', async () => {
+      setTimeout(() => {
+        topic.announce(1, 1);
+      }, 100);
+      await topic.publish({}, 1);
       topic.setValue('new value');
       expect(topic.getValue()).toEqual('new value');
+      topic.announce(1);
     });
   });
 
@@ -193,44 +202,54 @@ describe('Topic', () => {
   });
 
   describe('publish', () => {
-    it('sets the publisher to the client', () => {
-      topic.publish();
+    it('sets the publisher to the client', async () => {
+      setTimeout(() => {
+        topic.announce(1, 1);
+      }, 100);
+      await topic.publish({}, 1);
       expect(topic.publisher).toBe(true);
       expect(topic.pubuid).toBeDefined();
     });
 
-    it('does not set the publisher if the client is already the publisher', () => {
-      topic.publish();
+    it('does not set the publisher if the client is already the publisher', async () => {
+      setTimeout(() => {
+        topic.announce(1, 1);
+      }, 100);
+      await topic.publish({}, 1);
       const id = topic.pubuid;
-      topic.publish();
+
+      await topic.publish();
       expect(id).toEqual(topic.pubuid);
+    });
+
+    it('should throw an error if the topic is not announced', async () => {
+      try {
+        topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
+        client.messenger.reinstantiate(serverUrl + '1');
+        new WSMock(serverUrl + '1');
+        await client.messenger.socket.waitForConnection();
+        await topic.publish({}, 1);
+        fail('Topic should have not been announced');
+      } catch (e) {
+        expect(e).toEqual(new Error(`Topic ${topic.name} was not announced within 3 seconds`));
+      }
     });
   });
 
   describe('unpublish', () => {
-    it('sets the publisher to false', () => {
-      topic.publish();
+    it('sets the publisher to false', async () => {
+      setTimeout(() => {
+        topic.announce(1, 1);
+      }, 100);
+      await topic.publish({}, 1);
+      expect(topic.publisher).toBe(true);
       topic.unpublish();
       expect(topic.publisher).toBe(false);
       expect(topic.pubuid).toBeUndefined();
     });
 
     it('should throw an error if the client is not the publisher', () => {
-      expect(() => topic.unpublish()).toThrowError('Cannot unpublish topic without being the publisher');
-    });
-  });
-
-  describe('republish', () => {
-    it('should republish', () => {
-      topic.publish();
-      topic['publish'] = jest.fn();
-      topic.republish(topic['client']);
-      expect(topic['publish']).toHaveBeenCalledWith({}, topic.pubuid);
-      expect(topic.publisher).toBe(true);
-    });
-
-    it('should throw error if the client is not the publisher', () => {
-      expect(() => topic.republish(topic['client'])).toThrowError('Cannot republish topic without being the publisher');
+      expect(() => topic.unpublish()).toThrow('Cannot unpublish topic without being the publisher');
     });
   });
 

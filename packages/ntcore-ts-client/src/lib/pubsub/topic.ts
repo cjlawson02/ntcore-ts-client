@@ -21,6 +21,9 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   private _announced: boolean;
   private _publisher: boolean;
   private _pubuid?: number;
+  private _publishProperties?: TopicProperties;
+  private _publishPromise?: (value?: void | PromiseLike<void> | undefined) => void;
+  private _propertyPromise?: (value?: void | PromiseLike<void> | undefined) => void;
   private _subscribers: Map<
     number,
     {
@@ -160,16 +163,26 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   /**
    * Marks the topic as announced. This should only be called by the PubSubClient.
    * @param id - The ID of the topic.
+   * @param pubuid - The UID of the publisher.
    */
-  announce(id: number) {
+  announce(id: number, pubuid?: number) {
     this._announced = true;
     this._id = id;
+    if (pubuid === this._pubuid) {
+      this._publisher = true;
+      this._publishPromise?.();
+    }
   }
 
   /** Marks the topic as unannounced. This should only be called by the PubSubClient. */
   unannounce() {
     this._announced = false;
     this._id = undefined;
+  }
+
+  /** Called after a setProperties message is ack by the server */
+  ackProperties() {
+    this._propertyPromise?.();
   }
 
   /** */
@@ -251,11 +264,13 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
    * Publishes the topic.
    * @param properties - The properties to publish the topic with.
    * @param id - The UID of the publisher.
+   * @returns A promise that resolves when the topic is published.
    */
-  publish(properties: TopicProperties = {}, id?: number) {
-    if (this.publisher) return;
-    this._publisher = true;
+  publish(properties: TopicProperties = {}, id?: number): Promise<void> {
+    if (this.publisher) return Promise.resolve();
+
     this._pubuid = id ?? Util.generateUid();
+    this._publishProperties = properties;
 
     const publishParams: PublishMessageParams = {
       type: this.typeInfo[1],
@@ -264,7 +279,22 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
       properties,
     };
 
-    this.client.messenger.publish(publishParams);
+    return new Promise<void>((resolve, reject) => {
+      // Register the promise resolver
+      this._publishPromise = resolve;
+
+      // Send the publish request
+      this.client.messenger.publish(publishParams);
+
+      // Set a timeout to reject the promise if the topic is not announced
+      if (this.client.messenger.socket.isConnected()) {
+        setTimeout(() => {
+          if (!this.announced) {
+            reject(new Error(`Topic ${this.name} was not announced within 3 seconds`));
+          }
+        }, 3000);
+      }
+    });
   }
 
   /**
@@ -291,7 +321,9 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
       throw new Error('Cannot republish topic without being the publisher');
     }
 
-    this.publish({}, this._pubuid);
+    this._publisher = false;
+
+    this.publish(this._publishProperties, this._pubuid);
   }
 
   /**
@@ -308,6 +340,21 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
       },
     };
 
-    this.client.messenger.setProperties(setPropertiesParams);
+    return new Promise<void>((resolve, reject) => {
+      // Register the promise resolver
+      this._propertyPromise = resolve;
+
+      // Send the set properties request
+      this.client.messenger.setProperties(setPropertiesParams);
+
+      // Set a timeout to reject the promise if the topic is not announced
+      if (this.client.messenger.socket.isConnected()) {
+        setTimeout(() => {
+          if (!this.announced) {
+            reject(new Error(`Topic ${this.name} property change was not acknowledged within 3 seconds`));
+          }
+        }, 3000);
+      }
+    });
   }
 }

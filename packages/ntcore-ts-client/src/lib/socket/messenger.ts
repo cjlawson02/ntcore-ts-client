@@ -14,6 +14,7 @@ import type {
   BinaryMessageData,
   AnnounceMessageParams,
   UnannounceMessageParams,
+  PropertiesMessageParams,
 } from '../types/types';
 
 /** NetworkTables client. */
@@ -37,12 +38,14 @@ export class Messenger {
    * @param onTopicUpdate - Called when a topic is updated.
    * @param onAnnounce - Called when a topic is announced.
    * @param onUnannounce - Called when a topic is unannounced.
+   * @param onTopicProperties - Called when a topic's properties are updated.
    */
   private constructor(
     serverUrl: string,
     onTopicUpdate: (_: BinaryMessageData) => void,
     onAnnounce: (_: AnnounceMessageParams) => void,
-    onUnannounce: (_: UnannounceMessageParams) => void
+    onUnannounce: (_: UnannounceMessageParams) => void,
+    onTopicProperties: (_: PropertiesMessageParams) => void
   ) {
     this._socket = NetworkTablesSocket.getInstance(
       serverUrl,
@@ -50,7 +53,8 @@ export class Messenger {
       this.onSocketClose,
       onTopicUpdate,
       onAnnounce,
-      onUnannounce
+      onUnannounce,
+      onTopicProperties
     );
   }
 
@@ -60,17 +64,19 @@ export class Messenger {
    * @param onTopicUpdate - Called when a topic is updated.
    * @param onAnnounce - Called when a topic is announced.
    * @param onUnannounce - Called when a topic is unannounced.
+   * @param onTopicProperties - Called when a topic's properties are updated.
    * @returns The instance of the NetworkTables client.
    */
   static getInstance(
     serverUrl: string,
     onTopicUpdate: (_: BinaryMessageData) => void,
     onAnnounce: (_: AnnounceMessageParams) => void,
-    onUnannounce: (_: UnannounceMessageParams) => void
+    onUnannounce: (_: UnannounceMessageParams) => void,
+    onTopicProperties: (_: PropertiesMessageParams) => void
   ): Messenger {
     let instance = this._instances.get(serverUrl);
     if (!instance) {
-      instance = new this(serverUrl, onTopicUpdate, onAnnounce, onUnannounce);
+      instance = new this(serverUrl, onTopicUpdate, onAnnounce, onUnannounce, onTopicProperties);
       this._instances.set(serverUrl, instance);
     }
     return instance;

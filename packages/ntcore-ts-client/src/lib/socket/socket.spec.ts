@@ -1,28 +1,33 @@
+import { encode } from '@msgpack/msgpack';
 import WebSocket from 'isomorphic-ws';
 import WSMock from 'jest-websocket-mock';
 
+import { Util } from '../util/util';
+
 import { NetworkTablesSocket } from './socket';
 
-jest.mock('ws');
+import type {
+  AnnounceMessage,
+  AnnounceMessageParams,
+  BinaryMessage,
+  PropertiesMessage,
+  PropertiesMessageParams,
+  UnannounceMessage,
+  UnannounceMessageParams,
+} from '../types/types';
 
 describe('NetworkTablesSocket', () => {
   let socket: NetworkTablesSocket;
   const serverUrl = 'ws://localhost:5810/nt/1234';
   let server: WSMock;
-  let onSocketOpen: jest.Mock;
-  let onSocketClose: jest.Mock;
-  let onTopicUpdate: jest.Mock;
-  let onAnnounce: jest.Mock;
-  let onUnannounce: jest.Mock;
+  const onSocketOpen = jest.fn();
+  const onSocketClose = jest.fn();
+  const onTopicUpdate = jest.fn();
+  const onAnnounce = jest.fn();
+  const onUnannounce = jest.fn();
+  const onProperties = jest.fn();
 
   beforeEach(async () => {
-    // Create mock event handlers
-    onSocketOpen = jest.fn();
-    onSocketClose = jest.fn();
-    onTopicUpdate = jest.fn();
-    onAnnounce = jest.fn();
-    onUnannounce = jest.fn();
-
     server = new WSMock(serverUrl);
 
     // Create an instance of the NetworkTablesSocket class
@@ -32,7 +37,8 @@ describe('NetworkTablesSocket', () => {
       onSocketClose,
       onTopicUpdate,
       onAnnounce,
-      onUnannounce
+      onUnannounce,
+      onProperties
     );
 
     await server.connected;
@@ -40,6 +46,11 @@ describe('NetworkTablesSocket', () => {
 
   afterEach(() => {
     WSMock.clean();
+    onSocketOpen.mockClear();
+    onSocketClose.mockClear();
+    onTopicUpdate.mockClear();
+    onAnnounce.mockClear();
+    onUnannounce.mockClear();
   });
 
   describe('constructor', () => {
@@ -169,60 +180,69 @@ describe('NetworkTablesSocket', () => {
     });
   });
 
-  // describe('onmessage', () => {
-  //   it('should call the binary frame handler for a binary message', () => {
-  //     const message: BinaryMessage = [0, 0, 1, 1.0];
+  describe('onmessage', () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip('should call the binary frame handler for a binary message', () => {
+      const message: BinaryMessage = [0, 0, 1, 1.0];
 
-  //     // Trigger the onmessage event
-  //     socket['onMessage']({
-  //       data: encode(message) as ArrayBuffer,
-  //     } as MessageEvent);
+      // Trigger the onmessage event
+      server.send(encode(message));
 
-  //     expect(onTopicUpdate).toHaveBeenCalledWith({
-  //       topicId: message[0],
-  //       serverTime: message[1],
-  //       typeInfo: Util.getNetworkTablesTypeFromTypeNum(message[2]),
-  //       value: message[3],
-  //     });
-  //   });
+      expect(onTopicUpdate).toHaveBeenCalledWith({
+        topicId: message[0],
+        serverTime: message[1],
+        typeInfo: Util.getNetworkTablesTypeFromTypeNum(message[2]),
+        value: message[3],
+      });
+    });
 
-  //   it('should call the onAnnounce handler for an announce message', () => {
-  //     const params: AnnounceMessageParams = {
-  //       type: 'boolean',
-  //       name: 'foo',
-  //       id: 0,
-  //       properties: {},
-  //     };
-  //     const message: AnnounceMessage = {
-  //       method: 'announce',
-  //       params,
-  //     };
+    it('should call the onAnnounce handler for an announce message', () => {
+      const params: AnnounceMessageParams = {
+        type: 'boolean',
+        name: 'foo',
+        id: 0,
+        properties: {},
+      };
+      const message: AnnounceMessage = {
+        method: 'announce',
+        params,
+      };
 
-  //     // Trigger the onmessage event
-  //     socket['onMessage']({
-  //       data: JSON.stringify([message]),
-  //     } as MessageEvent);
+      server.send(JSON.stringify([message]));
 
-  //     expect(onAnnounce).toHaveBeenCalledWith(params);
-  //   });
+      expect(onAnnounce).toHaveBeenCalledWith(params);
+    });
 
-  //   it('should call the onUnannounce handler for an unannounce message', () => {
-  //     const params: UnannounceMessageParams = {
-  //       name: 'foo',
-  //       id: 0,
-  //     };
+    it('should call the onUnannounce handler for an unannounce message', () => {
+      const params: UnannounceMessageParams = {
+        name: 'foo',
+        id: 0,
+      };
 
-  //     const message: UnannounceMessage = {
-  //       method: 'unannounce',
-  //       params,
-  //     };
+      const message: UnannounceMessage = {
+        method: 'unannounce',
+        params,
+      };
 
-  //     // Trigger the onmessage event
-  //     socket['onMessage']({
-  //       data: JSON.stringify([message]),
-  //     } as MessageEvent);
+      server.send(JSON.stringify([message]));
 
-  //     expect(onUnannounce).toHaveBeenCalledWith(params);
-  //   });
-  // });
+      expect(onUnannounce).toHaveBeenCalledWith(params);
+    });
+  });
+
+  it('should call the onProperties handler for an properties message', () => {
+    const params: PropertiesMessageParams = {
+      name: 'foo',
+      ack: true,
+    };
+
+    const message: PropertiesMessage = {
+      method: 'properties',
+      params,
+    };
+
+    server.send(JSON.stringify([message]));
+
+    expect(onProperties).toHaveBeenCalledWith(params);
+  });
 });
