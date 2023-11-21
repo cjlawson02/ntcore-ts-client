@@ -47,7 +47,7 @@ describe('PubSubClient', () => {
     const topic = { name: 'test', announce: jest.fn() };
     client.registerTopic(topic as never);
     client['onTopicAnnounce']({ id: 123, name: 'test' } as never);
-    expect(topic.announce).toHaveBeenCalledWith(123);
+    expect(topic.announce).toHaveBeenCalledWith(123, undefined);
   });
 
   it('handles unannouncements for a topic', () => {

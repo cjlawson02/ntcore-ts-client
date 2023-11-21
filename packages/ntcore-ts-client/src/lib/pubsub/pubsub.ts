@@ -100,7 +100,7 @@ export class PubSubClient {
       console.warn(`Topic ${params.name} was announced, but does not exist`);
       return;
     }
-    topic.announce(params.id);
+    topic.announce(params.id, params.pubuid);
   };
 
   /**
