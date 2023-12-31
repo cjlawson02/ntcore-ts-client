@@ -23,17 +23,13 @@
     },
     "lint": {
       "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"],
-      "options": {
-        "lintFilePatterns": ["packages/ntcore-ts-client/**/*.ts"]
-      }
+      "outputs": ["{options.outputFile}"]
     },
     "lint:fix": {
       "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
-        "fix": true,
-        "lintFilePatterns": ["packages/ntcore-ts-client/**/*.ts"]
+        "fix": true
       }
     },
     "test": {
