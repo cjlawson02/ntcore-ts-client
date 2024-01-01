@@ -11,7 +11,9 @@
         "outputPath": "dist/packages/ntcore-ts-client",
         "main": "packages/ntcore-ts-client/src/index.ts",
         "tsConfig": "packages/ntcore-ts-client/tsconfig.lib.json",
-        "assets": ["packages/ntcore-ts-client/*.md"]
+        "assets": ["packages/ntcore-ts-client/*.md"],
+        "updateBuildableProjectDepsInPackageJson": true,
+        "buildableProjectDepsInPackageJsonType": "dependencies"
       }
     },
     "publish": {
