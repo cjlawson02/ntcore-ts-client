@@ -127,8 +127,6 @@ export class PubSubClient {
         console.warn(`Topic ${params.name} properties were updated, but does not exist`);
         return;
       }
-
-      topic.ackProperties();
     }
   };
 

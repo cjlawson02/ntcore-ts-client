@@ -1,3 +1,5 @@
+import { messageSchema } from '../types/schemas';
+
 import { NetworkTablesSocket } from './socket';
 
 import type { NetworkTablesTopic } from '../pubsub/topic';
@@ -15,7 +17,10 @@ import type {
   AnnounceMessageParams,
   UnannounceMessageParams,
   PropertiesMessageParams,
+  AnnounceMessage,
+  PropertiesMessage,
 } from '../types/types';
+import type { MessageEvent as WS_MessageEvent } from 'ws';
 
 /** NetworkTables client. */
 export class Messenger {
@@ -129,25 +134,68 @@ export class Messenger {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   onSocketClose = () => {};
 
+  private parseAndFilterMessage<T extends Message>(
+    event: MessageEvent | WS_MessageEvent,
+    method: Message['method']
+  ): T | null {
+    if (!(event.data instanceof ArrayBuffer) && !(event.data instanceof Uint8Array)) {
+      const messageData = JSON.parse(event.data);
+      const messages = messageSchema.parse(messageData);
+      for (const message of messages) {
+        if (message.method === method) {
+          return message as T;
+        }
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Publishes a topic to the server.
    * @param params - The publication parameters.
    * @param force - Whether to force the publication.
+   * @returns The announcement parameters.
    */
-  publish(params: PublishMessageParams, force?: boolean) {
-    // Check if the topic is already published
-    if (this.publications.has(params.pubuid) && !force) return;
-
-    // Add the topic to the list of published topics
-    this.publications.set(params.pubuid, params);
-
+  async publish(params: PublishMessageParams, force?: boolean): Promise<AnnounceMessage> {
     // Send the message to the server
     const message: PublishMessage = {
       method: 'publish',
       params,
     };
 
-    this._socket.sendTextFrame(message);
+    return new Promise((resolve, reject) => {
+      // Check if the topic is already published
+      if (this.publications.has(params.pubuid) && !force) reject(new Error('Topic is already published'));
+
+      // Listen for the announcement
+      const resolver = (message: AnnounceMessage) => {
+        this.socket.websocket.removeEventListener('message', wsHandler);
+        // Add the topic to the list of published topics
+        this.publications.set(params.pubuid, params);
+
+        resolve(message);
+      };
+
+      const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
+        const message = this.parseAndFilterMessage<AnnounceMessage>(event, 'announce');
+        if (message && message.params.name === params.name) {
+          resolver(message);
+        }
+      };
+
+      this.socket.websocket.addEventListener('message', wsHandler);
+
+      // Send the message to the server
+      this._socket.sendTextFrame(message);
+
+      // Reject the promise if the topic is not announced within 3 seconds
+      setTimeout(() => {
+        if (this.socket.isConnected()) {
+          reject(new Error(`Topic ${params.name} was not announced within 3 seconds`));
+        }
+      }, 3000);
+    });
   }
 
   /**
@@ -214,16 +262,42 @@ export class Messenger {
   /**
    * Sets the properties of a topic.
    * @param params - The parameters to set
+   * @returns The new properties of the topic.
    */
-  setProperties(params: SetPropertiesMessageParams) {
+  async setProperties(params: SetPropertiesMessageParams): Promise<PropertiesMessage> {
     // Create the message to send to the server
     const message: SetPropertiesMessage = {
       method: 'setproperties',
       params,
     };
 
-    // Send the message to the server
-    this._socket.sendTextFrame(message);
+    return new Promise((resolve, reject) => {
+      const resolver = (message: PropertiesMessage) => {
+        this._socket.websocket.removeEventListener('message', wsHandler);
+        clearInterval(responseCheck);
+        resolve(message);
+      };
+
+      const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
+        const message = this.parseAndFilterMessage<PropertiesMessage>(event, 'announce');
+        if (message?.params.ack) {
+          resolver(message);
+        }
+      };
+
+      this._socket.websocket.addEventListener('message', wsHandler);
+
+      // Send the message to the server
+      this._socket.sendTextFrame(message);
+
+      // Reject the promise if the topic is not announced within 3 seconds
+
+      const responseCheck = setInterval(() => {
+        if (this.socket.isConnected()) {
+          reject(new Error(`Topic ${params.name} was not announced within 3 seconds`));
+        }
+      }, 3000);
+    });
   }
 
   /**

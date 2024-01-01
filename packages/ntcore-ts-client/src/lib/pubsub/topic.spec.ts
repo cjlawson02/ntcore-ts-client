@@ -5,16 +5,22 @@ import { NetworkTablesTypeInfos } from '../types/types';
 import { PubSubClient } from './pubsub';
 import { NetworkTablesTopic } from './topic';
 
-import type { SubscribeMessageParams } from '../types/types';
+import type { AnnounceMessage, SubscribeMessageParams } from '../types/types';
 
 describe('Topic', () => {
   let topic: NetworkTablesTopic<string>;
+  let server: WSMock;
   let client: PubSubClient;
   const serverUrl = 'ws://localhost:5810/nt/1234';
-  beforeEach(() => {
-    client = PubSubClient.getInstance(serverUrl);
-    client.messenger.socket.stopAutoConnect();
 
+  beforeAll(async () => {
+    server = new WSMock(serverUrl);
+    client = PubSubClient.getInstance(serverUrl);
+
+    await server.connected;
+  });
+
+  beforeEach(() => {
     topic = new NetworkTablesTopic<string>(client, 'test', NetworkTablesTypeInfos.kString, 'default');
   });
 
@@ -62,12 +68,21 @@ describe('Topic', () => {
 
     it('allows the value to be set if the client is the publisher', async () => {
       setTimeout(() => {
-        topic.announce(1, 1);
+        const announceMessage: AnnounceMessage = {
+          method: 'announce',
+          params: {
+            name: 'test',
+            id: 1,
+            pubuid: 1234,
+            type: 'string',
+            properties: {},
+          },
+        };
+        server.send(JSON.stringify([announceMessage]));
       }, 100);
-      await topic.publish({}, 1);
+      await topic.publish({}, 1234);
       topic.setValue('new value');
       expect(topic.getValue()).toEqual('new value');
-      topic.announce(1);
     });
   });
 
@@ -204,18 +219,38 @@ describe('Topic', () => {
   describe('publish', () => {
     it('sets the publisher to the client', async () => {
       setTimeout(() => {
-        topic.announce(1, 1);
+        const announceMessage: AnnounceMessage = {
+          method: 'announce',
+          params: {
+            name: 'test',
+            id: 1,
+            pubuid: 1000,
+            type: 'string',
+            properties: {},
+          },
+        };
+        server.send(JSON.stringify([announceMessage]));
       }, 100);
-      await topic.publish({}, 1);
+      await topic.publish({}, 1000);
       expect(topic.publisher).toBe(true);
       expect(topic.pubuid).toBeDefined();
     });
 
     it('does not set the publisher if the client is already the publisher', async () => {
       setTimeout(() => {
-        topic.announce(1, 1);
+        const announceMessage: AnnounceMessage = {
+          method: 'announce',
+          params: {
+            name: 'test',
+            id: 1,
+            pubuid: 1111,
+            type: 'string',
+            properties: {},
+          },
+        };
+        server.send(JSON.stringify([announceMessage]));
       }, 100);
-      await topic.publish({}, 1);
+      await topic.publish({}, 1111);
       const id = topic.pubuid;
 
       await topic.publish();
@@ -225,9 +260,6 @@ describe('Topic', () => {
     it('should throw an error if the topic is not announced', async () => {
       try {
         topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
-        client.messenger.reinstantiate(serverUrl + '1');
-        new WSMock(serverUrl + '1');
-        await client.messenger.socket.waitForConnection();
         await topic.publish({}, 1);
         fail('Topic should have not been announced');
       } catch (e) {
@@ -239,9 +271,19 @@ describe('Topic', () => {
   describe('unpublish', () => {
     it('sets the publisher to false', async () => {
       setTimeout(() => {
-        topic.announce(1, 1);
+        const announceMessage: AnnounceMessage = {
+          method: 'announce',
+          params: {
+            name: 'test',
+            id: 1,
+            pubuid: 1001,
+            type: 'string',
+            properties: {},
+          },
+        };
+        server.send(JSON.stringify([announceMessage]));
       }, 100);
-      await topic.publish({}, 1);
+      await topic.publish({}, 1001);
       expect(topic.publisher).toBe(true);
       topic.unpublish();
       expect(topic.publisher).toBe(false);

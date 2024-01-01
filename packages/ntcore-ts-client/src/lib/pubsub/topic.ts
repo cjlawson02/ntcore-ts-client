@@ -2,8 +2,10 @@ import { Util } from '../util/util';
 
 import type { PubSubClient } from './pubsub';
 import type {
+  AnnounceMessage,
   NetworkTablesTypeInfo,
   NetworkTablesTypes,
+  PropertiesMessage,
   PublishMessageParams,
   SetPropertiesMessageParams,
   SubscribeMessageParams,
@@ -22,8 +24,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   private _publisher: boolean;
   private _pubuid?: number;
   private _publishProperties?: TopicProperties;
-  private _publishPromise?: (value?: void | PromiseLike<void> | undefined) => void;
-  private _propertyPromise?: (value?: void | PromiseLike<void> | undefined) => void;
   private _subscribers: Map<
     number,
     {
@@ -170,7 +170,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
     this._id = id;
     if (pubuid === this._pubuid) {
       this._publisher = true;
-      this._publishPromise?.();
     }
   }
 
@@ -178,11 +177,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   unannounce() {
     this._announced = false;
     this._id = undefined;
-  }
-
-  /** Called after a setProperties message is ack by the server */
-  ackProperties() {
-    this._propertyPromise?.();
   }
 
   /** */
@@ -266,8 +260,8 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
    * @param id - The UID of the publisher.
    * @returns A promise that resolves when the topic is published.
    */
-  publish(properties: TopicProperties = {}, id?: number): Promise<void> {
-    if (this.publisher) return Promise.resolve();
+  async publish(properties: TopicProperties = {}, id?: number): Promise<AnnounceMessage | void> {
+    if (this.publisher) return;
 
     this._pubuid = id ?? Util.generateUid();
     this._publishProperties = properties;
@@ -279,22 +273,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
       properties,
     };
 
-    return new Promise<void>((resolve, reject) => {
-      // Register the promise resolver
-      this._publishPromise = resolve;
-
-      // Send the publish request
-      this.client.messenger.publish(publishParams);
-
-      // Set a timeout to reject the promise if the topic is not announced
-      if (this.client.messenger.socket.isConnected()) {
-        setTimeout(() => {
-          if (!this.announced) {
-            reject(new Error(`Topic ${this.name} was not announced within 3 seconds`));
-          }
-        }, 3000);
-      }
-    });
+    return await this.client.messenger.publish(publishParams);
   }
 
   /**
@@ -314,8 +293,9 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   /**
    * Republishes the topic.
    * @param client - The client to republish with.
+   * @returns A promise that resolves when the topic is republished.
    */
-  republish(client: PubSubClient) {
+  async republish(client: PubSubClient) {
     this.client = client;
     if (!this.publisher || !this._pubuid) {
       throw new Error('Cannot republish topic without being the publisher');
@@ -323,15 +303,16 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
     this._publisher = false;
 
-    this.publish(this._publishProperties, this._pubuid);
+    return await this.publish(this._publishProperties, this._pubuid);
   }
 
   /**
    * Sets the properties of the topic.
    * @param persistent - If true, the last set value will be periodically saved to persistent storage on the server and be restored during server startup. Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
    * @param retained - Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
+   * @returns The server's response.
    */
-  setProperties(persistent?: boolean, retained?: boolean) {
+  async setProperties(persistent?: boolean, retained?: boolean): Promise<PropertiesMessage> {
     const setPropertiesParams: SetPropertiesMessageParams = {
       name: this.name,
       update: {
@@ -340,21 +321,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
       },
     };
 
-    return new Promise<void>((resolve, reject) => {
-      // Register the promise resolver
-      this._propertyPromise = resolve;
-
-      // Send the set properties request
-      this.client.messenger.setProperties(setPropertiesParams);
-
-      // Set a timeout to reject the promise if the topic is not announced
-      if (this.client.messenger.socket.isConnected()) {
-        setTimeout(() => {
-          if (!this.announced) {
-            reject(new Error(`Topic ${this.name} property change was not acknowledged within 3 seconds`));
-          }
-        }, 3000);
-      }
-    });
+    // Send the set properties request
+    return await this.client.messenger.setProperties(setPropertiesParams);
   }
 }

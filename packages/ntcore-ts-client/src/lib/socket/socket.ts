@@ -17,9 +17,11 @@ import type {
 } from '../types/types';
 import type { CloseEvent as WS_CloseEvent, MessageEvent as WS_MessageEvent, ErrorEvent as WS_ErrorEvent } from 'ws';
 
-/** Socket for NetworkTables 4.0 */
+/** Socket for NetworkTables 4.1 */
 export class NetworkTablesSocket {
   private static instances = new Map<string, NetworkTablesSocket>();
+  private static readonly PROTOCOL = 'v4.1.networktables.first.wpi.edu';
+  private static readonly RTT_PROTOCOL = 'rtt.networktables.first.wpi.edu';
   private readonly connectionListeners = new Set<(_: boolean) => void>();
   private lastHeartbeatDate = 0;
   private offset = 0;
@@ -29,6 +31,8 @@ export class NetworkTablesSocket {
   get websocket() {
     return this._websocket;
   }
+
+  private _rttWebsocket: WebSocket;
 
   set websocket(websocket: WebSocket) {
     this._websocket = websocket;
@@ -67,7 +71,8 @@ export class NetworkTablesSocket {
     autoConnect: boolean
   ) {
     // Connect to the server using the provided URL
-    this._websocket = new WebSocket(serverUrl, 'networktables.first.wpi.edu');
+    this._websocket = new WebSocket(serverUrl, NetworkTablesSocket.PROTOCOL);
+    this._rttWebsocket = new WebSocket(serverUrl, NetworkTablesSocket.RTT_PROTOCOL);
     this.serverUrl = serverUrl;
     this.onSocketOpen = onSocketOpen;
     this.onSocketClose = onSocketClose;
@@ -136,12 +141,12 @@ export class NetworkTablesSocket {
         // eslint-disable-next-line no-console
         console.info('Robot Connected!');
         this.sendQueuedMessages();
+      };
 
+      this._rttWebsocket.onopen = () => {
         // Start heartbeat
         heartbeatInterval = setInterval(() => {
-          if (this.isConnected()) {
-            this.heartbeat();
-          }
+          this.heartbeat();
         }, 1000);
       };
 
@@ -159,17 +164,21 @@ export class NetworkTablesSocket {
         if (this.autoConnect) {
           console.warn('Reconnect will be attempted in 1 second.');
           setTimeout(() => {
-            this._websocket = new WebSocket(this.serverUrl, 'networktables.first.wpi.edu');
+            this._websocket = new WebSocket(this.serverUrl, NetworkTablesSocket.PROTOCOL);
+            this._rttWebsocket = new WebSocket(this.serverUrl, NetworkTablesSocket.RTT_PROTOCOL);
             this.init();
           }, 1000);
         }
       };
 
       this._websocket.binaryType = 'arraybuffer';
+      this._rttWebsocket.binaryType = 'arraybuffer';
 
       // Set up event listeners for messages and errors
       this._websocket.onmessage = (event: MessageEvent | WS_MessageEvent) => this.onMessage(event);
       this._websocket.onerror = (event: Event | WS_ErrorEvent) => this.onError(event);
+      this._rttWebsocket.onmessage = (event: MessageEvent | WS_MessageEvent) => this.onRTTMessage(event);
+      this._rttWebsocket.onerror = (event: Event | WS_ErrorEvent) => this.onError(event);
     }
   }
 
@@ -180,7 +189,7 @@ export class NetworkTablesSocket {
   reinstantiate(serverUrl: string) {
     this.close();
     this.serverUrl = serverUrl;
-    this._websocket = new WebSocket(this.serverUrl, 'networktables.first.wpi.edu');
+    this._websocket = new WebSocket(this.serverUrl, NetworkTablesSocket.PROTOCOL);
     this.init();
   }
 
@@ -295,6 +304,12 @@ export class NetworkTablesSocket {
     }
   }
 
+  private onRTTMessage(event: MessageEvent | WS_MessageEvent) {
+    if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
+      this.handleBinaryFrame(event.data);
+    }
+  }
+
   /**
    * Handle an error from the websocket.
    * @param event - The error event.
@@ -323,10 +338,7 @@ export class NetworkTablesSocket {
       // Heartbeat message
       if (messageData.topicId === -1) {
         this.handleRTT(messageData.serverTime);
-      }
-
-      // Normal message
-      else {
+      } else {
         this.onTopicUpdate(messageData);
       }
     }
