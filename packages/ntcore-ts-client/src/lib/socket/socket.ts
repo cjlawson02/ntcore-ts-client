@@ -20,23 +20,32 @@ import type { CloseEvent as WS_CloseEvent, MessageEvent as WS_MessageEvent, Erro
 /** Socket for NetworkTables 4.1 */
 export class NetworkTablesSocket {
   private static instances = new Map<string, NetworkTablesSocket>();
-  private static readonly PROTOCOL = 'v4.1.networktables.first.wpi.edu';
+  private static readonly PROTOCOL_V4_0 = 'networktables.first.wpi.edu';
+  private static readonly PROTOCOL_V4_1 = 'v4.1.networktables.first.wpi.edu';
   private static readonly RTT_PROTOCOL = 'rtt.networktables.first.wpi.edu';
+  private static readonly RECONNECT_TIMEOUT = 1000;
+  private static readonly RTT_PERIOD_V4_0 = 1000;
+  private static readonly RTT_PERIOD_V4_1 = 250;
+  private static readonly TIMEOUT_V4_1 = 1000;
+
   private readonly connectionListeners = new Set<(_: boolean) => void>();
   private lastHeartbeatDate = 0;
   private offset = 0;
   private bestRtt = -1;
+
+  private _rttWebsocket: WebSocket | null = null;
 
   private _websocket: WebSocket;
   get websocket() {
     return this._websocket;
   }
 
-  private _rttWebsocket: WebSocket;
-
   set websocket(websocket: WebSocket) {
     this._websocket = websocket;
   }
+
+  private _disconnectTimout: NodeJS.Timeout | null = null;
+
   private serverUrl: string;
 
   private readonly onSocketOpen: () => void;
@@ -71,7 +80,7 @@ export class NetworkTablesSocket {
     autoConnect: boolean
   ) {
     // Connect to the server using the provided URL
-    this._websocket = new WebSocket(serverUrl, NetworkTablesSocket.PROTOCOL);
+    this._websocket = new WebSocket(serverUrl, [NetworkTablesSocket.PROTOCOL_V4_1, NetworkTablesSocket.PROTOCOL_V4_0]);
     this._rttWebsocket = new WebSocket(serverUrl, NetworkTablesSocket.RTT_PROTOCOL);
     this.serverUrl = serverUrl;
     this.onSocketOpen = onSocketOpen;
@@ -143,12 +152,32 @@ export class NetworkTablesSocket {
         this.sendQueuedMessages();
       };
 
-      this._rttWebsocket.onopen = () => {
+      if (this._websocket.protocol === 'v4.1.networktables.first.wpi.edu') {
+        // eslint-disable-next-line no-console
+        console.info('Connected on NT 4.1');
+        this.initializeRTTWebsocket();
+      } else {
+        // eslint-disable-next-line no-console
+        console.info('Connected on NT 4.0');
+      }
+
+      // If running NT 4.1, start websocket heartbeat for RTT
+      if (this._rttWebsocket !== null) {
+        this._rttWebsocket.onopen = () => {
+          // Start heartbeat
+          heartbeatInterval = setInterval(() => {
+            this.heartbeat();
+          }, NetworkTablesSocket.RTT_PERIOD_V4_1);
+        };
+      } else {
         // Start heartbeat
+        // Only send heartbeat at this rate if we are on NT 4.0
         heartbeatInterval = setInterval(() => {
-          this.heartbeat();
-        }, 1000);
-      };
+          if (this.isConnected()) {
+            this.heartbeat();
+          }
+        }, NetworkTablesSocket.RTT_PERIOD_V4_0);
+      }
 
       // Close handler
       this._websocket.onclose = (e: CloseEvent | WS_CloseEvent) => {
@@ -162,23 +191,61 @@ export class NetworkTablesSocket {
 
         // Attempt to reconnect
         if (this.autoConnect) {
-          console.warn('Reconnect will be attempted in 1 second.');
+          console.warn(`Reconnect will be attempted in ${NetworkTablesSocket.RECONNECT_TIMEOUT} milliseconds.`);
           setTimeout(() => {
-            this._websocket = new WebSocket(this.serverUrl, NetworkTablesSocket.PROTOCOL);
+            this._websocket = new WebSocket(this.serverUrl, [
+              NetworkTablesSocket.PROTOCOL_V4_1,
+              NetworkTablesSocket.PROTOCOL_V4_0,
+            ]);
             this._rttWebsocket = new WebSocket(this.serverUrl, NetworkTablesSocket.RTT_PROTOCOL);
             this.init();
-          }, 1000);
+          }, NetworkTablesSocket.RECONNECT_TIMEOUT);
         }
       };
 
       this._websocket.binaryType = 'arraybuffer';
-      this._rttWebsocket.binaryType = 'arraybuffer';
+
+      if (this._rttWebsocket !== null) {
+        this._rttWebsocket.binaryType = 'arraybuffer';
+      }
 
       // Set up event listeners for messages and errors
       this._websocket.onmessage = (event: MessageEvent | WS_MessageEvent) => this.onMessage(event);
       this._websocket.onerror = (event: Event | WS_ErrorEvent) => this.onError(event);
-      this._rttWebsocket.onmessage = (event: MessageEvent | WS_MessageEvent) => this.onRTTMessage(event);
+
+      if (this._rttWebsocket !== null) {
+        this._rttWebsocket.onmessage = (event: MessageEvent | WS_MessageEvent) => this.onRTTMessage(event);
+        this._rttWebsocket.onerror = (event: Event | WS_ErrorEvent) => this.onError(event);
+      }
+    }
+  }
+
+  private initializeRTTWebsocket() {
+    if (this._rttWebsocket === null) {
+      this._rttWebsocket = new WebSocket(this.serverUrl, NetworkTablesSocket.RTT_PROTOCOL);
+      this._rttWebsocket.binaryType = 'arraybuffer';
+      this.resetTimeout();
+      this._rttWebsocket.onmessage = (event: MessageEvent | WS_MessageEvent) => this.onMessage(event);
       this._rttWebsocket.onerror = (event: Event | WS_ErrorEvent) => this.onError(event);
+    }
+  }
+
+  /**
+   * Handle resetting the timeout for auto disconnect if no heartbeat is received in a certain amount of time.
+   *
+   * This will only be used for NT 4.1 currently to preserve old behavior.
+   */
+  private resetTimeout() {
+    if (this._disconnectTimout !== null) {
+      clearTimeout(this._disconnectTimout);
+    }
+    if (this._rttWebsocket !== null) {
+      this._disconnectTimout = setTimeout(() => {
+        // eslint-disable-next-line no-console
+        console.error(`No NT heartbeat received in ${NetworkTablesSocket.TIMEOUT_V4_1} ms. Closing...`);
+        this._websocket.close();
+        this._rttWebsocket?.close();
+      }, NetworkTablesSocket.TIMEOUT_V4_1);
     }
   }
 
@@ -189,7 +256,10 @@ export class NetworkTablesSocket {
   reinstantiate(serverUrl: string) {
     this.close();
     this.serverUrl = serverUrl;
-    this._websocket = new WebSocket(this.serverUrl, NetworkTablesSocket.PROTOCOL);
+    this._websocket = new WebSocket(this.serverUrl, [
+      NetworkTablesSocket.PROTOCOL_V4_1,
+      NetworkTablesSocket.PROTOCOL_V4_0,
+    ]);
     this.init();
   }
 
@@ -295,6 +365,7 @@ export class NetworkTablesSocket {
    * @param event - The message event.
    */
   private onMessage(event: MessageEvent | WS_MessageEvent) {
+    this.resetTimeout();
     this.connectionListeners?.forEach((f) => f(this.isConnected()));
 
     if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
@@ -497,6 +568,7 @@ export class NetworkTablesSocket {
    */
   close() {
     this._websocket.close();
+    this._rttWebsocket?.close();
   }
 }
 
