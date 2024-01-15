@@ -24,8 +24,9 @@ jobs:
       - run: git branch --track main origin/main
 
       - run: npx nx format:check
-      - run: npx nx affected -t build
-      - run: npx nx affected -t lint,test --parallel=3
+      - run: npx nx run-many -t build
+      - run: npx nx run-many -t lint
+      - run: npx nx run-many -t test --coverage
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
