@@ -225,7 +225,7 @@ export const msgPackValueSchema = z.union([
 /** Schema for a binary message in the msgpack format. */
 export const msgPackSchema = z.tuple([
   z.union([z.number().int().nonnegative(), z.literal(-1)]),
-  z.number().int().nonnegative(),
+  z.number().int(),
   typeNumSchema,
   msgPackValueSchema,
 ]);
