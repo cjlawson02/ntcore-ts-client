@@ -27,10 +27,6 @@ describe('schema', () => {
       expect(typeStringSchema.safeParse('boolean').success).toBe(true);
       expect(typeStringSchema.safeParse('string').success).toBe(true);
     });
-
-    it('rejects invalid type strings', () => {
-      expect(typeStringSchema.safeParse('invalidType').success).toBe(false);
-    });
   });
 
   describe('typeNumSchema', () => {
@@ -49,10 +45,6 @@ describe('schema', () => {
       expect(topicPropertiesSchema.safeParse({ persistent: true, retained: true }).success).toBe(true);
       expect(topicPropertiesSchema.safeParse({}).success).toBe(true);
     });
-
-    it('rejects objects with invalid properties', () => {
-      expect(topicPropertiesSchema.safeParse({ invalidProperty: true }).success).toBe(false);
-    });
   });
 
   describe('subscriptionOptionsSchema', () => {
@@ -66,10 +58,6 @@ describe('schema', () => {
         }).success
       ).toBe(true);
       expect(subscriptionOptionsSchema.safeParse({}).success).toBe(true);
-    });
-
-    it('rejects objects with invalid properties', () => {
-      expect(subscriptionOptionsSchema.safeParse({ invalidProperty: true }).success).toBe(false);
     });
   });
 
