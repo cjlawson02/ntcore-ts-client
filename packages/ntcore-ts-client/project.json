@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/ntcore-ts-client/src",
   "projectType": "library",
+  "tags": [],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -24,12 +25,10 @@
       "dependsOn": ["build"]
     },
     "lint": {
-      "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"]
+      "executor": "@nx/eslint:lint"
     },
     "lint:fix": {
       "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"],
       "options": {
         "fix": true
       }
@@ -47,6 +46,5 @@
         "command": "npx typedoc packages/ntcore-ts-client/src/index.ts --tsconfig packages/ntcore-ts-client/tsconfig.lib.json --excludeExternals true --readme none && git add docs/"
       }
     }
-  },
-  "tags": []
+  }
 }

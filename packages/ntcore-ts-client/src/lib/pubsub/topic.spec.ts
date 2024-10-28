@@ -170,12 +170,12 @@ describe('Topic', () => {
       const options = {};
       topic.subscribe(callback, true, options);
       expect(topic.subscribers.size).toBe(1);
-      topic.unsubscribe(topic.subscribers.keys().next().value, true);
+      topic.unsubscribe(topic.subscribers.keys().next().value!, true);
       expect(topic.subscribers.size).toBe(0);
     });
     it('does nothing if the callback is not a subscriber', () => {
       expect(topic.subscribers.size).toBe(0);
-      topic.unsubscribe(topic.subscribers.keys().next().value);
+      topic.unsubscribe(topic.subscribers.keys().next().value!);
       expect(topic.subscribers.size).toBe(0);
     });
   });

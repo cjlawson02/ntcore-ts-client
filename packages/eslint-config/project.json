@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/eslint-config/src",
   "projectType": "library",
+  "tags": [],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -16,17 +17,14 @@
     },
     "lint": {
       "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"],
       "dependsOn": ["build"]
     },
     "lint:fix": {
       "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"],
       "dependsOn": ["build"],
       "options": {
         "fix": true
       }
     }
-  },
-  "tags": []
+  }
 }
