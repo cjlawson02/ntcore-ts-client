@@ -20,8 +20,6 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - uses: nrwl/nx-set-shas@v4
-      # This line is needed for nx affected to work when CI is running on a PR
-      - run: git branch --track main origin/main
 
       - run: npx nx format:check
       - run: npx nx run-many -t build
