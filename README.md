@@ -83,19 +83,19 @@ createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesT
 Once a topic has been created, it can be used as a subscriber:
 
 ```typescript
- subscribe(
-    callback: (_: T | null) => void,
-    immediateNotify = false,
-    options: SubscribeOptions = {},
-    id?: number,
-    save = true
-  )
+subscribe(
+  callback: (_: T | null) => void,
+  immediateNotify = false,
+  options: SubscribeOptions = {},
+  id?: number,
+  save = true
+)
 ```
 
 and/or a publisher:
 
 ```typescript
-publish(properties: TopicProperties = {}, id?: number)
+await publish(properties: TopicProperties = {}, id?: number)
 ```
 
 For example, here's a subscription for a Gyro:
@@ -127,7 +127,7 @@ const ntcore = NetworkTables.getInstanceByTeam(973);
 const autoModeTopic = ntcore.createTopic<string>('/MyTable/autoMode', NetworkTablesTypeInfos.kString, 'No Auto');
 
 // Make us the publisher
-autoModeTopic.publish();
+await autoModeTopic.publish();
 
 // Set a new value, this will error if we aren't the publisher!
 autoModeTopic.setValue('25 Ball Auto and Climb');

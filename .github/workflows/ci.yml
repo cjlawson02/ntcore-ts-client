@@ -14,15 +14,22 @@ jobs:
         with:
           fetch-depth: 0
       # Cache node_modules
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
       - run: npm ci
-      - uses: nrwl/nx-set-shas@v3
+      - uses: nrwl/nx-set-shas@v4
       # This line is needed for nx affected to work when CI is running on a PR
       - run: git branch --track main origin/main
 
       - run: npx nx format:check
-      - run: npx nx affected -t build
-      - run: npx nx affected -t lint,test --parallel=3
+      - run: npx nx run-many -t build
+      - run: npx nx run-many -t lint
+      - run: npx nx run-many -t test --coverage
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          flags: unittests

@@ -57,18 +57,6 @@ export class NetworkTables {
   }
 
   /**
-   * DEPRECATED: Creates a new NetworkTables instance if it does not exist.
-   * @deprecated Use {@link NetworkTables#getInstanceByTeam} instead.
-   * @param team - The team number of the robot.
-   * @param port - The port to connect to the robot on. Defaults to 5810.
-   * @returns The NetworkTables instance.
-   * @throws Error if the team number is not provided.
-   */
-  static createInstanceByTeam(team: number, port = 5810) {
-    return this.getInstanceByTeam(team, port);
-  }
-
-  /**
    * Creates a new NetworkTables instance if it does not exist.
    * @param team - The team number of the robot.
    * @param port - The port to connect to the robot on. Defaults to 5810.
@@ -81,18 +69,6 @@ export class NetworkTables {
       instance = new this({ team, port });
     }
     return instance;
-  }
-
-  /**
-   * DEPRECATED: Creates a new NetworkTables instance if it does not exist.
-   * @deprecated Use {@link NetworkTables#getInstanceByURI} instead.
-   * @param uri - The URI of the robot.
-   * @param port - The port to connect to the robot on. Defaults to 5810.
-   * @returns The NetworkTables instance.
-   * @throws Error if the URI is not provided.
-   */
-  static createInstanceByURI(uri: string, port = 5810) {
-    return this.getInstanceByURI(uri, port);
   }
 
   /**

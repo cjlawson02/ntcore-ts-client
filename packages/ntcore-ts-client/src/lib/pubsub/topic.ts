@@ -2,8 +2,10 @@ import { Util } from '../util/util';
 
 import type { PubSubClient } from './pubsub';
 import type {
+  AnnounceMessage,
   NetworkTablesTypeInfo,
   NetworkTablesTypes,
+  PropertiesMessage,
   PublishMessageParams,
   SetPropertiesMessageParams,
   SubscribeMessageParams,
@@ -21,6 +23,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   private _announced: boolean;
   private _publisher: boolean;
   private _pubuid?: number;
+  private _publishProperties?: TopicProperties;
   private _subscribers: Map<
     number,
     {
@@ -160,10 +163,14 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   /**
    * Marks the topic as announced. This should only be called by the PubSubClient.
    * @param id - The ID of the topic.
+   * @param pubuid - The UID of the publisher.
    */
-  announce(id: number) {
+  announce(id: number, pubuid?: number) {
     this._announced = true;
     this._id = id;
+    if (pubuid === this._pubuid) {
+      this._publisher = true;
+    }
   }
 
   /** Marks the topic as unannounced. This should only be called by the PubSubClient. */
@@ -251,11 +258,13 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
    * Publishes the topic.
    * @param properties - The properties to publish the topic with.
    * @param id - The UID of the publisher.
+   * @returns A promise that resolves when the topic is published.
    */
-  publish(properties: TopicProperties = {}, id?: number) {
+  async publish(properties: TopicProperties = {}, id?: number): Promise<AnnounceMessage | void> {
     if (this.publisher) return;
-    this._publisher = true;
+
     this._pubuid = id ?? Util.generateUid();
+    this._publishProperties = properties;
 
     const publishParams: PublishMessageParams = {
       type: this.typeInfo[1],
@@ -264,7 +273,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
       properties,
     };
 
-    this.client.messenger.publish(publishParams);
+    return await this.client.messenger.publish(publishParams);
   }
 
   /**
@@ -284,22 +293,26 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   /**
    * Republishes the topic.
    * @param client - The client to republish with.
+   * @returns A promise that resolves when the topic is republished.
    */
-  republish(client: PubSubClient) {
+  async republish(client: PubSubClient) {
     this.client = client;
     if (!this.publisher || !this._pubuid) {
       throw new Error('Cannot republish topic without being the publisher');
     }
 
-    this.publish({}, this._pubuid);
+    this._publisher = false;
+
+    return await this.publish(this._publishProperties, this._pubuid);
   }
 
   /**
    * Sets the properties of the topic.
    * @param persistent - If true, the last set value will be periodically saved to persistent storage on the server and be restored during server startup. Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
    * @param retained - Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
+   * @returns The server's response.
    */
-  setProperties(persistent?: boolean, retained?: boolean) {
+  async setProperties(persistent?: boolean, retained?: boolean): Promise<PropertiesMessage> {
     const setPropertiesParams: SetPropertiesMessageParams = {
       name: this.name,
       update: {
@@ -308,6 +321,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
       },
     };
 
-    this.client.messenger.setProperties(setPropertiesParams);
+    // Send the set properties request
+    return await this.client.messenger.setProperties(setPropertiesParams);
   }
 }

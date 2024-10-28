@@ -1,7 +1,7 @@
 {
   "name": "ntcore-ts-client",
-  "version": "0.2.2",
-  "license": "ISC",
+  "version": "2.0.0",
+  "license": "MIT",
   "keywords": [
     "ntcore",
     "networktables",

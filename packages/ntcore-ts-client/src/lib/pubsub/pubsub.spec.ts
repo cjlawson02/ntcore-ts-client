@@ -47,7 +47,7 @@ describe('PubSubClient', () => {
     const topic = { name: 'test', announce: jest.fn() };
     client.registerTopic(topic as never);
     client['onTopicAnnounce']({ id: 123, name: 'test' } as never);
-    expect(topic.announce).toHaveBeenCalledWith(123);
+    expect(topic.announce).toHaveBeenCalledWith(123, undefined);
   });
 
   it('handles unannouncements for a topic', () => {
@@ -56,5 +56,29 @@ describe('PubSubClient', () => {
     client['onTopicAnnounce']({ id: 123, name: 'test' } as never);
     client['onTopicUnannounce']({ name: 'test' } as never);
     expect(topic.unannounce).toHaveBeenCalled();
+  });
+
+  it('reinstantates topics', () => {
+    const topic = {
+      name: 'test',
+      publisher: true,
+      announce: jest.fn(),
+      resubscribeAll: jest.fn(),
+      republish: jest.fn(),
+    };
+    const topic2 = {
+      name: 'test2',
+      publisher: true,
+      announce: jest.fn(),
+      resubscribeAll: jest.fn(),
+      republish: jest.fn(),
+    };
+    client.registerTopic(topic as never);
+    client.registerTopic(topic2 as never);
+    client.reinstantiate('ws://localhost:5810');
+    expect(topic.resubscribeAll).toHaveBeenCalled();
+    expect(topic2.resubscribeAll).toHaveBeenCalled();
+    expect(topic.republish).toHaveBeenCalled();
+    expect(topic2.republish).toHaveBeenCalled();
   });
 });

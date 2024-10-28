@@ -5,6 +5,7 @@ import type {
   AnnounceMessageParams,
   BinaryMessageData,
   NetworkTablesTypes,
+  PropertiesMessageParams,
   UnannounceMessageParams,
 } from '../types/types';
 
@@ -24,7 +25,8 @@ export class PubSubClient {
       serverUrl,
       this.onTopicUpdate,
       this.onTopicAnnounce,
-      this.onTopicUnannounce
+      this.onTopicUnannounce,
+      this.onTopicProperties
     );
     this.topics = new Map();
 
@@ -58,6 +60,10 @@ export class PubSubClient {
    */
   reinstantiate(url: string) {
     this._messenger.reinstantiate(url);
+    this.topics.forEach((topic) => {
+      topic.resubscribeAll(this);
+      if (topic.publisher) topic.republish(this);
+    });
   }
 
   /**
@@ -81,7 +87,7 @@ export class PubSubClient {
       console.warn('Received message for unknown topic', message);
       return;
     }
-    this.updateTopic(topic.name, message.value, message.serverTime);
+    topic.updateValue(message.value, message.serverTime);
   };
 
   /**
@@ -91,10 +97,10 @@ export class PubSubClient {
   private onTopicAnnounce = (params: AnnounceMessageParams) => {
     const topic = this.topics.get(params.name);
     if (!topic) {
-      console.warn('Received announce for unknown topic', params);
+      console.warn(`Topic ${params.name} was announced, but does not exist`);
       return;
     }
-    this.announce(params.id, params.name);
+    topic.announce(params.id, params.pubuid);
   };
 
   /**
@@ -104,53 +110,25 @@ export class PubSubClient {
   private onTopicUnannounce = (params: UnannounceMessageParams) => {
     const topic = this.topics.get(params.name);
     if (!topic) {
-      console.warn('Received unannounce for unknown topic', params);
-      return;
-    }
-    this.unannounce(params.name);
-  };
-
-  /**
-   * Marks a topic as announced
-   * @param topicId - The ID of the topic to announce
-   * @param topicName - The name of the topic to announce
-   */
-  private announce(topicId: number, topicName: string) {
-    const topic = this.topics.get(topicName);
-    if (!topic) {
-      console.warn(`Topic ${topicName} was announced, but does not exist`);
-      return;
-    }
-    topic.announce(topicId);
-  }
-
-  /**
-   * Marks a topic as unannounced
-   * @param topicName - The name of the topic to unannounce
-   */
-  private unannounce(topicName: string) {
-    const topic = this.topics.get(topicName);
-    if (!topic) {
-      console.warn(`Topic ${topicName} was unannounced, but does not exist`);
+      console.warn(`Topic ${params.name} was unannounced, but does not exist`);
       return;
     }
     topic.unannounce();
-  }
+  };
 
   /**
-   * Updates a topic with a new value
-   * @param topicName - The name of the topic to update
-   * @param value - The new value of the topic
-   * @param lastChangedTime - The server time the topic was last changed
+   * Called by the messenger when a topic's properties are updated.
+   * @param params - The properties message parameters.
    */
-  private updateTopic(topicName: string, value: NetworkTablesTypes, lastChangedTime: number) {
-    const topic = this.topics.get(topicName);
-    if (!topic) {
-      console.warn(`Topic ${topicName} was updated, but does not exist`);
-      return;
+  private onTopicProperties = (params: PropertiesMessageParams) => {
+    const topic = this.topics.get(params.name);
+    if (params.ack) {
+      if (!topic) {
+        console.warn(`Topic ${params.name} properties were updated, but does not exist`);
+        return;
+      }
     }
-    topic.updateValue(value, lastChangedTime);
-  }
+  };
 
   /**
    * Updates the value of a topic on the server.
