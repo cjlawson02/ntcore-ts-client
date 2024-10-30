@@ -1,19 +1,22 @@
 import { Messenger } from '../socket/messenger';
+import { Util } from '../util/util';
 
-import type { NetworkTablesTopic } from './topic';
+import { NetworkTablesTopic } from './topic';
+
 import type {
   AnnounceMessageParams,
   BinaryMessageData,
   NetworkTablesTypes,
   PropertiesMessageParams,
+  SubscribeMessageParams,
   UnannounceMessageParams,
 } from '../types/types';
 
 /** The client for the PubSub protocol. */
 export class PubSubClient {
   private readonly _messenger: Messenger;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private topics: Map<string, NetworkTablesTopic<any>>;
+  private topics: Map<string, NetworkTablesTopic>;
+  private onTopicAnnouncedListeners: ((_: NetworkTablesTopic) => void)[];
   private static _instances = new Map<string, PubSubClient>();
 
   get messenger() {
@@ -29,6 +32,7 @@ export class PubSubClient {
       this.onTopicProperties
     );
     this.topics = new Map();
+    this.onTopicAnnouncedListeners = [];
 
     // In the DOM, auto-cleanup
     if (typeof window !== 'undefined') {
@@ -54,6 +58,41 @@ export class PubSubClient {
   }
 
   /**
+   * Adds a listener for when topics are announced.
+   * @param callback - A callback triggered with the announced topic
+   * @param announceAll - Whether to trigger all topics in NetworkTables to be announced
+   * @returns A function to remove the listener.
+   */
+  addOnTopicAnnouncedListener(callback: (_: NetworkTablesTopic) => void, announceAll?: boolean) {
+    this.onTopicAnnouncedListeners.push(callback);
+    if (announceAll) {
+      const subscribeParams: SubscribeMessageParams = {
+        topics: [''],
+        subuid: Util.generateUid(),
+        options: {
+          prefix: true,
+          topicsonly: true,
+        },
+      };
+      this.messenger.subscribe(subscribeParams);
+    }
+    [...this.topics.values()].filter((topic) => topic.announced).forEach((topic) => callback(topic));
+    return () => {
+      this.onTopicAnnouncedListeners = this.onTopicAnnouncedListeners.filter(
+        (storedCallback) => storedCallback !== callback
+      );
+    };
+  }
+
+  /**
+   * Notifies all onTopicAnnounced subscribers of the announced topic.
+   * @param topic - The topic that was announced
+   */
+  private notifyOnTopicAnnouncedSubscribers(topic: NetworkTablesTopic) {
+    this.onTopicAnnouncedListeners.forEach((callback) => callback(topic));
+  }
+
+  /**
    * Reinstantiates the client by resubscribing to all previously subscribed topics
    * and republishing for all previously published topics.
    * @param url - The URL of the server to connect to.
@@ -70,7 +109,7 @@ export class PubSubClient {
    * Registers a topic with this PubSubClient.
    * @param topic - The topic to register
    */
-  registerTopic<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>) {
+  registerTopic(topic: NetworkTablesTopic) {
     if (this.topics.has(topic.name)) {
       throw new Error(`Topic ${topic.name} already exists. Cannot register a topic with the same name.`);
     }
@@ -95,12 +134,17 @@ export class PubSubClient {
    * @param params - The announce message parameters.
    */
   private onTopicAnnounce = (params: AnnounceMessageParams) => {
-    const topic = this.topics.get(params.name);
-    if (!topic) {
+    let topic = this.topics.get(params.name);
+
+    if (!topic && this.onTopicAnnouncedListeners.length > 0) {
+      topic = new NetworkTablesTopic(this, params.name, Util.getNetworkTablesTypeFromTypeString(params.type));
+    } else if (!topic) {
       console.warn(`Topic ${params.name} was announced, but does not exist`);
       return;
     }
+
     topic.announce(params.id, params.pubuid);
+    this.notifyOnTopicAnnouncedSubscribers(topic);
   };
 
   /**

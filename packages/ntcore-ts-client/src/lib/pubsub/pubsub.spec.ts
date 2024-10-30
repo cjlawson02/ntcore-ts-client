@@ -58,6 +58,22 @@ describe('PubSubClient', () => {
     expect(topic.unannounce).toHaveBeenCalled();
   });
 
+  it('handles sending announced topics to onTopicAnnounced listeners with existing topic', () => {
+    const topic = { name: 'test', announce: jest.fn() };
+    client.registerTopic(topic as never);
+    let topicNameAnnounced = '';
+    client.addOnTopicAnnouncedListener((announcedTopic) => (topicNameAnnounced = announcedTopic.name));
+    client['onTopicAnnounce']({ id: 123, name: 'test', type: 'string' } as never);
+    expect(topicNameAnnounced).toBe('test');
+  });
+
+  it('handles sending announced topics to onTopicAnnounced listeners without existing topic', () => {
+    let topicNameAnnounced = '';
+    client.addOnTopicAnnouncedListener((announcedTopic) => (topicNameAnnounced = announcedTopic.name));
+    client['onTopicAnnounce']({ id: 123, name: 'test', type: 'string' } as never);
+    expect(topicNameAnnounced).toBe('test');
+  });
+
   it('reinstantates topics', () => {
     const topic = {
       name: 'test',

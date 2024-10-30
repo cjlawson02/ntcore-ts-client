@@ -13,7 +13,7 @@ import type {
   TopicProperties,
 } from '../types/types';
 
-export class NetworkTablesTopic<T extends NetworkTablesTypes> {
+export class NetworkTablesTopic<T extends NetworkTablesTypes = NetworkTablesTypes> {
   private client: PubSubClient;
   private _id?: number;
   private readonly _name: string;
@@ -117,13 +117,13 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
     const existingTopic = this.client.getTopicFromName(name);
     if (existingTopic) {
       if (existingTopic.typeInfo[0] === typeInfo[0] && existingTopic.typeInfo[1] === typeInfo[1]) {
-        return existingTopic;
+        return existingTopic as unknown as NetworkTablesTopic<T>;
       } else {
         throw new Error(`Topic ${name} already exists, but with a different type.`);
       }
     }
 
-    this.client.registerTopic(this);
+    this.client.registerTopic(this as unknown as NetworkTablesTopic);
   }
 
   /**
@@ -184,7 +184,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   /** */
 
   /**
-   * Creates a new subscriber. This should only be called by the PubSubClient.
+   * Creates a new subscriber.
    * @param callback - The callback to call when the topic value changes.
    * @param immediateNotify - Whether to immediately notify the subscriber of the current value.
    * @param options - The options for the subscriber.
