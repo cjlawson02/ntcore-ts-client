@@ -133,6 +133,29 @@ await autoModeTopic.publish();
 autoModeTopic.setValue('25 Ball Auto and Climb');
 ```
 
+### Subscribing to Announced Topics
+
+You can register a callback to know when your topics are announced:
+
+```typescript
+const ntcore = NetworkTables.getInstanceByTeam(973);
+ntcore.addOnTopicAnnouncedListener((topic) => {
+  console.log(`Topic announced: ${topic.name}`);
+});
+```
+
+By supplying `true` to the `announceAll` parameter, all topics published to NetworkTables (from any client) will also be announced:
+
+```typescript
+const ntcore = NetworkTables.getInstanceByTeam(973);
+ntcore.addOnTopicAnnouncedListener((topic) => {
+  console.log(`Topic announced: ${topic.name}`);
+  topic.subscribe((value) => console.log(`Got ${topic.name} value: ${value}`));
+}, true);
+```
+
+This will allow you to subscribe to any or all topics from the robot, which is useful for dynamic dashboard applications.
+
 ### More info
 
 The API for Topics is much more exhaustive than this quick example. Feel free to view the docs at [https://ntcore.chrislawson.dev](https://ntcore.chrislawson.dev).

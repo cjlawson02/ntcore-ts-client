@@ -134,6 +134,16 @@ export class NetworkTables {
   }
 
   /**
+   * Adds a listener for when topics are announced
+   * @param callback - A callback triggered with the announced topic
+   * @param announceAll - Whether to trigger all topics in NetworkTables to be announced
+   * @returns A function to remove the listener.
+   */
+  addOnTopicAnnouncedListener(callback: (_: NetworkTablesTopic) => void, announceAll?: boolean) {
+    return this._client.addOnTopicAnnouncedListener(callback, announceAll);
+  }
+
+  /**
    * Creates a new topic.
    * @param name - The name of the topic.
    * @param typeInfo - The type information of the topic.
