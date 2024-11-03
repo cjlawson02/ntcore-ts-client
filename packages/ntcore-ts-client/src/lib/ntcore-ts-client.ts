@@ -1,3 +1,4 @@
+import { NetworkTablesPrefixTopic } from './pubsub/prefix-topic';
 import { PubSubClient } from './pubsub/pubsub';
 import { NetworkTablesTopic } from './pubsub/topic';
 import { Util } from './util/util';
@@ -142,5 +143,14 @@ export class NetworkTables {
    */
   createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
     return new NetworkTablesTopic<T>(this._client, name, typeInfo, defaultValue);
+  }
+
+  /**
+   * Creates a new topic with a prefix.
+   * @param prefix - The prefix of the topic.
+   * @returns The topic.
+   */
+  createPrefixTopic(prefix: string) {
+    return new NetworkTablesPrefixTopic(this._client, prefix);
   }
 }

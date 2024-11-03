@@ -1,53 +1,27 @@
 import { Util } from '../util/util';
 
+import { NetworkTablesBaseTopic } from './base-topic';
+
+import type { CallbackFn } from './base-topic';
 import type { PubSubClient } from './pubsub';
 import type {
   AnnounceMessage,
+  AnnounceMessageParams,
   NetworkTablesTypeInfo,
   NetworkTablesTypes,
-  PropertiesMessage,
   PublishMessageParams,
-  SetPropertiesMessageParams,
   SubscribeMessageParams,
   SubscribeOptions,
   TopicProperties,
 } from '../types/types';
 
-export class NetworkTablesTopic<T extends NetworkTablesTypes> {
-  private client: PubSubClient;
-  private _id?: number;
-  private readonly _name: string;
-  private readonly _typeInfo: NetworkTablesTypeInfo;
+export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTablesBaseTopic<T> {
+  readonly type = 'regular';
   private value: T | null;
-  private _lastChangedTime?: number;
-  private _announced: boolean;
+  private readonly _typeInfo: NetworkTablesTypeInfo;
   private _publisher: boolean;
   private _pubuid?: number;
   private _publishProperties?: TopicProperties;
-  private _subscribers: Map<
-    number,
-    {
-      callback: (_: T | null) => void;
-      immediateNotify: boolean;
-      options: SubscribeOptions;
-    }
-  >;
-
-  /**
-   * Gets the ID of the topic.
-   * @returns The ID of the topic.
-   */
-  get id() {
-    return this._id;
-  }
-
-  /**
-   * Gets the name of the topic.
-   * @returns The name of the topic.
-   */
-  get name() {
-    return this._name;
-  }
 
   /**
    * Gets the type info for the topic.
@@ -55,22 +29,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
    */
   get typeInfo(): NetworkTablesTypeInfo {
     return this._typeInfo;
-  }
-
-  /**
-   * Gets the server time of the last value change.
-   * @returns The server time of the last value change.
-   */
-  get lastChangedTime() {
-    return this._lastChangedTime;
-  }
-
-  /**
-   * Whether the topic has been announced.
-   * @returns Whether the topic has been announced.
-   */
-  get announced() {
-    return this._announced;
   }
 
   /**
@@ -90,14 +48,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
   }
 
   /**
-   * Gets the subscribers to the topic.
-   * @returns The subscribers to the topic.
-   */
-  get subscribers() {
-    return this._subscribers;
-  }
-
-  /**
    * Creates a new topic. This should only be done after the
    * base NTCore client has been initialized.
    * @param client - The client that owns the topic.
@@ -106,13 +56,10 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
    * @param defaultValue - The default value for the topic.
    */
   constructor(client: PubSubClient, name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
-    this.client = client;
-    this._name = name;
+    super(client, name);
     this._typeInfo = typeInfo;
     this.value = defaultValue ?? null;
-    this._announced = false;
     this._publisher = false;
-    this._subscribers = new Map();
 
     const existingTopic = this.client.getTopicFromName(name);
     if (existingTopic) {
@@ -140,6 +87,10 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
     this.client.updateServer<T>(this, value);
   }
 
+  /**
+   * Gets the value of the topic.
+   * @returns The value of the topic.
+   */
   getValue() {
     return this.value;
   }
@@ -162,21 +113,13 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
 
   /**
    * Marks the topic as announced. This should only be called by the PubSubClient.
-   * @param id - The ID of the topic.
-   * @param pubuid - The UID of the publisher.
+   * @param params - The parameters of the announcement.
    */
-  announce(id: number, pubuid?: number) {
-    this._announced = true;
-    this._id = id;
-    if (pubuid === this._pubuid) {
+  override announce(params: AnnounceMessageParams) {
+    super.announce(params);
+    if (params.pubuid === this._pubuid) {
       this._publisher = true;
     }
-  }
-
-  /** Marks the topic as unannounced. This should only be called by the PubSubClient. */
-  unannounce() {
-    this._announced = false;
-    this._id = undefined;
   }
 
   /** */
@@ -193,9 +136,9 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
    * @returns The UID of the subscriber.
    */
   subscribe(
-    callback: (_: T | null) => void,
+    callback: CallbackFn<T>,
     immediateNotify = false,
-    options: SubscribeOptions = {},
+    options: Omit<SubscribeOptions, 'prefix'> = {},
     id?: number,
     save = true
   ) {
@@ -208,34 +151,13 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
     };
     this.client.messenger.subscribe(subscribeParams);
 
-    if (immediateNotify) callback(this.value);
+    if (immediateNotify) callback(this.value, this._announceParams);
 
     if (save) this.subscribers.set(subuid, { callback, immediateNotify, options });
 
     return subuid;
   }
 
-  /**
-   * Removes a subscriber
-   * @param subuid - The UID of the subscriber.
-   * @param removeCallback - Whether to remove the callback. Leave this as true unless you know what you're doing.
-   */
-  unsubscribe(subuid: number, removeCallback = true) {
-    this.client.messenger.unsubscribe(subuid);
-    if (removeCallback) this.subscribers.delete(subuid);
-  }
-
-  /**
-   * Removes all local subscribers.
-   */
-  unsubscribeAll() {
-    this.subscribers.forEach((_, subuid) => this.unsubscribe(subuid));
-  }
-
-  /**
-   * Resubscribes all local subscribers.
-   * @param client - The client to resubscribe with.
-   */
   resubscribeAll(client: PubSubClient) {
     this.client = client;
     this.subscribers.forEach((info, subuid) => {
@@ -247,7 +169,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
    * Notifies all subscribers of the current value.
    */
   private notifySubscribers() {
-    this.subscribers.forEach((info) => info.callback(this.value));
+    this.subscribers.forEach((info) => info.callback(this.value, this._announceParams));
   }
 
   /** */
@@ -304,24 +226,5 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> {
     this._publisher = false;
 
     return await this.publish(this._publishProperties, this._pubuid);
-  }
-
-  /**
-   * Sets the properties of the topic.
-   * @param persistent - If true, the last set value will be periodically saved to persistent storage on the server and be restored during server startup. Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
-   * @param retained - Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
-   * @returns The server's response.
-   */
-  async setProperties(persistent?: boolean, retained?: boolean): Promise<PropertiesMessage> {
-    const setPropertiesParams: SetPropertiesMessageParams = {
-      name: this.name,
-      update: {
-        persistent,
-        retained,
-      },
-    };
-
-    // Send the set properties request
-    return await this.client.messenger.setProperties(setPropertiesParams);
   }
 }

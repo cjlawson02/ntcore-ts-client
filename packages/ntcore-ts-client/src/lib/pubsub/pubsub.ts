@@ -1,5 +1,7 @@
 import { Messenger } from '../socket/messenger';
 
+import type { NetworkTablesBaseTopic } from './base-topic';
+import type { NetworkTablesPrefixTopic } from './prefix-topic';
 import type { NetworkTablesTopic } from './topic';
 import type {
   AnnounceMessageParams,
@@ -12,8 +14,10 @@ import type {
 /** The client for the PubSub protocol. */
 export class PubSubClient {
   private readonly _messenger: Messenger;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private topics: Map<string, NetworkTablesTopic<any>>;
+  private readonly topics: Map<string, NetworkTablesTopic<any>>;
+  private readonly prefixTopics: Map<string, NetworkTablesPrefixTopic>;
+  // topic id -> topic params
+  private readonly knownTopicParams: Map<number, AnnounceMessageParams>;
   private static _instances = new Map<string, PubSubClient>();
 
   get messenger() {
@@ -29,6 +33,8 @@ export class PubSubClient {
       this.onTopicProperties
     );
     this.topics = new Map();
+    this.prefixTopics = new Map();
+    this.knownTopicParams = new Map();
 
     // In the DOM, auto-cleanup
     if (typeof window !== 'undefined') {
@@ -64,17 +70,27 @@ export class PubSubClient {
       topic.resubscribeAll(this);
       if (topic.publisher) topic.republish(this);
     });
+    this.prefixTopics.forEach((prefixTopic) => {
+      prefixTopic.resubscribeAll(this);
+    });
   }
 
   /**
    * Registers a topic with this PubSubClient.
    * @param topic - The topic to register
    */
-  registerTopic<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>) {
-    if (this.topics.has(topic.name)) {
-      throw new Error(`Topic ${topic.name} already exists. Cannot register a topic with the same name.`);
+  registerTopic<T extends NetworkTablesTypes>(topic: NetworkTablesBaseTopic<T>) {
+    if (topic.isRegular()) {
+      if (this.topics.has(topic.name)) {
+        throw new Error(`Topic ${topic.name} already exists. Cannot register a topic with the same name.`);
+      }
+      this.topics.set(topic.name, topic);
+    } else if (topic.isPrefix()) {
+      if (this.prefixTopics.has(topic.name)) {
+        throw new Error(`Prefix topic ${topic.name} already exists. Cannot register a topic with the same name.`);
+      }
+      this.prefixTopics.set(topic.name, topic);
     }
-    this.topics.set(topic.name, topic);
   }
 
   /**
@@ -83,11 +99,23 @@ export class PubSubClient {
    */
   private onTopicUpdate = (message: BinaryMessageData) => {
     const topic = this.getTopicFromId(message.topicId);
-    if (!topic) {
-      console.warn('Received message for unknown topic', message);
-      return;
+    if (topic) {
+      topic.updateValue(message.value, message.serverTime);
     }
-    topic.updateValue(message.value, message.serverTime);
+
+    const knownTopic = this.getKnownTopicParams(message.topicId);
+
+    if (knownTopic) {
+      this.prefixTopics.forEach((prefixTopic) => {
+        if (knownTopic.name.startsWith(prefixTopic.name)) {
+          prefixTopic.updateValue(message.topicId, message.value, message.serverTime);
+        }
+      });
+    }
+
+    if (!topic && !knownTopic) {
+      console.warn(`Received update for unknown topic with ID ${message.topicId}`);
+    }
   };
 
   /**
@@ -95,12 +123,18 @@ export class PubSubClient {
    * @param params - The announce message parameters.
    */
   private onTopicAnnounce = (params: AnnounceMessageParams) => {
+    this.knownTopicParams.set(params.id, params);
+
+    // Announce to the topic
     const topic = this.topics.get(params.name);
-    if (!topic) {
-      console.warn(`Topic ${params.name} was announced, but does not exist`);
-      return;
-    }
-    topic.announce(params.id, params.pubuid);
+    topic?.announce(params);
+
+    // Find all prefix topics that match the announced topic
+    this.prefixTopics.forEach((prefixTopic) => {
+      if (params.name.startsWith(prefixTopic.name)) {
+        prefixTopic.announce(params);
+      }
+    });
   };
 
   /**
@@ -144,12 +178,13 @@ export class PubSubClient {
    * @param topicId - The ID of the topic to get.
    * @returns The topic with the given ID, or null if no topic with that ID exists.
    */
-  private getTopicFromId(topicId: number) {
+  private getTopicFromId<T extends NetworkTablesTypes>(topicId: number): NetworkTablesTopic<T> | null {
     for (const topic of this.topics.values()) {
       if (topic.id === topicId) {
         return topic;
       }
     }
+
     return null;
   }
 
@@ -163,13 +198,33 @@ export class PubSubClient {
   }
 
   /**
+   * Gets the topic with the given name.
+   * @param topicName - The name of the topic to get.
+   * @returns The topic with the given name, or null if no topic with that name exists.
+   */
+  getPrefixTopicFromName(topicName: string) {
+    return this.prefixTopics.get(topicName) ?? null;
+  }
+
+  /**
+   * Gets the known announcement parameters for a topic.
+   * @param id - The ID of the topic.
+   * @returns The known announcement parameters for the topic, or null if the topic is unknown.
+   */
+  getKnownTopicParams(id: number) {
+    return this.knownTopicParams.get(id) ?? null;
+  }
+
+  /**
    * Cleans up the client by unsubscribing from all topics and stopping publishing for all topics.
    */
   cleanup() {
     this.topics.forEach((topic) => {
       topic.unsubscribeAll();
-
       if (topic.publisher) topic.unpublish();
+    });
+    this.prefixTopics.forEach((prefixTopic) => {
+      prefixTopic.unsubscribeAll();
     });
     this._messenger.socket.close();
   }

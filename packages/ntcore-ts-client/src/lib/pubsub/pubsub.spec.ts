@@ -9,6 +9,8 @@ describe('PubSubClient', () => {
 
   afterEach(() => {
     client['topics'].clear();
+    client['prefixTopics'].clear();
+    client['knownTopicParams'].clear();
   });
 
   it('returns the same instance when calling getInstance multiple times', () => {
@@ -18,14 +20,14 @@ describe('PubSubClient', () => {
   });
 
   it('registers a topic', () => {
-    const topic = { name: 'test' };
+    const topic = { name: 'test', isRegular: () => true };
     client.registerTopic(topic as never);
     expect(client.getTopicFromName('test')).toBe(topic);
   });
 
   it('throws an error when trying to register a topic with the same name', () => {
-    const topic1 = { name: 'test' };
-    const topic2 = { name: 'test' };
+    const topic1 = { name: 'test', isRegular: () => true };
+    const topic2 = { name: 'test', isRegular: () => true };
     client.registerTopic(topic1 as never);
     expect(() => {
       client.registerTopic(topic2 as never);
@@ -33,7 +35,7 @@ describe('PubSubClient', () => {
   });
 
   it('handles updates to a topic', () => {
-    const topic = { name: 'test', id: 123, updateValue: jest.fn() };
+    const topic = { name: 'test', id: 123, updateValue: jest.fn(), isRegular: () => true };
     client.registerTopic(topic as never);
     client['onTopicUpdate']({
       topicId: 123,
@@ -43,15 +45,48 @@ describe('PubSubClient', () => {
     expect(topic.updateValue).toHaveBeenCalledWith('test value', expect.any(Number));
   });
 
+  it('handles updates to a prefix topic', () => {
+    const topic = {
+      name: '/testprefix/',
+      id: 123,
+      updateValue: jest.fn(),
+      isRegular: () => false,
+      isPrefix: () => true,
+    };
+    client['knownTopicParams'].set(1234, { id: 1234, name: '/testprefix/test' } as never);
+    client.registerTopic(topic as never);
+    client['onTopicUpdate']({
+      topicId: 1234,
+      value: 'test value',
+      serverTime: Date.now(),
+    } as never);
+    expect(topic.updateValue).toHaveBeenCalledWith(1234, 'test value', expect.any(Number));
+  });
+
   it('handles announcements for a topic', () => {
-    const topic = { name: 'test', announce: jest.fn() };
+    const topic = { name: 'test', announce: jest.fn(), isRegular: () => true, isPrefix: () => false };
     client.registerTopic(topic as never);
     client['onTopicAnnounce']({ id: 123, name: 'test' } as never);
-    expect(topic.announce).toHaveBeenCalledWith(123, undefined);
+    expect(client.getKnownTopicParams(123)).toEqual({ id: 123, name: 'test' });
+    expect(topic.announce).toHaveBeenCalledWith({ id: 123, name: 'test' });
+  });
+
+  it('handles announcements for a prefix topic', () => {
+    const topic = { name: '/testprefix/', announce: jest.fn(), isRegular: () => false, isPrefix: () => true };
+    client.registerTopic(topic as never);
+    client['onTopicAnnounce']({ id: 1234, name: '/testprefix/test' } as never);
+    expect(client.getKnownTopicParams(1234)).toEqual({ id: 1234, name: '/testprefix/test' });
+    expect(topic.announce).toHaveBeenCalledWith({ id: 1234, name: '/testprefix/test' });
   });
 
   it('handles unannouncements for a topic', () => {
-    const topic = { name: 'test', announce: jest.fn(), unannounce: jest.fn() };
+    const topic = {
+      name: 'test',
+      announce: jest.fn(),
+      unannounce: jest.fn(),
+      isRegular: () => true,
+      isPrefix: () => false,
+    };
     client.registerTopic(topic as never);
     client['onTopicAnnounce']({ id: 123, name: 'test' } as never);
     client['onTopicUnannounce']({ name: 'test' } as never);
@@ -62,6 +97,8 @@ describe('PubSubClient', () => {
     const topic = {
       name: 'test',
       publisher: true,
+      isRegular: () => true,
+      isPrefix: () => false,
       announce: jest.fn(),
       resubscribeAll: jest.fn(),
       republish: jest.fn(),
@@ -69,6 +106,8 @@ describe('PubSubClient', () => {
     const topic2 = {
       name: 'test2',
       publisher: true,
+      isRegular: () => true,
+      isPrefix: () => false,
       announce: jest.fn(),
       resubscribeAll: jest.fn(),
       republish: jest.fn(),

@@ -39,7 +39,7 @@ describe('Topic', () => {
         NetworkTablesTypeInfos.kString,
         'default'
       );
-      expect(topic).toBe(newTopic);
+      expect(newTopic).toBe(topic);
     });
 
     it('should error if the existing topic has a different type', () => {
@@ -94,7 +94,7 @@ describe('Topic', () => {
 
   describe('updateValue', () => {
     it('updates the value correctly', () => {
-      topic.announce(1);
+      topic.announce({ id: 1, name: 'test', type: 'string', properties: {} });
       topic.updateValue('new value', Date.now());
       expect(topic.getValue()).toEqual('new value');
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -105,7 +105,7 @@ describe('Topic', () => {
   describe('announce', () => {
     it('marks the topic as announced when announce is called', () => {
       expect(topic.announced).toBe(false);
-      topic.announce(1);
+      topic.announce({ id: 1, name: 'test', type: 'string', properties: {} });
       expect(topic.announced).toBe(true);
       expect(topic.id).toEqual(1);
     });
@@ -113,7 +113,7 @@ describe('Topic', () => {
 
   describe('unannounce', () => {
     it('marks the topic as unannounced when unannounce is called', () => {
-      topic.announce(1);
+      topic.announce({ id: 1, name: 'test', type: 'string', properties: {} });
       expect(topic.announced).toBe(true);
       topic.unannounce();
       expect(topic.announced).toBe(false);
@@ -153,7 +153,7 @@ describe('Topic', () => {
     it('should immediately notify the callback if immediateNotify is true and there is a value', () => {
       topic['value'] = 'foo';
       topic.subscribe(callback, true);
-      expect(callback).toHaveBeenCalledWith('foo');
+      expect(callback).toHaveBeenCalledWith('foo', null);
     });
 
     it('should not immediately notify the callback if immediateNotify is false', () => {
@@ -212,7 +212,7 @@ describe('Topic', () => {
       topic.subscribe(callback);
       topic['value'] = 'foo';
       topic['notifySubscribers']();
-      expect(callback).toHaveBeenCalledWith('foo');
+      expect(callback).toHaveBeenCalledWith('foo', null);
     });
   });
 
