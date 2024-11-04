@@ -1,6 +1,6 @@
 # ntcore-ts-client
 
-A TypeScript library for communication over [WPILib's NetworkTables 4.0 protocol](https://github.com/wpilibsuite/allwpilib/blob/main/ntcore/doc/networktables4.adoc).
+A TypeScript library for communication over [WPILib's NetworkTables 4.1 protocol](https://github.com/wpilibsuite/allwpilib/blob/main/ntcore/doc/networktables4.adoc).
 
 ## Features
 
@@ -8,6 +8,7 @@ A TypeScript library for communication over [WPILib's NetworkTables 4.0 protocol
 - Togglable auto-reconnect
 - Callbacks for new data on subscriptions
 - Callbacks for connection listeners
+- Wildcard prefix listeners for multiple topics
 - Retrying for messages queued during a connection loss
 - On-the-fly server switching with resubscribing and republishing
 - Generic types for Topics
