@@ -2,6 +2,21 @@
 
 Note: there may be breaking changes between each beta version, but if a breaking change is introduced out of beta, it will be a major version change
 
+## 3.0.0
+
+### Breaking Changes
+
+- **BREAKING CHANGE: Remove immediateNotify from subscribe**
+  - This complicated prefix topics and was not a very valuable feature
+  - Workaround: you can manually call the subscription's callback yourself after subscribing
+
+### Changes
+
+- Add prefix topic support
+  - You can now subscribe to multiple topics with a single subscription
+  - This is done by creating a topic with a prefix, and then subscribing to that topic
+  - For example, if you have topics `/MyTable/Accelerometer/X`, `/MyTable/Accelerometer/Y`, and `/MyTable/Accelerometer/Z`, you can create a prefix topic `/MyTable/Accelerometer/` and subscribe to that to get notifications for all three subtopics
+
 ## 2.0.0
 
 ### Breaking Changes
