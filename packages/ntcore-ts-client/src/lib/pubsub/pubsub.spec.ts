@@ -53,14 +53,15 @@ describe('PubSubClient', () => {
       isRegular: () => false,
       isPrefix: () => true,
     };
-    client['knownTopicParams'].set(1234, { id: 1234, name: '/testprefix/test' } as never);
+    const params = { id: 1234, name: '/testprefix/test' };
+    client['knownTopicParams'].set(1234, params as never);
     client.registerTopic(topic as never);
     client['onTopicUpdate']({
       topicId: 1234,
       value: 'test value',
       serverTime: Date.now(),
     } as never);
-    expect(topic.updateValue).toHaveBeenCalledWith(1234, 'test value', expect.any(Number));
+    expect(topic.updateValue).toHaveBeenCalledWith(params, 'test value', expect.any(Number));
   });
 
   it('handles announcements for a topic', () => {

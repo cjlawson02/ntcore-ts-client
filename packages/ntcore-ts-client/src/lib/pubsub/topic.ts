@@ -127,21 +127,14 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
   /** */
 
   /**
-   * Creates a new subscriber. This should only be called by the PubSubClient.
+   * Creates a new subscriber.
    * @param callback - The callback to call when the topic value changes.
-   * @param immediateNotify - Whether to immediately notify the subscriber of the current value.
    * @param options - The options for the subscriber.
    * @param id - The UID of the subscriber.
    * @param save - Whether to save the subscriber.
    * @returns The UID of the subscriber.
    */
-  subscribe(
-    callback: CallbackFn<T>,
-    immediateNotify = false,
-    options: Omit<SubscribeOptions, 'prefix'> = {},
-    id?: number,
-    save = true
-  ) {
+  subscribe(callback: CallbackFn<T>, options: Omit<SubscribeOptions, 'prefix'> = {}, id?: number, save = true) {
     const subuid = id || Util.generateUid();
 
     const subscribeParams: SubscribeMessageParams = {
@@ -151,9 +144,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
     };
     this.client.messenger.subscribe(subscribeParams);
 
-    if (immediateNotify) callback(this.value, this._announceParams);
-
-    if (save) this.subscribers.set(subuid, { callback, immediateNotify, options });
+    if (save) this.subscribers.set(subuid, { callback, options });
 
     return subuid;
   }
@@ -161,7 +152,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
   resubscribeAll(client: PubSubClient) {
     this.client = client;
     this.subscribers.forEach((info, subuid) => {
-      this.subscribe(info.callback, info.immediateNotify, info.options, subuid, false);
+      this.subscribe(info.callback, info.options, subuid, false);
     });
   }
 
@@ -169,7 +160,9 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * Notifies all subscribers of the current value.
    */
   private notifySubscribers() {
-    this.subscribers.forEach((info) => info.callback(this.value, this._announceParams));
+    // We know that _announceParams is not null here because we received a value update
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    this.subscribers.forEach((info) => info.callback(this.value, this._announceParams!));
   }
 
   /** */

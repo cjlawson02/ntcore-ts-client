@@ -108,7 +108,7 @@ export class PubSubClient {
     if (knownTopic) {
       this.prefixTopics.forEach((prefixTopic) => {
         if (knownTopic.name.startsWith(prefixTopic.name)) {
-          prefixTopic.updateValue(message.topicId, message.value, message.serverTime);
+          prefixTopic.updateValue(knownTopic, message.value, message.serverTime);
         }
       });
     }
@@ -209,10 +209,10 @@ export class PubSubClient {
   /**
    * Gets the known announcement parameters for a topic.
    * @param id - The ID of the topic.
-   * @returns The known announcement parameters for the topic, or null if the topic is unknown.
+   * @returns The known announcement parameters for the topic, or undefined if the topic is not known.
    */
   getKnownTopicParams(id: number) {
-    return this.knownTopicParams.get(id) ?? null;
+    return this.knownTopicParams.get(id);
   }
 
   /**

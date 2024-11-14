@@ -36,9 +36,8 @@ export class NetworkTablesPrefixTopic extends NetworkTablesBaseTopic<NetworkTabl
   /** */
 
   /**
-   * Creates a new subscriber. This should only be called by the PubSubClient.
+   * Creates a new subscriber.
    * @param callback - The callback to call when the topic value changes.
-   * @param _ - Unused.
    * @param options - The options for the subscriber.
    * @param id - The UID of the subscriber.
    * @param save - Whether to save the subscriber.
@@ -46,7 +45,6 @@ export class NetworkTablesPrefixTopic extends NetworkTablesBaseTopic<NetworkTabl
    */
   subscribe(
     callback: CallbackFn<NetworkTablesTypes>,
-    _?: boolean,
     options: Omit<SubscribeOptions, 'prefix'> = {},
     id?: number,
     save = true
@@ -63,7 +61,7 @@ export class NetworkTablesPrefixTopic extends NetworkTablesBaseTopic<NetworkTabl
     };
     this.client.messenger.subscribe(subscribeParams);
 
-    if (save) this.subscribers.set(subuid, { callback, immediateNotify: false, options });
+    if (save) this.subscribers.set(subuid, { callback, options });
 
     return subuid;
   }
@@ -71,23 +69,22 @@ export class NetworkTablesPrefixTopic extends NetworkTablesBaseTopic<NetworkTabl
   resubscribeAll(client: PubSubClient) {
     this.client = client;
     this.subscribers.forEach((info, subuid) => {
-      this.subscribe(info.callback, info.immediateNotify, info.options, subuid, false);
+      this.subscribe(info.callback, info.options, subuid, false);
     });
   }
 
   /**
    * Updates the value of a subtopic. Notifies all subscribers of the change.
-   * @param topicId - The id of the subtopic
+   * @param params - The params of the subtopic
    * @param value - The value of the subtopic
    * @param serverTime - The time the value was updated
    */
-  updateValue(topicId: number, value: NetworkTablesTypes, serverTime: number) {
+  updateValue(params: AnnounceMessageParams, value: NetworkTablesTypes, serverTime: number) {
     this._lastChangedTime = serverTime;
-    const params = this.client.getKnownTopicParams(topicId);
     this.notifySubscribers(params, value);
   }
 
-  private notifySubscribers(params: AnnounceMessageParams | null, value: NetworkTablesTypes) {
+  private notifySubscribers(params: AnnounceMessageParams, value: NetworkTablesTypes) {
     this.subscribers.forEach((info) => info.callback(value, params));
   }
 }

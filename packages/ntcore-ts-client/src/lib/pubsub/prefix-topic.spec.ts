@@ -4,7 +4,7 @@ import { NetworkTablesPrefixTopic } from './prefix-topic';
 import { PubSubClient } from './pubsub';
 
 import type { CallbackFn } from './base-topic';
-import type { NetworkTablesTypes, SubscribeMessageParams } from '../types/types';
+import type { AnnounceMessageParams, NetworkTablesTypes, SubscribeMessageParams } from '../types/types';
 
 describe('Prefix Topic', () => {
   let topic: NetworkTablesPrefixTopic;
@@ -37,8 +37,9 @@ describe('Prefix Topic', () => {
 
   describe('updateValue', () => {
     it('updates the value correctly', () => {
-      topic.announce({ id: 1, name: 'test', type: 'string', properties: {} });
-      topic.updateValue(1, 'new value', Date.now());
+      const params: AnnounceMessageParams = { id: 1, name: 'test', type: 'string', properties: {} };
+      topic.announce(params);
+      topic.updateValue(params, 'new value', Date.now());
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       expect(topic.lastChangedTime! - Date.now()).toBeLessThan(10);
     });
@@ -73,7 +74,6 @@ describe('Prefix Topic', () => {
       expect(topic.subscribers.size).toEqual(1);
       expect(topic.subscribers.values().next().value).toEqual({
         callback,
-        immediateNotify: false,
         options: {},
       });
     });

@@ -9,7 +9,7 @@ import type {
   SubscribeOptions,
 } from '../types/types';
 
-export type CallbackFn<T extends NetworkTablesTypes> = (value: T | null, params: AnnounceMessageParams | null) => void;
+export type CallbackFn<T extends NetworkTablesTypes> = (value: T | null, params: AnnounceMessageParams) => void;
 
 export abstract class NetworkTablesBaseTopic<T extends NetworkTablesTypes> {
   protected abstract readonly type: 'regular' | 'prefix';
@@ -22,7 +22,6 @@ export abstract class NetworkTablesBaseTopic<T extends NetworkTablesTypes> {
     number,
     {
       callback: CallbackFn<T>;
-      immediateNotify: boolean;
       options: SubscribeOptions;
     }
   >;
@@ -114,19 +113,12 @@ export abstract class NetworkTablesBaseTopic<T extends NetworkTablesTypes> {
   /**
    * Creates a new subscriber. This should only be called by the PubSubClient.
    * @param callback - The callback to call when the topic value changes.
-   * @param immediateNotify - Whether to immediately notify the subscriber of the current value.
    * @param options - The options for the subscriber.
    * @param id - The UID of the subscriber.
    * @param save - Whether to save the subscriber.
    * @returns The UID of the subscriber.
    */
-  abstract subscribe(
-    callback: CallbackFn<T>,
-    immediateNotify?: boolean,
-    options?: SubscribeOptions,
-    id?: number,
-    save?: boolean
-  ): number;
+  abstract subscribe(callback: CallbackFn<T>, options?: SubscribeOptions, id?: number, save?: boolean): number;
 
   /**
    * Resubscribes all local subscribers.
