@@ -85,7 +85,7 @@ Once a topic has been created, it can be used as a subscriber:
 
 ```typescript
 subscribe(
-  callback: (value: T | null, params: AnnounceMessageParams | null) => void,
+  callback: (value: T | null, params: AnnounceMessageParams) => void,
   options: SubscribeOptions = {},
   id?: number,
   save = true
@@ -114,10 +114,9 @@ gyroTopic.subscribe((value) => {
   console.log(`Got Gyro Value: ${value}`);
 });
 
-// Or you can use the topic's announce parameters to get more info, like the topic ID...
-// but beware the params could be null if the server hasn't announced the topic yet!
+// Or you can use the topic's announce parameters to get more info, like the topic ID
 gyroTopic.subscribe((value, params) => {
-  console.log(`Got Gyro Value: ${value} at from topic id ${params?.id}`);
+  console.log(`Got Gyro Value: ${value} at from topic id ${params.id}`);
 });
 ```
 
