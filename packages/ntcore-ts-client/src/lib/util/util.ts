@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
-
 import { NetworkTablesTypeInfos } from '../types/types';
 
 import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTablesTypes, TypeNum, TypeString } from '../types/types';
@@ -145,19 +143,15 @@ export class Util {
    * @returns An ID.
    */
   static generateUid(): number {
-    const uuid = uuidv4();
-    let id = 0;
-    for (let i = 0; i < uuid.length; i++) {
-      id += uuid.charCodeAt(i);
-    }
+    const MAX_32BIT_INT = 2_147_483_646;
 
-    const uid = id + Date.now();
+    let uid;
+    do {
+      // Generate a random positive number in the range [0, MAX_32BIT_INT]
+      uid = Math.floor(Math.random() * MAX_32BIT_INT);
+    } while (Util.usedIds.has(uid)); // Ensure uniqueness
 
-    // Just in case
-    if (Util.usedIds.has(uid)) {
-      return this.generateUid();
-    }
-
+    // Store the generated ID and return it
     Util.usedIds.add(uid);
     return uid;
   }
