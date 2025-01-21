@@ -47,7 +47,7 @@ export class NetworkTablesPrefixTopic extends NetworkTablesBaseTopic<NetworkTabl
     id?: number,
     save = true
   ) {
-    const subuid = id || this.client.getNextSubUID();
+    const subuid = id || this.client.messenger.getNextSubUID();
 
     const subscribeParams: SubscribeMessageParams = {
       topics: [this.name],

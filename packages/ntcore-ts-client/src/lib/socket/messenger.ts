@@ -28,6 +28,8 @@ export class Messenger {
   private readonly publications = new Map<number, PublishMessageParams>();
   private readonly subscriptions = new Map<number, SubscribeMessageParams>();
   private static _instances = new Map<string, Messenger>();
+  private _currentPubUID = 0;
+  private _currentSubUID = 0;
 
   /**
    * Gets the NetworkTablesSocket used by the Messenger.
@@ -169,12 +171,12 @@ export class Messenger {
       if (this.publications.has(params.pubuid) && !force) reject(new Error('Topic is already published'));
 
       // Listen for the announcement
-      const resolver = (message: AnnounceMessage) => {
+      const resolver = (msg: AnnounceMessage) => {
         this.socket.websocket.removeEventListener('message', wsHandler);
         // Add the topic to the list of published topics
         this.publications.set(params.pubuid, params);
 
-        resolve(message);
+        resolve(msg);
       };
 
       const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
@@ -188,6 +190,17 @@ export class Messenger {
 
       // Send the message to the server
       this._socket.sendTextFrame(message);
+
+      // HOTFIX: Subscribe to the topic to get the announcement.
+      // This is a bug in 2025.2.1 WPILib
+      const subMsg: SubscribeMessageParams = {
+        options: {
+          topicsonly: true,
+        },
+        topics: [params.name],
+        subuid: this.getNextSubUID(),
+      };
+      this.subscribe(subMsg);
 
       // Reject the promise if the topic is not announced within 3 seconds
       this.socket.waitForConnection().then(() => {
@@ -310,7 +323,7 @@ export class Messenger {
   sendToTopic<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>, value: T) {
     const typeInfo = topic.typeInfo;
 
-    if (!topic.publisher || !topic.pubuid) {
+    if (!topic.publisher || topic.pubuid == null) {
       throw new Error(`Topic ${topic.name} is not a publisher, so it cannot be updated`);
     }
 
@@ -319,5 +332,21 @@ export class Messenger {
     }
 
     return this._socket.sendValueToTopic(topic.pubuid, value, typeInfo);
+  }
+
+  /**
+   * Gets the next available publisher UID.
+   * @returns The next available publisher UID.
+   */
+  getNextPubUID() {
+    return this._currentPubUID++;
+  }
+
+  /**
+   * Gets the next available subscriber UID.
+   * @returns The next available subscriber UID.
+   */
+  getNextSubUID() {
+    return this._currentSubUID++;
   }
 }

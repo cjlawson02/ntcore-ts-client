@@ -133,7 +133,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * @returns The UID of the subscriber.
    */
   subscribe(callback: CallbackFn<T>, options: Omit<SubscribeOptions, 'prefix'> = {}, id?: number, save = true) {
-    const subuid = id || this.client.getNextSubUID();
+    const subuid = id || this.client.messenger.getNextSubUID();
 
     const subscribeParams: SubscribeMessageParams = {
       topics: [this.name],
@@ -176,7 +176,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
   async publish(properties: TopicProperties = {}, id?: number): Promise<AnnounceMessage | void> {
     if (this.publisher) return;
 
-    this._pubuid = id ?? this.client.getNextPubUID();
+    this._pubuid = id ?? this.client.messenger.getNextPubUID();
     this._publishProperties = properties;
 
     const publishParams: PublishMessageParams = {
@@ -193,7 +193,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * Unpublishes the topic.
    */
   unpublish() {
-    if (!this.publisher || !this._pubuid) {
+    if (!this.publisher || this._pubuid == null) {
       throw new Error('Cannot unpublish topic without being the publisher');
     }
 
@@ -210,7 +210,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    */
   async republish(client: PubSubClient) {
     this.client = client;
-    if (!this.publisher || !this._pubuid) {
+    if (!this.publisher || this._pubuid == null) {
       throw new Error('Cannot republish topic without being the publisher');
     }
 

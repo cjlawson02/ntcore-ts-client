@@ -19,8 +19,6 @@ export class PubSubClient {
   // topic id -> topic params
   private readonly knownTopicParams: Map<number, AnnounceMessageParams>;
   private static _instances = new Map<string, PubSubClient>();
-  private _currentPubUID = 0;
-  private _currentSubUID = 0;
 
   get messenger() {
     return this._messenger;
@@ -229,21 +227,5 @@ export class PubSubClient {
       prefixTopic.unsubscribeAll();
     });
     this._messenger.socket.close();
-  }
-
-  /**
-   * Gets the next available publisher UID.
-   * @returns The next available publisher UID.
-   */
-  getNextPubUID() {
-    return this._currentPubUID++;
-  }
-
-  /**
-   * Gets the next available subscriber UID.
-   * @returns The next available subscriber UID.
-   */
-  getNextSubUID() {
-    return this._currentSubUID++;
   }
 }
