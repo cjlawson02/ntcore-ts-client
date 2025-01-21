@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
-
 import { NetworkTablesTypeInfos } from '../types/types';
 
 import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTablesTypes, TypeNum, TypeString } from '../types/types';
@@ -139,30 +137,6 @@ export class Util {
   }
 
   /**
-   * Get a decently unique integer ID.
-   *
-   * It is not guaranteed to be unique, but it uses uuidv4 to generate an integer ID.
-   * @returns An ID.
-   */
-  static generateUid(): number {
-    const uuid = uuidv4();
-    let id = 0;
-    for (let i = 0; i < uuid.length; i++) {
-      id += uuid.charCodeAt(i);
-    }
-
-    const uid = id + Date.now();
-
-    // Just in case
-    if (Util.usedIds.has(uid)) {
-      return this.generateUid();
-    }
-
-    Util.usedIds.add(uid);
-    return uid;
-  }
-
-  /**
    * Splits an ArrayBuffer into chunks of a specified size.
    * @param buffer - The ArrayBuffer to split.
    * @param chunkSize - The size of each chunk, in bytes.
@@ -190,7 +164,7 @@ export class Util {
    * @returns The server URL with a unique client ID.
    */
   static createServerUrl(uri: string, port: number): string {
-    return `ws://${uri}:${port}/nt/ntcore-ts-${Util.generateUid()}`;
+    return `ws://${uri}:${port}/nt/ntcore-ts-${Math.floor(Math.random() * 1000)}`;
   }
 
   /**

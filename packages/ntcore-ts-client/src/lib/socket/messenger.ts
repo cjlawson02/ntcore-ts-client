@@ -190,11 +190,11 @@ export class Messenger {
       this._socket.sendTextFrame(message);
 
       // Reject the promise if the topic is not announced within 3 seconds
-      setTimeout(() => {
-        if (this.socket.isConnected()) {
+      this.socket.waitForConnection().then(() => {
+        setTimeout(() => {
           reject(new Error(`Topic ${params.name} was not announced within 3 seconds`));
-        }
-      }, 3000);
+        }, 3000);
+      });
     });
   }
 

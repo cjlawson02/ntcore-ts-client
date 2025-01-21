@@ -39,7 +39,7 @@ describe('Topic', () => {
         NetworkTablesTypeInfos.kString,
         'default'
       );
-      expect(topic).toBe(newTopic);
+      expect(newTopic).toBe(topic);
     });
 
     it('should error if the existing topic has a different type', () => {
@@ -94,7 +94,7 @@ describe('Topic', () => {
 
   describe('updateValue', () => {
     it('updates the value correctly', () => {
-      topic.announce(1);
+      topic.announce({ id: 1, name: 'test', type: 'string', properties: {} });
       topic.updateValue('new value', Date.now());
       expect(topic.getValue()).toEqual('new value');
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -105,7 +105,7 @@ describe('Topic', () => {
   describe('announce', () => {
     it('marks the topic as announced when announce is called', () => {
       expect(topic.announced).toBe(false);
-      topic.announce(1);
+      topic.announce({ id: 1, name: 'test', type: 'string', properties: {} });
       expect(topic.announced).toBe(true);
       expect(topic.id).toEqual(1);
     });
@@ -113,7 +113,7 @@ describe('Topic', () => {
 
   describe('unannounce', () => {
     it('marks the topic as unannounced when unannounce is called', () => {
-      topic.announce(1);
+      topic.announce({ id: 1, name: 'test', type: 'string', properties: {} });
       expect(topic.announced).toBe(true);
       topic.unannounce();
       expect(topic.announced).toBe(false);
@@ -131,7 +131,6 @@ describe('Topic', () => {
       expect(topic.subscribers.size).toEqual(1);
       expect(topic.subscribers.values().next().value).toEqual({
         callback,
-        immediateNotify: false,
         options: {},
       });
     });
@@ -139,7 +138,7 @@ describe('Topic', () => {
     it('should send a subscribe message to the server', () => {
       const send = jest.fn();
       topic['client']['_messenger']['_socket']['sendTextFrame'] = send;
-      topic.subscribe(callback, true);
+      topic.subscribe(callback);
       expect(send).toHaveBeenCalledWith({
         method: 'subscribe',
         params: {
@@ -149,18 +148,6 @@ describe('Topic', () => {
         } as SubscribeMessageParams,
       });
     });
-
-    it('should immediately notify the callback if immediateNotify is true and there is a value', () => {
-      topic['value'] = 'foo';
-      topic.subscribe(callback, true);
-      expect(callback).toHaveBeenCalledWith('foo');
-    });
-
-    it('should not immediately notify the callback if immediateNotify is false', () => {
-      topic['value'] = 'foo';
-      topic.subscribe(callback, false);
-      expect(callback).not.toHaveBeenCalled();
-    });
   });
 
   describe('unsubscribe', () => {
@@ -168,7 +155,7 @@ describe('Topic', () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback = (_: string | null) => jest.fn();
       const options = {};
-      topic.subscribe(callback, true, options);
+      topic.subscribe(callback, options);
       expect(topic.subscribers.size).toBe(1);
       topic.unsubscribe(topic.subscribers.keys().next().value!, true);
       expect(topic.subscribers.size).toBe(0);
@@ -185,8 +172,8 @@ describe('Topic', () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback = (_: string | null) => jest.fn();
       const options = {};
-      topic.subscribe(callback, true, options);
-      topic.subscribe(callback, true, options);
+      topic.subscribe(callback, options);
+      topic.subscribe(callback, options);
       expect(topic.subscribers.size).toBe(2);
       topic.unsubscribeAll();
       expect(topic.subscribers.size).toBe(0);
@@ -198,8 +185,8 @@ describe('Topic', () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback = (_: string | null) => jest.fn();
       const options = {};
-      topic.subscribe(callback, true, options);
-      topic.subscribe(callback, true, options);
+      topic.subscribe(callback, options);
+      topic.subscribe(callback, options);
       expect(topic.subscribers.size).toBe(2);
       topic.resubscribeAll(topic['client']);
       expect(topic.subscribers.size).toBe(2);
@@ -212,7 +199,7 @@ describe('Topic', () => {
       topic.subscribe(callback);
       topic['value'] = 'foo';
       topic['notifySubscribers']();
-      expect(callback).toHaveBeenCalledWith('foo');
+      expect(callback).toHaveBeenCalledWith('foo', null);
     });
   });
 

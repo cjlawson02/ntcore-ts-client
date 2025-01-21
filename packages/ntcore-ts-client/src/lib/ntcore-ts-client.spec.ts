@@ -64,4 +64,10 @@ describe('NetworkTables', () => {
     const topic = networkTables.createTopic<number>('/foo', NetworkTablesTypeInfos.kDouble, 1.0);
     expect(topic).toBeDefined();
   });
+
+  it('creates a prefix topic', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.createPrefixTopic('/');
+    expect(topic).toBeDefined();
+  });
 });

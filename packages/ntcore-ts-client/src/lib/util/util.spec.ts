@@ -1,4 +1,3 @@
-import { integerSchema } from '../types/schemas';
 import { NetworkTablesTypeInfos } from '../types/types';
 
 import { Util } from './util';
@@ -196,27 +195,6 @@ describe('Util', () => {
       const message = Util.createBinaryMessage(1, 123456, 1.23);
 
       expect(message).toEqual([1, 123456, NetworkTablesTypeInfos.kDouble[0], 1.23]);
-    });
-  });
-
-  describe('generateUid', () => {
-    let id1: number;
-    let id2: number;
-
-    beforeEach(() => {
-      id1 = Util.generateUid();
-      id2 = Util.generateUid();
-    });
-
-    it('should be a positive integer', () => {
-      // make sure it's an integer
-      expect(id1).toBeGreaterThanOrEqual(0);
-      expect(id2).toBeGreaterThanOrEqual(0);
-      expect(integerSchema.safeParse(id1).success).toBe(true);
-      expect(integerSchema.safeParse(id2).success).toBe(true);
-    });
-    it('generates a different ID', () => {
-      expect(id1).not.toEqual(id2);
     });
   });
 
