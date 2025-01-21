@@ -1,5 +1,3 @@
-import { Util } from '../util/util';
-
 import { NetworkTablesBaseTopic } from './base-topic';
 
 import type { CallbackFn } from './base-topic';

@@ -1,4 +1,3 @@
-import { integerSchema } from '../types/schemas';
 import { NetworkTablesTypeInfos } from '../types/types';
 
 import { Util } from './util';
