@@ -137,26 +137,6 @@ export class Util {
   }
 
   /**
-   * Get a decently unique integer ID.
-   *
-   * It is not guaranteed to be unique, but it uses uuidv4 to generate an integer ID.
-   * @returns An ID.
-   */
-  static generateUid(): number {
-    const MAX_32BIT_INT = 2_147_483_646;
-
-    let uid;
-    do {
-      // Generate a random positive number in the range [0, MAX_32BIT_INT]
-      uid = Math.floor(Math.random() * MAX_32BIT_INT);
-    } while (Util.usedIds.has(uid)); // Ensure uniqueness
-
-    // Store the generated ID and return it
-    Util.usedIds.add(uid);
-    return uid;
-  }
-
-  /**
    * Splits an ArrayBuffer into chunks of a specified size.
    * @param buffer - The ArrayBuffer to split.
    * @param chunkSize - The size of each chunk, in bytes.
@@ -184,7 +164,7 @@ export class Util {
    * @returns The server URL with a unique client ID.
    */
   static createServerUrl(uri: string, port: number): string {
-    return `ws://${uri}:${port}/nt/ntcore-ts-${Util.generateUid()}`;
+    return `ws://${uri}:${port}/nt/ntcore-ts-${Math.floor(Math.random() * 1000)}`;
   }
 
   /**

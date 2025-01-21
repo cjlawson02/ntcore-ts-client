@@ -130,12 +130,12 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * Creates a new subscriber.
    * @param callback - The callback to call when the topic value changes.
    * @param options - The options for the subscriber.
-   * @param id - The UID of the subscriber.
+   * @param id - The UID of the subscriber. You must verify that the ID is not already in use.
    * @param save - Whether to save the subscriber.
    * @returns The UID of the subscriber.
    */
   subscribe(callback: CallbackFn<T>, options: Omit<SubscribeOptions, 'prefix'> = {}, id?: number, save = true) {
-    const subuid = id || Util.generateUid();
+    const subuid = id || this.client.getNextSubUID();
 
     const subscribeParams: SubscribeMessageParams = {
       topics: [this.name],
@@ -172,13 +172,13 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
   /**
    * Publishes the topic.
    * @param properties - The properties to publish the topic with.
-   * @param id - The UID of the publisher.
+   * @param id - The UID of the publisher. You must verify that the ID is not already in use.
    * @returns A promise that resolves when the topic is published.
    */
   async publish(properties: TopicProperties = {}, id?: number): Promise<AnnounceMessage | void> {
     if (this.publisher) return;
 
-    this._pubuid = id ?? Util.generateUid();
+    this._pubuid = id ?? this.client.getNextPubUID();
     this._publishProperties = properties;
 
     const publishParams: PublishMessageParams = {
