@@ -2,7 +2,16 @@
 
 Note: there may be breaking changes between each beta version, but if a breaking change is introduced out of beta, it will be a major version change
 
-## 3.0.0
+## 3.1.0
+
+- Fix 2025 Robot issues
+
+  - Fixes publisher and subscriber ID generations to start counting at 0. Avoids integer overflows.
+  - Remove RTT websocket that is unnecessary since the client can respond to PING and PONG messages
+
+- Fix timeout for publishing pre-connection to wait for robot connection
+
+## 3.0.0-beta.1
 
 ### Breaking Changes
 
