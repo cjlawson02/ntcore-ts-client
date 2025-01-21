@@ -2,6 +2,10 @@
 
 Note: there may be breaking changes between each beta version, but if a breaking change is introduced out of beta, it will be a major version change
 
+## 3.1.1
+
+- Hotfix: export modules correctly and fix doc generation
+
 ## 3.1.0
 
 - Fix 2025 Robot issues
