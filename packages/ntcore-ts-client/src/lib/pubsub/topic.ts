@@ -193,7 +193,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * Unpublishes the topic.
    */
   unpublish() {
-    if (!this.publisher || this._pubuid == null) {
+    if (!this.publisher || this._pubuid === null) {
       throw new Error('Cannot unpublish topic without being the publisher');
     }
 
@@ -210,7 +210,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    */
   async republish(client: PubSubClient) {
     this.client = client;
-    if (!this.publisher || this._pubuid == null) {
+    if (!this.publisher || this._pubuid === null) {
       throw new Error('Cannot republish topic without being the publisher');
     }
 

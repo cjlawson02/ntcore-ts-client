@@ -323,7 +323,7 @@ export class Messenger {
   sendToTopic<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>, value: T) {
     const typeInfo = topic.typeInfo;
 
-    if (!topic.publisher || topic.pubuid == null) {
+    if (!topic.publisher || topic.pubuid === null) {
       throw new Error(`Topic ${topic.name} is not a publisher, so it cannot be updated`);
     }
 
