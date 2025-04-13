@@ -2,12 +2,12 @@ import { NetworkTablesTypeInfos } from './types';
 
 import type {
   AnnounceMessage,
-  BinaryMessageData,
+  NetworkTablesTypeInfo,
   NetworkTablesTypes,
   PropertiesMessage,
-  PublishMessage,
   SetPropertiesMessage,
   SubscribeMessage,
+  TypeNum,
   UnannounceMessage,
   UnpublishMessage,
   UnsubscribeMessage,
@@ -18,54 +18,205 @@ describe('NetworkTablesTypeInfos', () => {
     expect(NetworkTablesTypeInfos.kBoolean).toEqual([0, 'boolean']);
     expect(NetworkTablesTypeInfos.kDouble).toEqual([1, 'double']);
     expect(NetworkTablesTypeInfos.kInteger).toEqual([2, 'int']);
+    expect(NetworkTablesTypeInfos.kFloat).toEqual([3, 'float']);
     expect(NetworkTablesTypeInfos.kString).toEqual([4, 'string']);
+    expect(NetworkTablesTypeInfos.kJson).toEqual([4, 'json']);
     expect(NetworkTablesTypeInfos.kArrayBuffer).toEqual([5, 'raw']);
+    expect(NetworkTablesTypeInfos.kRPC).toEqual([5, 'rpc']);
+    expect(NetworkTablesTypeInfos.kMsgpack).toEqual([5, 'msgpack']);
+    expect(NetworkTablesTypeInfos.kProtobuf).toEqual([5, 'protobuf']);
     expect(NetworkTablesTypeInfos.kBooleanArray).toEqual([16, 'boolean[]']);
     expect(NetworkTablesTypeInfos.kDoubleArray).toEqual([17, 'double[]']);
     expect(NetworkTablesTypeInfos.kIntegerArray).toEqual([18, 'int[]']);
+    expect(NetworkTablesTypeInfos.kFloatArray).toEqual([19, 'float[]']);
     expect(NetworkTablesTypeInfos.kStringArray).toEqual([20, 'string[]']);
   });
-});
 
-describe('BinaryMessageData', () => {
-  it('should have the correct shape', () => {
-    const binaryMessageData: BinaryMessageData = {
-      topicId: 0,
-      serverTime: 0,
-      typeInfo: NetworkTablesTypeInfos.kString,
-      value: 'some value',
-    };
+  describe('validateData', () => {
+    it('should return the correct NT type for a boolean value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kBoolean, true)).toEqual(true);
+    });
 
-    expect(binaryMessageData).toEqual({
-      topicId: expect.any(Number),
-      serverTime: expect.any(Number),
-      typeInfo: expect.arrayContaining([expect.any(Number), expect.any(String)]),
-      value: expect.any(String),
+    it('should return the correct NT type for a double value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kDouble, 1.23)).toEqual(1.23);
+    });
+
+    it('should return the correct NT type for an integer value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kInteger, 123)).toEqual(123);
+    });
+
+    it('should return the correct NT type for an float value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kFloat, 1.1)).toEqual(1.1);
+    });
+
+    it('should return the correct NT type for a string value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kString, 'abc')).toEqual('abc');
+    });
+
+    it('should return the correct NT type for a JSON value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kJson, '{ "someJson": true }')).toEqual({
+        someJson: true,
+      });
+    });
+
+    it('should throw for a bad JSON value', () => {
+      expect(() => NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kJson, 'not json')).toThrow(
+        /"not json" is not valid JSON/
+      );
+    });
+
+    it('should throw for a non-object JSON value', () => {
+      expect(() => NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kJson, 'null')).toThrow(
+        /Bad JSON value: null/
+      );
+    });
+
+    it('should return the correct NT type for an ArrayBuffer value', () => {
+      const buffer = new ArrayBuffer(10);
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kArrayBuffer, buffer)).toEqual(buffer);
+    });
+
+    it('should throw for a bad ArrayBuffer value', () => {
+      expect(() => NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kArrayBuffer, 'not a buffer')).toThrow(
+        /Invalid ArrayBuffer value: not a buffer/
+      );
+    });
+
+    it('should return the correct NT type for an RPC value', () => {
+      const buffer = new ArrayBuffer(10);
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kRPC, buffer)).toEqual(buffer);
+    });
+
+    it('should throw for a bad RPC value', () => {
+      expect(() => NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kRPC, 'not rpc')).toThrow(
+        /Invalid RPC value: not rpc/
+      );
+    });
+
+    it('should return the correct NT type for an Msgpack value', () => {
+      const buffer = new ArrayBuffer(10);
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kMsgpack, buffer)).toEqual(buffer);
+    });
+
+    it('should throw for a bad Msgpack value', () => {
+      expect(() => NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kMsgpack, 'not msgpack')).toThrow(
+        /Invalid Msgpack value: not msgpack/
+      );
+    });
+
+    it('should return the correct NT type for an Protobuf value', () => {
+      const buffer = new ArrayBuffer(10);
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kProtobuf, buffer)).toEqual(new Uint8Array(10));
+    });
+
+    it('should throw for a bad Protobuf value', () => {
+      expect(() => NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kProtobuf, 'not protobuf')).toThrow(
+        /Invalid Protobuf value: not protobuf/
+      );
+    });
+
+    it('should return the correct NT type for a boolean array value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kBooleanArray, [true, false])).toEqual([
+        true,
+        false,
+      ]);
+    });
+
+    it('should return the correct NT type for a double array value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kDoubleArray, [1.23, 4.56])).toEqual([
+        1.23, 4.56,
+      ]);
+    });
+
+    it('should return the correct NT type for an integer array value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kIntegerArray, [1, 2, 3])).toEqual([1, 2, 3]);
+    });
+
+    it('should return the correct NT type for an float array value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kFloatArray, [1.1, 2.0, 3.12])).toEqual([
+        1.1, 2.0, 3.12,
+      ]);
+    });
+
+    it('should return the correct NT type for a string array value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kStringArray, ['a', 'b', 'c'])).toEqual([
+        'a',
+        'b',
+        'c',
+      ]);
+    });
+
+    it('should throw an error for an invalid data type', () => {
+      expect(() => NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kBoolean, 'invalidDataType')).toThrow();
+    });
+
+    it('should throw an error for an invalid type info', () => {
+      expect(() => NetworkTablesTypeInfos.validateData({} as NetworkTablesTypeInfo, 'invalidTypeInfo')).toThrow();
+    });
+  });
+
+  describe('getFromTypeNum', () => {
+    it('should return the correct NT type for a boolean value', () => {
+      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kBoolean[0])).toEqual(
+        NetworkTablesTypeInfos.kBoolean
+      );
+    });
+
+    it('should return the correct NT type for a double value', () => {
+      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kDouble[0])).toEqual(
+        NetworkTablesTypeInfos.kDouble
+      );
+    });
+
+    it('should return the correct NT type for an integer value', () => {
+      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kInteger[0])).toEqual(
+        NetworkTablesTypeInfos.kInteger
+      );
+    });
+
+    it('should return the correct NT type for a string value', () => {
+      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kString[0])).toEqual(
+        NetworkTablesTypeInfos.kString
+      );
+    });
+
+    it('should return the correct NT type for an ArrayBuffer value', () => {
+      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kArrayBuffer[0])).toEqual(
+        NetworkTablesTypeInfos.kArrayBuffer
+      );
+    });
+
+    it('should return the correct NT type for a boolean array value', () => {
+      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kBooleanArray[0])).toEqual(
+        NetworkTablesTypeInfos.kBooleanArray
+      );
+    });
+
+    it('should return the correct NT type for a double array value', () => {
+      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kDoubleArray[0])).toEqual(
+        NetworkTablesTypeInfos.kDoubleArray
+      );
+    });
+
+    it('should return the correct NT type for an integer array value', () => {
+      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kIntegerArray[0])).toEqual(
+        NetworkTablesTypeInfos.kIntegerArray
+      );
+    });
+
+    it('should return the correct NT type for a string array value', () => {
+      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kStringArray[0])).toEqual(
+        NetworkTablesTypeInfos.kStringArray
+      );
+    });
+
+    it('should throw an error for an invalid type number', () => {
+      expect(() => NetworkTablesTypeInfos.getFromTypeNum(999 as TypeNum)).toThrow();
     });
   });
 });
 
 describe('Message', () => {
-  it('should have the correct shape for a publish message', () => {
-    const publishMessage: PublishMessage = {
-      method: 'publish',
-      params: {
-        name: 'some name',
-        pubuid: 0,
-        type: 'string',
-        properties: {
-          persistent: false,
-          retained: true,
-        },
-      },
-    };
-
-    expect(publishMessage).toEqual({
-      method: expect.any(String),
-      params: expect.any(Object),
-    });
-  });
-
   it('should have the correct shape for an unpublish message', () => {
     const unpublishMessage: UnpublishMessage = {
       method: 'unpublish',

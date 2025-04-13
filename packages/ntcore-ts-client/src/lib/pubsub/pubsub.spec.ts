@@ -33,7 +33,7 @@ describe('PubSubClient', () => {
     client.registerTopic(topic1 as never);
     expect(() => {
       client.registerTopic(topic2 as never);
-    }).toThrowError('Topic test already exists. Cannot register a topic with the same name.');
+    }).toThrow('Topic test already exists. Cannot register a topic with the same name.');
   });
 
   it('handles updates to a topic', () => {
@@ -41,16 +41,37 @@ describe('PubSubClient', () => {
       name: 'test',
       id: 123,
       typeInfo: NetworkTablesTypeInfos.kString,
-      updateValue: vi.fn(),
+      updateValue: jest.fn(),
       isRegular: () => true,
     };
     client.registerTopic(topic as never);
     client['onTopicUpdate']({
       topicId: 123,
       value: 'test value',
+      typeNum: NetworkTablesTypeInfos.kString[0],
       serverTime: Date.now(),
-    } as never);
+    });
     expect(topic.updateValue).toHaveBeenCalledWith('test value', expect.any(Number));
+  });
+
+  it('handles bad updates to a topic', () => {
+    const topic = {
+      name: 'test',
+      id: 123,
+      typeInfo: NetworkTablesTypeInfos.kBoolean,
+      updateValue: jest.fn(),
+      isRegular: () => true,
+    };
+    client.registerTopic(topic as never);
+    expect(() =>
+      client['onTopicUpdate']({
+        topicId: 123,
+        value: 'test value',
+        typeNum: NetworkTablesTypeInfos.kString[0],
+        serverTime: Date.now(),
+      })
+    ).toThrow(/Invalid data for topic test/);
+    expect(topic.updateValue).not.toHaveBeenCalled();
   });
 
   it('handles updates to a prefix topic', () => {

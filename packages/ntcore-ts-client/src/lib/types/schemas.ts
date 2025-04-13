@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 /** Schema for an integer. */
-export const integerSchema = z.number().int();
+export const finiteNumSchema = z.number().finite();
+export const integerSchema = finiteNumSchema.int();
 
 /** Schema for type strings in the NT protocol. */
 export const typeStringSchema = z.union([
@@ -49,7 +50,7 @@ export const topicPropertiesSchema = z
 /** Schema for a topic in the NT protocol. */
 export const topicSchema = z.object({
   name: z.string(),
-  id: z.number(),
+  id: integerSchema,
   type: typeStringSchema,
   properties: topicPropertiesSchema,
 });
@@ -57,7 +58,7 @@ export const topicSchema = z.object({
 /** Schema for subscription options in the NT protocol. */
 export const subscriptionOptionsSchema = z
   .object({
-    periodic: z.number(),
+    periodic: integerSchema,
     all: z.boolean(),
     topicsonly: z.boolean(),
     prefix: z.boolean(),
@@ -67,14 +68,14 @@ export const subscriptionOptionsSchema = z
 /** Schema for the publish message in the NT protocol. */
 export const publishMessageParamsSchema = z.object({
   name: z.string(),
-  pubuid: z.number(),
+  pubuid: integerSchema,
   type: typeStringSchema,
   properties: topicPropertiesSchema,
 });
 
 /** Schema for the unpublish message params in the NT protocol. */
 export const unpublishMessageParamsSchema = z.object({
-  pubuid: z.number(),
+  pubuid: integerSchema,
 });
 
 /** Schema for the set properties message params in the NT protocol. */
@@ -86,24 +87,24 @@ export const setPropertiesMessageParamsSchema = z.object({
 /** Schema for the subscribe message params in the NT protocol. */
 export const subscribeMessageParamsSchema = z.object({
   topics: z.array(z.string()),
-  subuid: z.number(),
+  subuid: integerSchema,
   options: subscriptionOptionsSchema,
 });
 
 /** Schema for the unsubscribe message params in the NT protocol. */
 export const unsubscribeMessageParamsSchema = z.object({
-  subuid: z.number(),
+  subuid: integerSchema,
 });
 
 /** Schema for the announce message params in the NT protocol. */
 export const announceMessageParamsSchema = topicSchema.extend({
-  pubuid: z.number().optional(),
+  pubuid: integerSchema.optional(),
 });
 
 /** Schema for the unannounce message params in the NT protocol. */
 export const unannounceMessageParamsSchema = z.object({
   name: z.string(),
-  id: z.number(),
+  id: integerSchema,
 });
 
 /** Schema for the properties message params in the NT protocol. */
@@ -177,20 +178,20 @@ export const messageSchema = z.array(
 /** Schema for a value in the msgpack format. */
 export const msgPackValueSchema = z.union([
   z.boolean(),
-  z.number().finite().int(),
-  z.number().finite(),
+  integerSchema,
+  finiteNumSchema,
   z.string(),
   z.instanceof(ArrayBuffer),
   z.array(z.boolean()),
   z.array(z.string()),
-  z.array(z.number().finite().int()),
-  z.array(z.number().finite()),
+  z.array(integerSchema),
+  z.array(finiteNumSchema),
 ]);
 
 /** Schema for a binary message in the msgpack format. */
 export const msgPackSchema = z.tuple([
-  z.union([z.number().int().nonnegative(), z.literal(-1)]),
-  z.number().int().nonnegative(),
+  z.union([integerSchema.nonnegative(), z.literal(-1)]),
+  integerSchema.nonnegative(),
   typeNumSchema,
   msgPackValueSchema,
 ]);

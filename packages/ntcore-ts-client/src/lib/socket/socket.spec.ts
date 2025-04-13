@@ -2,7 +2,7 @@ import { encode } from '@msgpack/msgpack';
 import WebSocket from 'isomorphic-ws';
 import WSMock from 'vitest-websocket-mock';
 
-import { Util } from '../util/util';
+import { NetworkTablesTypeInfos } from '../types/types';
 
 import { NetworkTablesSocket } from './socket';
 
@@ -190,7 +190,7 @@ describe('NetworkTablesSocket', () => {
       expect(onTopicUpdate).toHaveBeenCalledWith({
         topicId: message[0],
         serverTime: message[1],
-        typeInfo: Util.getNetworkTablesTypeFromTypeNum(message[2]),
+        typeInfo: NetworkTablesTypeInfos.getFromTypeNum(message[2]),
         value: message[3],
       });
     });
