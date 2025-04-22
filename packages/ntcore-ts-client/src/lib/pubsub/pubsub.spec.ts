@@ -41,7 +41,7 @@ describe('PubSubClient', () => {
       name: 'test',
       id: 123,
       typeInfo: NetworkTablesTypeInfos.kString,
-      updateValue: jest.fn(),
+      updateValue: vi.fn(),
       isRegular: () => true,
     };
     client.registerTopic(topic as never);
@@ -59,7 +59,7 @@ describe('PubSubClient', () => {
       name: 'test',
       id: 123,
       typeInfo: NetworkTablesTypeInfos.kBoolean,
-      updateValue: jest.fn(),
+      updateValue: vi.fn(),
       isRegular: () => true,
     };
     client.registerTopic(topic as never);

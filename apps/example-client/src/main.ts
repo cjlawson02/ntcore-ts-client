@@ -30,7 +30,7 @@ gyroTopic.subscribe((value, params) => {
 
 // ---------------------------------------------- //
 // Example of using a topic to publish to a value //
-// ---------------------------------------------
+// ---------------------------------------------- //
 
 // Create the autoMode topic w/ a default return value of 'No Auto'
 (async () => {
