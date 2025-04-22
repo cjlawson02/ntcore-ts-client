@@ -21,6 +21,9 @@ export const typeStringSchema = z.union([
   z.literal('int[]'),
   z.literal('float[]'),
   z.literal('string[]'),
+  z.string().startsWith('proto:'),
+  z.string().startsWith('struct:'),
+  z.string().startsWith('photonstruct:'),
 ]);
 
 /** Schema for type numbers in the NT protocol. */
@@ -182,6 +185,7 @@ export const msgPackValueSchema = z.union([
   finiteNumSchema,
   z.string(),
   z.instanceof(ArrayBuffer),
+  z.instanceof(Uint8Array),
   z.array(z.boolean()),
   z.array(z.string()),
   z.array(integerSchema),
