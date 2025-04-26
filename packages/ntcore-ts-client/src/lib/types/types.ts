@@ -58,7 +58,7 @@ export class NetworkTablesTypeInfos {
   static readonly kDouble: NetworkTablesTypeInfo = [1, 'double'];
   static readonly kInteger: NetworkTablesTypeInfo = [2, 'int'];
   static readonly kString: NetworkTablesTypeInfo = [4, 'string'];
-  static readonly kArrayBuffer: NetworkTablesTypeInfo = [3, 'raw'];
+  static readonly kArrayBuffer: NetworkTablesTypeInfo = [5, 'raw'];
   static readonly kBooleanArray: NetworkTablesTypeInfo = [16, 'boolean[]'];
   static readonly kDoubleArray: NetworkTablesTypeInfo = [17, 'double[]'];
   static readonly kIntegerArray: NetworkTablesTypeInfo = [18, 'int[]'];

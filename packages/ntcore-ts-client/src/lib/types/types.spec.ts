@@ -19,7 +19,7 @@ describe('NetworkTablesTypeInfos', () => {
     expect(NetworkTablesTypeInfos.kDouble).toEqual([1, 'double']);
     expect(NetworkTablesTypeInfos.kInteger).toEqual([2, 'int']);
     expect(NetworkTablesTypeInfos.kString).toEqual([4, 'string']);
-    expect(NetworkTablesTypeInfos.kArrayBuffer).toEqual([3, 'raw']);
+    expect(NetworkTablesTypeInfos.kArrayBuffer).toEqual([5, 'raw']);
     expect(NetworkTablesTypeInfos.kBooleanArray).toEqual([16, 'boolean[]']);
     expect(NetworkTablesTypeInfos.kDoubleArray).toEqual([17, 'double[]']);
     expect(NetworkTablesTypeInfos.kIntegerArray).toEqual([18, 'int[]']);
