@@ -2,6 +2,15 @@
 
 Note: there may be breaking changes between each beta version, but if a breaking change is introduced out of beta, it will be a major version change
 
+## 3.1.3
+
+- Hotfix: Fix `raw` type number to be `5` instead of `3`
+- Updated dependencies
+
+### Non-library changes
+
+- Swap from jest to vitest
+
 ## 3.1.2
 
 - Hotfix: WPILib 2025.2.1 needs a subscription after publish to receive the announcement. Implements this hotfix and other small null-check fixes.
