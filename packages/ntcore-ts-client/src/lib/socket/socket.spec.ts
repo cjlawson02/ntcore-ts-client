@@ -1,6 +1,6 @@
 import { encode } from '@msgpack/msgpack';
 import WebSocket from 'isomorphic-ws';
-import WSMock from 'jest-websocket-mock';
+import WSMock from 'vitest-websocket-mock';
 
 import { Util } from '../util/util';
 
@@ -20,12 +20,12 @@ describe('NetworkTablesSocket', () => {
   let socket: NetworkTablesSocket;
   const serverUrl = 'ws://localhost:5810/nt/1234';
   let server: WSMock;
-  const onSocketOpen = jest.fn();
-  const onSocketClose = jest.fn();
-  const onTopicUpdate = jest.fn();
-  const onAnnounce = jest.fn();
-  const onUnannounce = jest.fn();
-  const onProperties = jest.fn();
+  const onSocketOpen = vi.fn();
+  const onSocketClose = vi.fn();
+  const onTopicUpdate = vi.fn();
+  const onAnnounce = vi.fn();
+  const onUnannounce = vi.fn();
+  const onProperties = vi.fn();
 
   beforeEach(async () => {
     server = new WSMock(serverUrl);
@@ -121,7 +121,7 @@ describe('NetworkTablesSocket', () => {
 
     it('should not send any messages if the WebSocket is not open', async () => {
       // Mock the WebSocket's `send` method
-      const send = jest.fn();
+      const send = vi.fn();
       socket.websocket = {
         ...socket.websocket,
         send,
@@ -149,7 +149,7 @@ describe('NetworkTablesSocket', () => {
   describe('heartbeat', () => {
     it('should send a heartbeat message through the WebSocket', () => {
       // Mock the WebSocket's `send` method
-      const send = jest.fn();
+      const send = vi.fn();
       socket.websocket = {
         ...socket.websocket,
         send,
@@ -164,7 +164,7 @@ describe('NetworkTablesSocket', () => {
 
   describe('updateConnectionListeners', () => {
     it('should call all connection listeners with the current connection status', () => {
-      const listeners = [jest.fn(), jest.fn()];
+      const listeners = [vi.fn(), vi.fn()];
       listeners.forEach((listener) => socket['connectionListeners'].add(listener));
 
       socket['updateConnectionListeners']();
@@ -181,7 +181,6 @@ describe('NetworkTablesSocket', () => {
   });
 
   describe('onmessage', () => {
-    // eslint-disable-next-line jest/no-disabled-tests
     it.skip('should call the binary frame handler for a binary message', () => {
       const message: BinaryMessage = [0, 0, 1, 1.0];
 

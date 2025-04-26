@@ -1,10 +1,11 @@
-import WSMock from 'jest-websocket-mock';
+import WSMock from 'vitest-websocket-mock';
 
 import { NetworkTablesPrefixTopic } from './prefix-topic';
 import { PubSubClient } from './pubsub';
 
 import type { CallbackFn } from './base-topic';
 import type { AnnounceMessageParams, NetworkTablesTypes, SubscribeMessageParams } from '../types/types';
+import type { Mock } from 'vitest';
 
 describe('Prefix Topic', () => {
   let topic: NetworkTablesPrefixTopic;
@@ -64,9 +65,9 @@ describe('Prefix Topic', () => {
   });
 
   describe('subscribe', () => {
-    let callback: jest.Mock;
+    let callback: Mock;
     beforeEach(() => {
-      callback = jest.fn();
+      callback = vi.fn();
     });
 
     it('should add the callback to the list of subscribers', () => {
@@ -79,7 +80,7 @@ describe('Prefix Topic', () => {
     });
 
     it('should send a subscribe message to the server', () => {
-      const send = jest.fn();
+      const send = vi.fn();
       topic['client']['_messenger']['_socket']['sendTextFrame'] = send;
       topic.subscribe(callback);
       expect(send).toHaveBeenCalledWith({
@@ -98,7 +99,7 @@ describe('Prefix Topic', () => {
   describe('unsubscribe', () => {
     it('removes the subscriber from the topic', () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const callback: CallbackFn<NetworkTablesTypes> = (_: NetworkTablesTypes | null) => jest.fn();
+      const callback: CallbackFn<NetworkTablesTypes> = (_: NetworkTablesTypes | null) => vi.fn();
       topic.subscribe(callback);
       expect(topic.subscribers.size).toBe(1);
       topic.unsubscribe(topic.subscribers.keys().next().value!, true);
@@ -114,7 +115,7 @@ describe('Prefix Topic', () => {
   describe('unsubscribeAll', () => {
     it('removes all subscribers from the topic', () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const callback: CallbackFn<NetworkTablesTypes> = (_: NetworkTablesTypes | null) => jest.fn();
+      const callback: CallbackFn<NetworkTablesTypes> = (_: NetworkTablesTypes | null) => vi.fn();
       topic.subscribe(callback);
       topic.subscribe(callback);
       expect(topic.subscribers.size).toBe(2);
@@ -126,7 +127,7 @@ describe('Prefix Topic', () => {
   describe('resubscribeAll', () => {
     it('resubscribes all subscribers to the topic', () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const callback: CallbackFn<NetworkTablesTypes> = (_: NetworkTablesTypes | null) => jest.fn();
+      const callback: CallbackFn<NetworkTablesTypes> = (_: NetworkTablesTypes | null) => vi.fn();
       topic.subscribe(callback);
       topic.subscribe(callback);
       expect(topic.subscribers.size).toBe(2);
@@ -137,7 +138,7 @@ describe('Prefix Topic', () => {
 
   describe('notifySubscribers', () => {
     it('calls the callback with the value', () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       topic.subscribe(callback);
       const params = { type: 'string', name: 'test', id: 1, properties: {} };
       topic['notifySubscribers']({ type: 'string', name: 'test', id: 1, properties: {} }, 'foo');
@@ -147,7 +148,7 @@ describe('Prefix Topic', () => {
 
   describe('setProperties', () => {
     it('should set the properties', () => {
-      topic['client']['messenger']['_socket']['sendTextFrame'] = jest.fn();
+      topic['client']['messenger']['_socket']['sendTextFrame'] = vi.fn();
       topic.setProperties(true, true);
       expect(topic['client']['messenger']['_socket']['sendTextFrame']).toHaveBeenCalledWith({
         method: 'setproperties',

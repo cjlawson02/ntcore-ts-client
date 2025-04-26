@@ -1,6 +1,6 @@
-import { jestOverrides } from './overrides/jest';
 import { jsonOverrides } from './overrides/json';
 import { tsOverrides } from './overrides/ts';
+import { vitestOverrides } from './overrides/vitest';
 
 import type { Linter } from '@typescript-eslint/utils/dist/ts-eslint';
 
@@ -21,7 +21,7 @@ const config: Linter.Config = {
     },
   },
   extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'prettier'],
-  overrides: [tsOverrides, jestOverrides, jsonOverrides],
+  overrides: [tsOverrides, vitestOverrides, jsonOverrides],
 };
 
 module.exports = config;

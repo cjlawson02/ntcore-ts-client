@@ -8,7 +8,7 @@ describe('Util', () => {
   describe('getMicros', () => {
     it('should return the current microseconds of the DOM', () => {
       // mock the performance object to return a specific value for now
-      jest.spyOn(performance, 'now').mockImplementation(() => 123);
+      vi.spyOn(performance, 'now').mockImplementation(() => 123);
 
       expect(Util.getMicros()).toEqual(123000);
     });

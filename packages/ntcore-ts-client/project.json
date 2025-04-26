@@ -34,10 +34,10 @@
       }
     },
     "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "executor": "@nx/vite:test",
+      "outputs": ["{options.reportsDirectory}"],
       "options": {
-        "jestConfig": "packages/ntcore-ts-client/jest.config.ts"
+        "reportsDirectory": "../../coverage/packages/ntcore-ts-client"
       }
     },
     "docs": {

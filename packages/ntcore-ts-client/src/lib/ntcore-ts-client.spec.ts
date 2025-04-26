@@ -52,7 +52,7 @@ describe('NetworkTables', () => {
   });
 
   it('allows adding and removing robot connection listeners', () => {
-    const spy = jest.fn();
+    const spy = vi.fn();
     const networkTables = NetworkTables.getInstanceByTeam(973);
     const removeListener = networkTables.addRobotConnectionListener(spy, true);
     expect(spy).toHaveBeenCalledWith(false);
