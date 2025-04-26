@@ -1,3 +1,5 @@
+import { NetworkTablesTypeInfos } from '../types/types';
+
 import { PubSubClient } from './pubsub';
 
 describe('PubSubClient', () => {
@@ -35,7 +37,13 @@ describe('PubSubClient', () => {
   });
 
   it('handles updates to a topic', () => {
-    const topic = { name: 'test', id: 123, updateValue: jest.fn(), isRegular: () => true };
+    const topic = {
+      name: 'test',
+      id: 123,
+      typeInfo: NetworkTablesTypeInfos.kString,
+      updateValue: vi.fn(),
+      isRegular: () => true,
+    };
     client.registerTopic(topic as never);
     client['onTopicUpdate']({
       topicId: 123,
@@ -49,7 +57,7 @@ describe('PubSubClient', () => {
     const topic = {
       name: '/testprefix/',
       id: 123,
-      updateValue: jest.fn(),
+      updateValue: vi.fn(),
       isRegular: () => false,
       isPrefix: () => true,
     };
@@ -65,7 +73,7 @@ describe('PubSubClient', () => {
   });
 
   it('handles announcements for a topic', () => {
-    const topic = { name: 'test', announce: jest.fn(), isRegular: () => true, isPrefix: () => false };
+    const topic = { name: 'test', announce: vi.fn(), isRegular: () => true, isPrefix: () => false };
     client.registerTopic(topic as never);
     client['onTopicAnnounce']({ id: 123, name: 'test' } as never);
     expect(client.getKnownTopicParams(123)).toEqual({ id: 123, name: 'test' });
@@ -73,7 +81,7 @@ describe('PubSubClient', () => {
   });
 
   it('handles announcements for a prefix topic', () => {
-    const topic = { name: '/testprefix/', announce: jest.fn(), isRegular: () => false, isPrefix: () => true };
+    const topic = { name: '/testprefix/', announce: vi.fn(), isRegular: () => false, isPrefix: () => true };
     client.registerTopic(topic as never);
     client['onTopicAnnounce']({ id: 1234, name: '/testprefix/test' } as never);
     expect(client.getKnownTopicParams(1234)).toEqual({ id: 1234, name: '/testprefix/test' });
@@ -83,8 +91,8 @@ describe('PubSubClient', () => {
   it('handles unannouncements for a topic', () => {
     const topic = {
       name: 'test',
-      announce: jest.fn(),
-      unannounce: jest.fn(),
+      announce: vi.fn(),
+      unannounce: vi.fn(),
       isRegular: () => true,
       isPrefix: () => false,
     };
@@ -100,18 +108,18 @@ describe('PubSubClient', () => {
       publisher: true,
       isRegular: () => true,
       isPrefix: () => false,
-      announce: jest.fn(),
-      resubscribeAll: jest.fn(),
-      republish: jest.fn(),
+      announce: vi.fn(),
+      resubscribeAll: vi.fn(),
+      republish: vi.fn(),
     };
     const topic2 = {
       name: 'test2',
       publisher: true,
       isRegular: () => true,
       isPrefix: () => false,
-      announce: jest.fn(),
-      resubscribeAll: jest.fn(),
-      republish: jest.fn(),
+      announce: vi.fn(),
+      resubscribeAll: vi.fn(),
+      republish: vi.fn(),
     };
     client.registerTopic(topic as never);
     client.registerTopic(topic2 as never);
