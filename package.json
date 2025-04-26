@@ -12,8 +12,7 @@
       "npx nx format:write --uncommitted",
       "npx nx affected --target=lint-fix --uncommitted",
       "npx nx affected --target=test --uncommitted",
-      "npx nx affected --target=build --uncommitted",
-      "npx nx run ntcore-ts-client:docs"
+      "npx nx affected --target=build --uncommitted"
     ]
   },
   "dependencies": {
