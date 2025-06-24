@@ -1,6 +1,4 @@
-import { NetworkTablesTypeInfos } from '../types/types';
-
-import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTablesTypes, TypeNum, TypeString } from '../types/types';
+import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTablesTypes } from '../types/types';
 
 /**
  * Class for holding utility functions.
@@ -30,95 +28,6 @@ export class Util {
   }
 
   /**
-   * Given a value, find the NT type number.
-   * @param data - The value.
-   * @returns The NT type number.
-   */
-  static getNetworkTablesTypeFromObject(data: NetworkTablesTypes): NetworkTablesTypeInfo {
-    if (typeof data === 'boolean') {
-      return NetworkTablesTypeInfos.kBoolean;
-    } else if (typeof data === 'number') {
-      if (this.isDouble(data)) {
-        return NetworkTablesTypeInfos.kDouble;
-      }
-      return NetworkTablesTypeInfos.kInteger;
-    } else if (typeof data === 'string') {
-      return NetworkTablesTypeInfos.kString;
-    } else if (data instanceof ArrayBuffer) {
-      return NetworkTablesTypeInfos.kArrayBuffer;
-    } else if (Array.isArray(data)) {
-      if (new Set(data.map((x) => typeof x)).size <= 1) {
-        if (typeof data[0] === 'boolean') {
-          return NetworkTablesTypeInfos.kBooleanArray;
-        } else if (typeof data[0] === 'number') {
-          if ((data as number[]).every((e) => this.isDouble(e))) {
-            return NetworkTablesTypeInfos.kDoubleArray;
-          }
-          return NetworkTablesTypeInfos.kIntegerArray;
-        } else if (typeof data[0] === 'string') {
-          return NetworkTablesTypeInfos.kStringArray;
-        }
-      }
-    }
-    throw new Error(`Invalid data for NT: ${data}`);
-  }
-
-  static getNetworkTablesTypeFromTypeNum(typeNum: TypeNum) {
-    switch (typeNum) {
-      case NetworkTablesTypeInfos.kBoolean[0]:
-        return NetworkTablesTypeInfos.kBoolean;
-      case NetworkTablesTypeInfos.kDouble[0]:
-        return NetworkTablesTypeInfos.kDouble;
-      case NetworkTablesTypeInfos.kInteger[0]:
-        return NetworkTablesTypeInfos.kInteger;
-      case NetworkTablesTypeInfos.kString[0]:
-        return NetworkTablesTypeInfos.kString;
-      case NetworkTablesTypeInfos.kArrayBuffer[0]:
-        return NetworkTablesTypeInfos.kArrayBuffer;
-      case NetworkTablesTypeInfos.kBooleanArray[0]:
-        return NetworkTablesTypeInfos.kBooleanArray;
-      case NetworkTablesTypeInfos.kDoubleArray[0]:
-        return NetworkTablesTypeInfos.kDoubleArray;
-      case NetworkTablesTypeInfos.kIntegerArray[0]:
-        return NetworkTablesTypeInfos.kIntegerArray;
-      case NetworkTablesTypeInfos.kStringArray[0]:
-        return NetworkTablesTypeInfos.kStringArray;
-      default:
-        throw new Error(`Invalid type number: ${typeNum}`);
-    }
-  }
-
-  /**
-   * Get the type info from a type string.
-   * @param typeString - The type string.
-   * @returns The type info.
-   */
-  static getNetworkTablesTypeFromTypeString(typeString: TypeString) {
-    switch (typeString) {
-      case NetworkTablesTypeInfos.kBoolean[1]:
-        return NetworkTablesTypeInfos.kBoolean;
-      case NetworkTablesTypeInfos.kDouble[1]:
-        return NetworkTablesTypeInfos.kDouble;
-      case NetworkTablesTypeInfos.kInteger[1]:
-        return NetworkTablesTypeInfos.kInteger;
-      case NetworkTablesTypeInfos.kString[1]:
-        return NetworkTablesTypeInfos.kString;
-      case NetworkTablesTypeInfos.kArrayBuffer[1]:
-        return NetworkTablesTypeInfos.kArrayBuffer;
-      case NetworkTablesTypeInfos.kBooleanArray[1]:
-        return NetworkTablesTypeInfos.kBooleanArray;
-      case NetworkTablesTypeInfos.kDoubleArray[1]:
-        return NetworkTablesTypeInfos.kDoubleArray;
-      case NetworkTablesTypeInfos.kIntegerArray[1]:
-        return NetworkTablesTypeInfos.kIntegerArray;
-      case NetworkTablesTypeInfos.kStringArray[1]:
-        return NetworkTablesTypeInfos.kStringArray;
-      default:
-        throw new Error(`Unsupported type string: ${typeString}`);
-    }
-  }
-
-  /**
    * Create a binary message from a topic.
    * @param topicId - The topic ID.
    * @param timestamp - The timestamp of the message, matching the server.
@@ -130,10 +39,9 @@ export class Util {
     topicId: number,
     timestamp: number,
     data: NetworkTablesTypes,
-    typeInfo?: NetworkTablesTypeInfo
+    typeInfo: NetworkTablesTypeInfo
   ): BinaryMessage {
-    const type = typeInfo ?? this.getNetworkTablesTypeFromObject(data);
-    return [topicId, timestamp, type[0], data];
+    return [topicId, timestamp, typeInfo[0], data];
   }
 
   /**

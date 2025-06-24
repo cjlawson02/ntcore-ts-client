@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["ntcore", "roborio", "unannounce"]
+  "cSpell.words": ["ntcore", "roborio", "unannounce"],
+  "java.configuration.updateBuildConfiguration": "automatic"
 }

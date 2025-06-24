@@ -2,6 +2,19 @@
 
 Note: there may be breaking changes between each beta version, but if a breaking change is introduced out of beta, it will be a major version change
 
+## 3.2.0
+
+- Added support for protobufs and structs
+- Fixed type number for `raw` type
+- Added type numbers for `float`, `json`, `rpc`, `msgpack`, `protobuf`, and `float[]`
+- Improved type checking and data validation
+
+### Non-library changes
+
+- Remove docs directory
+- Improved example client code
+- Added example robot code
+
 ## 3.1.3
 
 - Hotfix: Fix `raw` type number to be `5` instead of `3`

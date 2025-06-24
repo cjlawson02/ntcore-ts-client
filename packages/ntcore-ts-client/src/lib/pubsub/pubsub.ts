@@ -1,4 +1,5 @@
 import { Messenger } from '../socket/messenger';
+import { NetworkTablesTypeInfos } from '../types/types';
 
 import type { NetworkTablesBaseTopic } from './base-topic';
 import type { NetworkTablesPrefixTopic } from './prefix-topic';
@@ -100,7 +101,13 @@ export class PubSubClient {
   private onTopicUpdate = (message: BinaryMessageData) => {
     const topic = this.getTopicFromId(message.topicId);
     if (topic) {
-      topic.updateValue(message.value, message.serverTime);
+      let validatedData: NetworkTablesTypes;
+      try {
+        validatedData = NetworkTablesTypeInfos.validateData(topic.typeInfo, message.value);
+      } catch (e) {
+        throw new Error(`Invalid data for topic ${topic.name}: ${e}`);
+      }
+      topic.updateValue(validatedData, message.serverTime);
     }
 
     const knownTopic = this.getKnownTopicParams(message.topicId);
