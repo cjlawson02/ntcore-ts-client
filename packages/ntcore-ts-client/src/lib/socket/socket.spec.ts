@@ -2,10 +2,6 @@ import { encode } from '@msgpack/msgpack';
 import WebSocket from 'isomorphic-ws';
 import WSMock from 'vitest-websocket-mock';
 
-import { NetworkTablesTypeInfos } from '../types/types';
-
-import { NetworkTablesSocket } from './socket';
-
 import type {
   AnnounceMessage,
   AnnounceMessageParams,
@@ -15,6 +11,8 @@ import type {
   UnannounceMessage,
   UnannounceMessageParams,
 } from '../types/types';
+
+import { NetworkTablesSocket } from './socket';
 
 describe('NetworkTablesSocket', () => {
   let socket: NetworkTablesSocket;
@@ -181,16 +179,22 @@ describe('NetworkTablesSocket', () => {
   });
 
   describe('onmessage', () => {
-    it.skip('should call the binary frame handler for a binary message', () => {
-      const message: BinaryMessage = [0, 0, 1, 1.0];
+    it('should call the binary frame handler for a binary message', () => {
+      const message: BinaryMessage = [0, 0, 2, 1.0];
+      const encoded = encode(message);
 
-      // Trigger the onmessage event
-      server.send(encode(message));
+      // Manually trigger the onmessage event with binary data
+      // Pass Uint8Array directly (handleBinaryFrame accepts both ArrayBuffer and Uint8Array)
+      const event = {
+        data: encoded,
+      } as unknown as MessageEvent;
+      // Call the private onMessage method directly
+      socket['onMessage'](event);
 
       expect(onTopicUpdate).toHaveBeenCalledWith({
         topicId: message[0],
         serverTime: message[1],
-        typeInfo: NetworkTablesTypeInfos.getFromTypeNum(message[2]),
+        typeNum: message[2],
         value: message[3],
       });
     });

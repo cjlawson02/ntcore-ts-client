@@ -429,7 +429,8 @@ export class NetworkTablesSocket {
     if (this.isConnected()) {
       this._websocket.send(encode(cleanMsg));
     } else {
-      this.messageQueue.push(encode(cleanMsg));
+      const encoded = encode(cleanMsg);
+      this.messageQueue.push(new Uint8Array(encoded).buffer);
     }
   }
 

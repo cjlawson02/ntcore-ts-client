@@ -22,6 +22,7 @@ export default defineConfig(() => ({
     coverage: {
       reportsDirectory: '../../coverage/packages/ntcore-ts-client',
       provider: 'v8' as const,
+      include: ['src/**/*.{ts,tsx}'],
     },
   },
   resolve: {
