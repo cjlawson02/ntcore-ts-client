@@ -2,6 +2,8 @@ import { encode } from '@msgpack/msgpack';
 import WebSocket from 'isomorphic-ws';
 import WSMock from 'vitest-websocket-mock';
 
+import { NetworkTablesSocket } from './socket';
+
 import type {
   AnnounceMessage,
   AnnounceMessageParams,
@@ -11,8 +13,6 @@ import type {
   UnannounceMessage,
   UnannounceMessageParams,
 } from '../types/types';
-
-import { NetworkTablesSocket } from './socket';
 
 describe('NetworkTablesSocket', () => {
   let socket: NetworkTablesSocket;
