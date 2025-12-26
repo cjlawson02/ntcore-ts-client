@@ -62,7 +62,8 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
     const existingTopic = this.client.getTopicFromName(name);
     if (existingTopic) {
       if (existingTopic.typeInfo[0] === typeInfo[0] && existingTopic.typeInfo[1] === typeInfo[1]) {
-        return existingTopic;
+        // This is a valid cast because we have checked via typeInfo that the topic is of type T
+        return existingTopic as unknown as NetworkTablesTopic<T>;
       } else {
         throw new Error(`Topic ${name} already exists, but with a different type.`);
       }

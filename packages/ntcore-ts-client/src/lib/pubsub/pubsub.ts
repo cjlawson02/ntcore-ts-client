@@ -15,7 +15,7 @@ import type {
 /** The client for the PubSub protocol. */
 export class PubSubClient {
   private readonly _messenger: Messenger;
-  private readonly topics: Map<string, NetworkTablesTopic<any>>;
+  private readonly topics: Map<string, NetworkTablesTopic<NetworkTablesTypes>>;
   private readonly prefixTopics: Map<string, NetworkTablesPrefixTopic>;
   // topic id -> topic params
   private readonly knownTopicParams: Map<number, AnnounceMessageParams>;
@@ -185,7 +185,7 @@ export class PubSubClient {
    * @param topicId - The ID of the topic to get.
    * @returns The topic with the given ID, or null if no topic with that ID exists.
    */
-  private getTopicFromId<T extends NetworkTablesTypes>(topicId: number): NetworkTablesTopic<T> | null {
+  private getTopicFromId(topicId: number): NetworkTablesTopic<NetworkTablesTypes> | null {
     for (const topic of this.topics.values()) {
       if (topic.id === topicId) {
         return topic;
