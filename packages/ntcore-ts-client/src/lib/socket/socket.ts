@@ -338,11 +338,10 @@ export class NetworkTablesSocket {
     // TODO: Use streams
     for (const f of decodeMulti(frame)) {
       const message = msgPackSchema.parse(f);
-
       const messageData: BinaryMessageData = {
         topicId: message[0],
         serverTime: message[1],
-        typeInfo: Util.getNetworkTablesTypeFromTypeNum(message[2]),
+        typeNum: message[2],
         value: message[3],
       };
 
@@ -456,7 +455,7 @@ export class NetworkTablesSocket {
    * @param typeInfo - The type info for the value.
    * @returns The time the message was sent.
    */
-  sendValueToTopic(id: number, value: NetworkTablesTypes, typeInfo?: NetworkTablesTypeInfo) {
+  sendValueToTopic(id: number, value: NetworkTablesTypes, typeInfo: NetworkTablesTypeInfo) {
     const time = Math.ceil(this.getServerTime());
     const message = Util.createBinaryMessage(id, time, value, typeInfo);
     this.sendBinaryFrame(message);

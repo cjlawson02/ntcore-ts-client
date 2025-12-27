@@ -1,15 +1,16 @@
 import { Messenger } from '../socket/messenger';
+import {
+  NetworkTablesTypeInfos,
+  type AnnounceMessageParams,
+  type BinaryMessageData,
+  type NetworkTablesTypes,
+  type PropertiesMessageParams,
+  type UnannounceMessageParams,
+} from '../types/types';
 
 import type { NetworkTablesBaseTopic } from './base-topic';
 import type { NetworkTablesPrefixTopic } from './prefix-topic';
 import type { NetworkTablesTopic } from './topic';
-import type {
-  AnnounceMessageParams,
-  BinaryMessageData,
-  NetworkTablesTypes,
-  PropertiesMessageParams,
-  UnannounceMessageParams,
-} from '../types/types';
 
 /** The client for the PubSub protocol. */
 export class PubSubClient {
@@ -100,7 +101,13 @@ export class PubSubClient {
   private onTopicUpdate = (message: BinaryMessageData) => {
     const topic = this.getTopicFromId(message.topicId);
     if (topic) {
-      topic.updateValue(message.value, message.serverTime);
+      let validatedData: NetworkTablesTypes;
+      try {
+        validatedData = NetworkTablesTypeInfos.validateData(topic.typeInfo, message.value);
+      } catch (e) {
+        throw new Error(`Invalid data for topic ${topic.name}: ${e}`);
+      }
+      topic.updateValue(validatedData, message.serverTime);
     }
 
     const knownTopic = this.getKnownTopicParams(message.topicId);

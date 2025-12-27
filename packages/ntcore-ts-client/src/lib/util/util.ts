@@ -44,8 +44,8 @@ export class Util {
       return NetworkTablesTypeInfos.kInteger;
     } else if (typeof data === 'string') {
       return NetworkTablesTypeInfos.kString;
-    } else if (data instanceof ArrayBuffer) {
-      return NetworkTablesTypeInfos.kArrayBuffer;
+    } else if (data instanceof Uint8Array) {
+      return NetworkTablesTypeInfos.kUint8Array;
     } else if (Array.isArray(data)) {
       if (new Set(data.map((x) => typeof x)).size <= 1) {
         if (typeof data[0] === 'boolean') {
@@ -73,8 +73,8 @@ export class Util {
         return NetworkTablesTypeInfos.kInteger;
       case NetworkTablesTypeInfos.kString[0]:
         return NetworkTablesTypeInfos.kString;
-      case NetworkTablesTypeInfos.kArrayBuffer[0]:
-        return NetworkTablesTypeInfos.kArrayBuffer;
+      case NetworkTablesTypeInfos.kUint8Array[0]:
+        return NetworkTablesTypeInfos.kUint8Array;
       case NetworkTablesTypeInfos.kBooleanArray[0]:
         return NetworkTablesTypeInfos.kBooleanArray;
       case NetworkTablesTypeInfos.kDoubleArray[0]:
@@ -103,8 +103,8 @@ export class Util {
         return NetworkTablesTypeInfos.kInteger;
       case NetworkTablesTypeInfos.kString[1]:
         return NetworkTablesTypeInfos.kString;
-      case NetworkTablesTypeInfos.kArrayBuffer[1]:
-        return NetworkTablesTypeInfos.kArrayBuffer;
+      case NetworkTablesTypeInfos.kUint8Array[1]:
+        return NetworkTablesTypeInfos.kUint8Array;
       case NetworkTablesTypeInfos.kBooleanArray[1]:
         return NetworkTablesTypeInfos.kBooleanArray;
       case NetworkTablesTypeInfos.kDoubleArray[1]:

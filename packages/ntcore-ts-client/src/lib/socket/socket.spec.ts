@@ -2,18 +2,17 @@ import { encode } from '@msgpack/msgpack';
 import WebSocket from 'isomorphic-ws';
 import WSMock from 'vitest-websocket-mock';
 
-import {
-  NetworkTablesTypeInfos,
-  type AnnounceMessage,
-  type AnnounceMessageParams,
-  type BinaryMessage,
-  type PropertiesMessage,
-  type PropertiesMessageParams,
-  type UnannounceMessage,
-  type UnannounceMessageParams,
-} from '../types/types';
-
 import { NetworkTablesSocket } from './socket';
+
+import type {
+  AnnounceMessage,
+  AnnounceMessageParams,
+  BinaryMessage,
+  PropertiesMessage,
+  PropertiesMessageParams,
+  UnannounceMessage,
+  UnannounceMessageParams,
+} from '../types/types';
 
 describe('NetworkTablesSocket', () => {
   let socket: NetworkTablesSocket;
@@ -195,7 +194,7 @@ describe('NetworkTablesSocket', () => {
       expect(onTopicUpdate).toHaveBeenCalledWith({
         topicId: message[0],
         serverTime: message[1],
-        typeInfo: NetworkTablesTypeInfos.kInteger,
+        typeNum: message[2],
         value: message[3],
       });
     });
