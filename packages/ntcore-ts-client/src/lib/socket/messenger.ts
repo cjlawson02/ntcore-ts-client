@@ -139,18 +139,14 @@ export class Messenger {
   private parseAndFilterMessage<T extends Message>(
     event: MessageEvent | WS_MessageEvent,
     method: Message['method']
-  ): T | null {
-    if (!(event.data instanceof ArrayBuffer) && !(event.data instanceof Uint8Array)) {
+  ): T[] {
+    if (typeof event.data === 'string') {
       const messageData = JSON.parse(event.data);
       const messages = messageSchema.parse(messageData);
-      for (const message of messages) {
-        if (message.method === method) {
-          return message as T;
-        }
-      }
+      return messages.filter((msg) => msg.method === method) as T[];
     }
 
-    return null;
+    return [];
   }
 
   /**
@@ -180,9 +176,12 @@ export class Messenger {
       };
 
       const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
-        const message = this.parseAndFilterMessage<AnnounceMessage>(event, 'announce');
-        if (message && message.params.name === params.name) {
-          resolver(message);
+        const messages = this.parseAndFilterMessage<AnnounceMessage>(event, 'announce');
+        for (const message of messages) {
+          if (message.params.name === params.name && message.params.pubuid === params.pubuid) {
+            resolver(message);
+            break;
+          }
         }
       };
 
@@ -292,9 +291,12 @@ export class Messenger {
       };
 
       const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
-        const message = this.parseAndFilterMessage<PropertiesMessage>(event, 'announce');
-        if (message?.params.ack) {
-          resolver(message);
+        const messages = this.parseAndFilterMessage<PropertiesMessage>(event, 'announce');
+        for (const message of messages) {
+          if (message.params.name === params.name && message.params.ack) {
+            resolver(message);
+            break;
+          }
         }
       };
 

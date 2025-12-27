@@ -45,8 +45,8 @@ describe('Util', () => {
       expect(Util.getNetworkTablesTypeFromObject('abc')).toEqual(NetworkTablesTypeInfos.kString);
     });
 
-    it('should return the correct NT type for an ArrayBuffer value', () => {
-      expect(Util.getNetworkTablesTypeFromObject(new ArrayBuffer(10))).toEqual(NetworkTablesTypeInfos.kArrayBuffer);
+    it('should return the correct NT type for an Uint8Array value', () => {
+      expect(Util.getNetworkTablesTypeFromObject(new Uint8Array(10))).toEqual(NetworkTablesTypeInfos.kUint8Array);
     });
 
     it('should return the correct NT type for a boolean array value', () => {
@@ -95,9 +95,9 @@ describe('Util', () => {
       );
     });
 
-    it('should return the correct NT type for an ArrayBuffer value', () => {
-      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kArrayBuffer[0])).toEqual(
-        NetworkTablesTypeInfos.kArrayBuffer
+    it('should return the correct NT type for an Uint8Array value', () => {
+      expect(Util.getNetworkTablesTypeFromTypeNum(NetworkTablesTypeInfos.kUint8Array[0])).toEqual(
+        NetworkTablesTypeInfos.kUint8Array
       );
     });
 
@@ -155,9 +155,9 @@ describe('Util', () => {
       );
     });
 
-    it('should return the correct NT type for an ArrayBuffer value', () => {
-      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kArrayBuffer[1])).toEqual(
-        NetworkTablesTypeInfos.kArrayBuffer
+    it('should return the correct NT type for an Uint8Array value', () => {
+      expect(Util.getNetworkTablesTypeFromTypeString(NetworkTablesTypeInfos.kUint8Array[1])).toEqual(
+        NetworkTablesTypeInfos.kUint8Array
       );
     });
 
