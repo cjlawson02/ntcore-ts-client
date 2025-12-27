@@ -95,6 +95,11 @@ export class NetworkTables {
     return this.uri;
   }
 
+  /**
+   * Changes the URI of the server.
+   * @param uri - The new URI of the server.
+   * @param port - The port to connect to the server on. Defaults to 5810.
+   */
   changeURI(uri: string, port = 5810) {
     this.uri = uri;
     this._client.reinstantiate(Util.createServerUrl(uri, port));
