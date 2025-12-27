@@ -63,7 +63,7 @@ export class NetworkTablesTypeInfos {
   static readonly kFloat: NetworkTablesTypeInfo = [3, 'float'];
   static readonly kString: NetworkTablesTypeInfo = [4, 'string'];
   static readonly kJson: NetworkTablesTypeInfo = [4, 'json'];
-  static readonly kArrayBuffer: NetworkTablesTypeInfo = [5, 'raw'];
+  static readonly kUint8Array: NetworkTablesTypeInfo = [5, 'raw'];
   static readonly kRPC: NetworkTablesTypeInfo = [5, 'rpc'];
   static readonly kMsgpack: NetworkTablesTypeInfo = [5, 'msgpack'];
   static readonly kProtobuf: NetworkTablesTypeInfo = [5, 'protobuf'];
@@ -83,7 +83,7 @@ export class NetworkTablesTypeInfos {
       this.kFloat,
       this.kString,
       this.kJson,
-      this.kArrayBuffer,
+      this.kUint8Array,
       this.kRPC,
       this.kMsgpack,
       this.kProtobuf,
@@ -147,28 +147,27 @@ export class NetworkTablesTypeInfos {
         }
       }
       // 5
-      case NetworkTablesTypeInfos.kArrayBuffer:
-        // Check if value is an ArrayBuffer, RPC, Msgpack, or Protobuf
-        if (value instanceof ArrayBuffer) {
+      case NetworkTablesTypeInfos.kUint8Array:
+        if (value instanceof Uint8Array) {
           return value;
         } else {
-          throw new Error(`Invalid ArrayBuffer value: ${value}`);
+          throw new Error(`Invalid Uint8Array value: ${value}`);
         }
       case NetworkTablesTypeInfos.kRPC:
-        if (value instanceof ArrayBuffer) {
+        if (value instanceof Uint8Array) {
           return value;
         } else {
           throw new Error(`Invalid RPC value: ${value}`);
         }
       case NetworkTablesTypeInfos.kMsgpack:
-        if (value instanceof ArrayBuffer) {
+        if (value instanceof Uint8Array) {
           return value;
         } else {
           throw new Error(`Invalid Msgpack value: ${value}`);
         }
       case NetworkTablesTypeInfos.kProtobuf:
-        if (value instanceof ArrayBuffer) {
-          return new Uint8Array(value);
+        if (value instanceof Uint8Array) {
+          return value;
         } else {
           throw new Error(`Invalid Protobuf value: ${value}`);
         }

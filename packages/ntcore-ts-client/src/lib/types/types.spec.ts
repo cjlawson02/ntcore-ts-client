@@ -21,7 +21,7 @@ describe('NetworkTablesTypeInfos', () => {
     expect(NetworkTablesTypeInfos.kFloat).toEqual([3, 'float']);
     expect(NetworkTablesTypeInfos.kString).toEqual([4, 'string']);
     expect(NetworkTablesTypeInfos.kJson).toEqual([4, 'json']);
-    expect(NetworkTablesTypeInfos.kArrayBuffer).toEqual([5, 'raw']);
+    expect(NetworkTablesTypeInfos.kUint8Array).toEqual([5, 'raw']);
     expect(NetworkTablesTypeInfos.kRPC).toEqual([5, 'rpc']);
     expect(NetworkTablesTypeInfos.kMsgpack).toEqual([5, 'msgpack']);
     expect(NetworkTablesTypeInfos.kProtobuf).toEqual([5, 'protobuf']);
@@ -71,20 +71,20 @@ describe('NetworkTablesTypeInfos', () => {
       );
     });
 
-    it('should return the correct NT type for an ArrayBuffer value', () => {
-      const buffer = new ArrayBuffer(10);
-      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kArrayBuffer, buffer)).toEqual(buffer);
+    it('should return the correct NT type for an Uint8Array value', () => {
+      const array = new Uint8Array(10);
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kUint8Array, array)).toEqual(array);
     });
 
-    it('should throw for a bad ArrayBuffer value', () => {
-      expect(() => NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kArrayBuffer, 'not a buffer')).toThrow(
-        /Invalid ArrayBuffer value: not a buffer/
+    it('should throw for a bad Uint8Array value', () => {
+      expect(() => NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kUint8Array, 'not a Uint8Array')).toThrow(
+        /Invalid Uint8Array value: not a Uint8Array/
       );
     });
 
     it('should return the correct NT type for an RPC value', () => {
-      const buffer = new ArrayBuffer(10);
-      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kRPC, buffer)).toEqual(buffer);
+      const array = new Uint8Array(10);
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kRPC, array)).toEqual(array);
     });
 
     it('should throw for a bad RPC value', () => {
@@ -94,8 +94,8 @@ describe('NetworkTablesTypeInfos', () => {
     });
 
     it('should return the correct NT type for an Msgpack value', () => {
-      const buffer = new ArrayBuffer(10);
-      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kMsgpack, buffer)).toEqual(buffer);
+      const array = new Uint8Array(10);
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kMsgpack, array)).toEqual(array);
     });
 
     it('should throw for a bad Msgpack value', () => {
@@ -105,8 +105,8 @@ describe('NetworkTablesTypeInfos', () => {
     });
 
     it('should return the correct NT type for an Protobuf value', () => {
-      const buffer = new ArrayBuffer(10);
-      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kProtobuf, buffer)).toEqual(new Uint8Array(10));
+      const array = new Uint8Array(10);
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kProtobuf, array)).toEqual(array);
     });
 
     it('should throw for a bad Protobuf value', () => {
@@ -180,9 +180,9 @@ describe('NetworkTablesTypeInfos', () => {
       );
     });
 
-    it('should return the correct NT type for an ArrayBuffer value', () => {
-      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kArrayBuffer[0])).toEqual(
-        NetworkTablesTypeInfos.kArrayBuffer
+    it('should return the correct NT type for an Uint8Array value', () => {
+      expect(NetworkTablesTypeInfos.getFromTypeNum(NetworkTablesTypeInfos.kUint8Array[0])).toEqual(
+        NetworkTablesTypeInfos.kUint8Array
       );
     });
 
@@ -365,9 +365,9 @@ describe('NetworkTablesTypes', () => {
     expect(stringArray[1]).toEqual(expect.any(String));
   });
 
-  it('should have the correct shape for an array buffer', () => {
-    const arrayBuffer: NetworkTablesTypes = new ArrayBuffer(10);
+  it('should have the correct shape for an Uint8Array', () => {
+    const array: NetworkTablesTypes = new Uint8Array(10);
 
-    expect(arrayBuffer).toEqual(expect.any(ArrayBuffer));
+    expect(array).toEqual(expect.any(Uint8Array));
   });
 });

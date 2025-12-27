@@ -1,16 +1,16 @@
 import { Messenger } from '../socket/messenger';
-import { NetworkTablesTypeInfos } from '../types/types';
+import {
+  NetworkTablesTypeInfos,
+  type AnnounceMessageParams,
+  type BinaryMessageData,
+  type NetworkTablesTypes,
+  type PropertiesMessageParams,
+  type UnannounceMessageParams,
+} from '../types/types';
 
 import type { NetworkTablesBaseTopic } from './base-topic';
 import type { NetworkTablesPrefixTopic } from './prefix-topic';
 import type { NetworkTablesTopic } from './topic';
-import type {
-  AnnounceMessageParams,
-  BinaryMessageData,
-  NetworkTablesTypes,
-  PropertiesMessageParams,
-  UnannounceMessageParams,
-} from '../types/types';
 
 /** The client for the PubSub protocol. */
 export class PubSubClient {
