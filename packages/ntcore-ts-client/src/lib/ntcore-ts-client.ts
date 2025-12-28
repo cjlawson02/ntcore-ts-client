@@ -1,6 +1,14 @@
 import { NetworkTablesPrefixTopic } from './pubsub/prefix-topic';
 import { PubSubClient } from './pubsub/pubsub';
 import { NetworkTablesTopic } from './pubsub/topic';
+import {
+  defaultLogger,
+  setLogLevel,
+  setModuleLogLevel,
+  getModuleLogLevel,
+  type LoggerModule,
+  type LogLevel,
+} from './util/logger';
 import { Util } from './util/util';
 
 import type { NetworkTablesTypeInfo, NetworkTablesTypes } from './types/types';
@@ -44,8 +52,10 @@ export class NetworkTables {
   private constructor(props: NT_PROPS) {
     if (props.team) {
       this.uri = Util.getRobotAddress(props.team);
+      defaultLogger.debug('Instance created', { team: props.team, uri: this.uri, port: props.port });
     } else if (props.uri) {
       this.uri = props.uri;
+      defaultLogger.debug('Instance created', { uri: this.uri, port: props.port });
     } else {
       throw new Error('Must provide either a team number or URI.');
     }
@@ -65,9 +75,12 @@ export class NetworkTables {
    * @throws Error if the team number is not provided.
    */
   static getInstanceByTeam(team: number, port = 5810) {
-    let instance = this._instances.get(`${Util.getRobotAddress(team)}:${port}`);
+    const key = `${Util.getRobotAddress(team)}:${port}`;
+    let instance = this._instances.get(key);
     if (!instance) {
       instance = new this({ team, port });
+    } else {
+      defaultLogger.debug('Instance retrieved from cache', { team, uri: Util.getRobotAddress(team), port });
     }
     return instance;
   }
@@ -80,9 +93,12 @@ export class NetworkTables {
    * @throws Error if the URI is not provided.
    */
   static getInstanceByURI(uri: string, port = 5810) {
-    let instance = this._instances.get(`${uri}:${port}`);
+    const key = `${uri}:${port}`;
+    let instance = this._instances.get(key);
     if (!instance) {
       instance = new this({ uri, port });
+    } else {
+      defaultLogger.debug('Instance retrieved from cache', { uri, port });
     }
     return instance;
   }
@@ -101,7 +117,11 @@ export class NetworkTables {
    * @param port - The port to connect to the server on. Defaults to 5810.
    */
   changeURI(uri: string, port = 5810) {
+    const oldUri = this.uri;
+    const oldPort = this.port;
+    defaultLogger.info('URI changed', { oldUri, oldPort, newUri: uri, newPort: port });
     this.uri = uri;
+    this.port = port;
     this._client.reinstantiate(Util.createServerUrl(uri, port));
   }
 
@@ -118,7 +138,9 @@ export class NetworkTables {
    * @returns Whether the robot is connected.
    */
   isRobotConnected() {
-    return this._client.messenger.socket.isConnected();
+    const connected = this._client.messenger.socket.isConnected();
+    defaultLogger.debug('Connection status queried', { connected, uri: this.uri, port: this.port });
+    return connected;
   }
 
   /**
@@ -126,7 +148,9 @@ export class NetworkTables {
    * @returns Whether the robot is connecting.
    */
   isRobotConnecting() {
-    return this._client.messenger.socket.isConnecting();
+    const connecting = this._client.messenger.socket.isConnecting();
+    defaultLogger.debug('Connection status queried', { connecting, uri: this.uri, port: this.port });
+    return connecting;
   }
 
   /**
@@ -136,6 +160,7 @@ export class NetworkTables {
    * @returns A function to remove the listener.
    */
   addRobotConnectionListener(callback: (_: boolean) => void, immediateNotify?: boolean) {
+    defaultLogger.debug('Connection listener added', { immediateNotify, uri: this.uri, port: this.port });
     return this._client.messenger.socket.addConnectionListener(callback, immediateNotify);
   }
 
@@ -147,6 +172,7 @@ export class NetworkTables {
    * @returns The topic.
    */
   createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
+    defaultLogger.debug('Topic created', { topicName: name, type: typeInfo[1] });
     return new NetworkTablesTopic<T>(this._client, name, typeInfo, defaultValue);
   }
 
@@ -156,6 +182,33 @@ export class NetworkTables {
    * @returns The topic.
    */
   createPrefixTopic(prefix: string) {
+    defaultLogger.debug('Prefix topic created', { prefix });
     return new NetworkTablesPrefixTopic(this._client, prefix);
+  }
+
+  /**
+   * Sets the global log level for all modules.
+   * @param level - The log level to set.
+   */
+  static setLogLevel(level: LogLevel): void {
+    setLogLevel(level);
+  }
+
+  /**
+   * Sets the log level for a specific module.
+   * @param module - The module name ('socket', 'messenger', 'pubsub', or 'default').
+   * @param level - The log level to set.
+   */
+  static setModuleLogLevel(module: LoggerModule, level: LogLevel): void {
+    setModuleLogLevel(module, level);
+  }
+
+  /**
+   * Gets the current log level for a specific module.
+   * @param module - The module name ('socket', 'messenger', 'pubsub', or 'default').
+   * @returns The current log level.
+   */
+  static getModuleLogLevel(module: LoggerModule = 'default'): LogLevel {
+    return getModuleLogLevel(module);
   }
 }

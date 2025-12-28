@@ -1,3 +1,5 @@
+import { pubsubLogger } from '../util/logger';
+
 import type { NetworkTablesPrefixTopic } from './prefix-topic';
 import type { PubSubClient } from './pubsub';
 import type { NetworkTablesTopic } from './topic';
@@ -96,12 +98,14 @@ export abstract class NetworkTablesBaseTopic<T extends NetworkTablesTypes> {
    * @param params - The parameters of the announcement.
    */
   announce(params: AnnounceMessageParams) {
+    pubsubLogger.debug('Topic announced in base topic', { topicName: this.name, topicId: params.id });
     this._announceParams = params;
     this._id = params.id;
   }
 
   /** Marks the topic as unannounced. This should only be called by the PubSubClient. */
   unannounce() {
+    pubsubLogger.debug('Topic unannounced in base topic', { topicName: this.name, topicId: this._id });
     this._announceParams = null;
     this._id = undefined;
   }
@@ -132,6 +136,12 @@ export abstract class NetworkTablesBaseTopic<T extends NetworkTablesTypes> {
    * @param removeCallback - Whether to remove the callback. Leave this as true unless you know what you're doing.
    */
   unsubscribe(subuid: number, removeCallback = true) {
+    pubsubLogger.debug('Unsubscribed from topic', {
+      topicName: this.name,
+      subuid,
+      removeCallback,
+      remainingSubscribers: this.subscribers.size - (this.subscribers.has(subuid) ? 1 : 0),
+    });
     this.client.messenger.unsubscribe(subuid);
     if (removeCallback) this.subscribers.delete(subuid);
   }
@@ -140,6 +150,8 @@ export abstract class NetworkTablesBaseTopic<T extends NetworkTablesTypes> {
    * Removes all local subscribers.
    */
   unsubscribeAll() {
+    const subscriberCount = this.subscribers.size;
+    pubsubLogger.debug('Unsubscribing all', { topicName: this.name, subscriberCount });
     this.subscribers.forEach((_, subuid) => this.unsubscribe(subuid));
   }
 
