@@ -1,3 +1,5 @@
+import { pubsubLogger } from '../util/logger';
+
 import { NetworkTablesBaseTopic } from './base-topic';
 
 import type { CallbackFn } from './base-topic';
@@ -62,13 +64,20 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
     const existingTopic = this.client.getTopicFromName(name);
     if (existingTopic) {
       if (existingTopic.typeInfo[0] === typeInfo[0] && existingTopic.typeInfo[1] === typeInfo[1]) {
+        pubsubLogger.info('Existing topic reused', { topicName: name, type: typeInfo[1] });
         // This is a valid cast because we have checked via typeInfo that the topic is of type T
         return existingTopic as unknown as NetworkTablesTopic<T>;
       } else {
+        pubsubLogger.debug('Type mismatch detected', {
+          topicName: name,
+          existingType: existingTopic.typeInfo[1],
+          requestedType: typeInfo[1],
+        });
         throw new Error(`Topic ${name} already exists, but with a different type.`);
       }
     }
 
+    pubsubLogger.debug('Topic created', { topicName: name, type: typeInfo[1] });
     this.client.registerTopic(this);
   }
 
@@ -79,8 +88,11 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    */
   setValue(value: T) {
     if (!this.publisher) {
+      pubsubLogger.debug('Publisher check failed before setValue', { topicName: this.name });
       throw new Error('Cannot set value on topic without being the publisher');
     }
+    const oldValue = this.value;
+    pubsubLogger.debug('Value set', { topicName: this.name, oldValue, newValue: value, type: this._typeInfo[1] });
     this.value = value;
     this.notifySubscribers();
     this.client.updateServer<T>(this, value);
@@ -91,6 +103,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * @returns The value of the topic.
    */
   getValue() {
+    pubsubLogger.debug('Value retrieved', { topicName: this.name, value: this.value });
     return this.value;
   }
 
@@ -101,6 +114,14 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * @param lastChangedTime - The server time of the last value change.
    */
   updateValue(value: T, lastChangedTime: number) {
+    const oldValue = this.value;
+    pubsubLogger.debug('Value updated', {
+      topicName: this.name,
+      oldValue,
+      newValue: value,
+      lastChangedTime,
+      type: this._typeInfo[1],
+    });
     this.value = value;
     this._lastChangedTime = lastChangedTime;
     this.notifySubscribers();
@@ -116,9 +137,17 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    */
   override announce(params: AnnounceMessageParams) {
     super.announce(params);
+    const wasPublisher = this._publisher;
     if (params.pubuid === this._pubuid) {
       this._publisher = true;
+      pubsubLogger.debug('Publisher status updated', {
+        topicName: this.name,
+        pubuid: this._pubuid,
+        wasPublisher,
+        isPublisher: true,
+      });
     }
+    pubsubLogger.debug('Topic announced', { topicName: this.name, topicId: params.id, pubuid: params.pubuid });
   }
 
   /** */
@@ -144,11 +173,19 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
     this.client.messenger.subscribe(subscribeParams);
 
     if (save) this.subscribers.set(subuid, { callback, options });
+    pubsubLogger.debug('Subscriber added', {
+      topicName: this.name,
+      subuid,
+      options,
+      totalSubscribers: this.subscribers.size,
+    });
 
     return subuid;
   }
 
   resubscribeAll(client: PubSubClient) {
+    const subscriberCount = this.subscribers.size;
+    pubsubLogger.debug('Resubscribe all', { topicName: this.name, subscriberCount });
     this.client = client;
     this.subscribers.forEach((info, subuid) => {
       this.subscribe(info.callback, info.options, subuid, false);
@@ -159,9 +196,19 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * Notifies all subscribers of the current value.
    */
   private notifySubscribers() {
+    const subscriberCount = this.subscribers.size;
+    pubsubLogger.debug('Subscribers notified', { topicName: this.name, count: subscriberCount });
     // We know that _announceParams is not null here because we received a value update
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    this.subscribers.forEach((info) => info.callback(this.value, this._announceParams!));
+    this.subscribers.forEach((info, subuid) => {
+      pubsubLogger.trace('Callback invoked', {
+        topicName: this.name,
+        subuid,
+        value: this.value,
+        params: this._announceParams!,
+      });
+      info.callback(this.value, this._announceParams!);
+    });
   }
 
   /** */
@@ -175,10 +222,14 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * @returns A promise that resolves when the topic is published.
    */
   async publish(properties: TopicProperties = {}, id?: number): Promise<AnnounceMessage | void> {
-    if (this.publisher) return;
+    if (this.publisher) {
+      pubsubLogger.debug('Publish skipped', { topicName: this.name, reason: 'already publisher' });
+      return;
+    }
 
     this._pubuid = id ?? this.client.messenger.getNextPubUID();
     this._publishProperties = properties;
+    pubsubLogger.debug('Topic published', { topicName: this.name, pubuid: this._pubuid, properties });
 
     const publishParams: PublishMessageParams = {
       type: this.typeInfo[1],
@@ -195,9 +246,15 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    */
   unpublish() {
     if (!this.publisher || this._pubuid == null) {
+      pubsubLogger.debug('Publisher check failed before unpublish', {
+        topicName: this.name,
+        publisher: this.publisher,
+        pubuid: this._pubuid,
+      });
       throw new Error('Cannot unpublish topic without being the publisher');
     }
 
+    pubsubLogger.debug('Topic unpublished', { topicName: this.name, pubuid: this._pubuid });
     this.client.messenger.unpublish(this._pubuid);
 
     this._publisher = false;
@@ -215,6 +272,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
       throw new Error('Cannot republish topic without being the publisher');
     }
 
+    pubsubLogger.debug('Topic republished', { topicName: this.name, pubuid: this._pubuid });
     this._publisher = false;
 
     return await this.publish(this._publishProperties, this._pubuid);
