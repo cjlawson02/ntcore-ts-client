@@ -156,19 +156,16 @@ export class Messenger {
    * @returns The announcement parameters.
    */
   async publish(params: PublishMessageParams, force?: boolean): Promise<AnnounceMessage> {
-    // Send the message to the server
-    const message: PublishMessage = {
-      method: 'publish',
-      params,
-    };
-
     return new Promise((resolve, reject) => {
       // Check if the topic is already published
       if (this.publications.has(params.pubuid) && !force) reject(new Error('Topic is already published'));
 
+      let timeoutId: NodeJS.Timeout | null = null;
+
       // Listen for the announcement
       const resolver = (msg: AnnounceMessage) => {
         this.socket.websocket.removeEventListener('message', wsHandler);
+        if (timeoutId) clearTimeout(timeoutId);
         // Add the topic to the list of published topics
         this.publications.set(params.pubuid, params);
 
@@ -188,6 +185,10 @@ export class Messenger {
       this.socket.websocket.addEventListener('message', wsHandler);
 
       // Send the message to the server
+      const message: PublishMessage = {
+        method: 'publish',
+        params,
+      };
       this._socket.sendTextFrame(message);
 
       // HOTFIX: Subscribe to the topic to get the announcement.
@@ -203,7 +204,7 @@ export class Messenger {
 
       // Reject the promise if the topic is not announced within 3 seconds
       this.socket.waitForConnection().then(() => {
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           reject(new Error(`Topic ${params.name} was not announced within 3 seconds`));
         }, 3000);
       });
@@ -284,14 +285,16 @@ export class Messenger {
     };
 
     return new Promise((resolve, reject) => {
+      let timeoutId: NodeJS.Timeout | null = null;
+
       const resolver = (message: PropertiesMessage) => {
         this._socket.websocket.removeEventListener('message', wsHandler);
-        clearInterval(responseCheck);
+        if (timeoutId) clearTimeout(timeoutId);
         resolve(message);
       };
 
       const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
-        const messages = this.parseAndFilterMessage<PropertiesMessage>(event, 'announce');
+        const messages = this.parseAndFilterMessage<PropertiesMessage>(event, 'properties');
         for (const message of messages) {
           if (message.params.name === params.name && message.params.ack) {
             resolver(message);
@@ -306,12 +309,11 @@ export class Messenger {
       this._socket.sendTextFrame(message);
 
       // Reject the promise if the topic is not announced within 3 seconds
-
-      const responseCheck = setInterval(() => {
-        if (this.socket.isConnected()) {
+      this.socket.waitForConnection().then(() => {
+        timeoutId = setTimeout(() => {
           reject(new Error(`Topic ${params.name} was not announced within 3 seconds`));
-        }
-      }, 3000);
+        }, 3000);
+      });
     });
   }
 
