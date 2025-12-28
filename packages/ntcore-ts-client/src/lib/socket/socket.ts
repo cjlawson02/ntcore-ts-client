@@ -3,6 +3,7 @@ import WebSocket from 'isomorphic-ws';
 
 import { messageSchema, msgPackSchema } from '../types/schemas';
 import { NetworkTablesTypeInfos } from '../types/types';
+import { socketLogger } from '../util/logger';
 import { Util } from '../util/util';
 
 import type {
@@ -30,6 +31,10 @@ export class NetworkTablesSocket {
   private lastHeartbeatDate = 0;
   private offset = 0;
   private bestRtt = -1;
+  private heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+  private connectionAttemptCount = 0;
+  private lastConnectionLogTime = 0;
+  private static readonly CONNECTION_LOG_INTERVAL = 10000; // Log full details every 10 seconds
 
   private _websocket: WebSocket;
   get websocket() {
@@ -74,6 +79,11 @@ export class NetworkTablesSocket {
   ) {
     // Connect to the server using the provided URL
     this._websocket = new WebSocket(serverUrl, [NetworkTablesSocket.PROTOCOL_V4_1, NetworkTablesSocket.PROTOCOL_V4_0]);
+    socketLogger.info('Connection attempt started', {
+      serverUrl,
+      protocols: [NetworkTablesSocket.PROTOCOL_V4_1, NetworkTablesSocket.PROTOCOL_V4_0],
+      autoConnect,
+    });
     this.serverUrl = serverUrl;
     this.onSocketOpen = onSocketOpen;
     this.onSocketClose = onSocketClose;
@@ -132,31 +142,42 @@ export class NetworkTablesSocket {
    * the socket to refresh itself.
    */
   private init() {
-    let heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+    // Clear any existing heartbeat interval before creating new socket
+    if (this.heartbeatInterval != null) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = undefined;
+    }
 
     if (this._websocket) {
       // Open handler
       this._websocket.onopen = () => {
-        // Setup heartbeat or RTT
-
-        if (this._websocket.protocol === 'v4.1.networktables.first.wpi.edu') {
-          // eslint-disable-next-line no-console
-          console.info('Connected on NT 4.1');
+        // Reset connection attempt counter on successful connection
+        if (this.connectionAttemptCount > 0) {
+          socketLogger.info('Connection restored', {
+            attempts: this.connectionAttemptCount,
+            protocol: this._websocket.protocol === 'v4.1.networktables.first.wpi.edu' ? 'NT 4.1' : 'NT 4.0',
+          });
+          this.connectionAttemptCount = 0;
         } else {
-          // eslint-disable-next-line no-console
-          console.info('Connected on NT 4.0');
+          if (this._websocket.protocol === 'v4.1.networktables.first.wpi.edu') {
+            socketLogger.info('Connected on NT 4.1');
+          } else {
+            socketLogger.info('Connected on NT 4.0');
+          }
+        }
 
+        // Setup heartbeat or RTT
+        if (this._websocket.protocol !== 'v4.1.networktables.first.wpi.edu') {
           // Start heartbeat
           // Only send heartbeat at this rate if we are on NT 4.0
-          heartbeatInterval = setInterval(() => {
+          this.heartbeatInterval = setInterval(() => {
             if (this.isConnected()) {
               this.heartbeat();
             }
           }, NetworkTablesSocket.RTT_PERIOD_V4_0);
         }
 
-        // eslint-disable-next-line no-console
-        console.info('Robot Connected!');
+        socketLogger.info('Robot Connected!');
         this.updateConnectionListeners();
         this.onSocketOpen();
         this.sendQueuedMessages();
@@ -168,16 +189,37 @@ export class NetworkTablesSocket {
         this.updateConnectionListeners();
         this.onSocketClose();
 
-        if (heartbeatInterval != null) {
-          clearInterval(heartbeatInterval);
+        if (this.heartbeatInterval != null) {
+          clearInterval(this.heartbeatInterval);
+          this.heartbeatInterval = undefined;
         }
 
-        // Lost connection message
-        console.warn('Unable to connect to Robot', e.reason);
+        // Increment connection attempt counter
+        this.connectionAttemptCount++;
+        const now = Date.now();
+        const timeSinceLastLog = now - this.lastConnectionLogTime;
+        const shouldLogFullDetails =
+          this.connectionAttemptCount === 1 || timeSinceLastLog >= NetworkTablesSocket.CONNECTION_LOG_INTERVAL;
+
+        if (shouldLogFullDetails) {
+          // Log full details on first attempt or every 10 seconds
+          socketLogger.warn('Connection lost', {
+            code: e.code,
+            reason: e.reason || 'No reason provided',
+            queuedMessages: this.messageQueue.length,
+            attempt: this.connectionAttemptCount,
+          });
+          this.lastConnectionLogTime = now;
+        } else {
+          // Log concise message for repeated attempts
+          socketLogger.debug('Reconnection attempt', {
+            attempt: this.connectionAttemptCount,
+            nextFullLogIn: Math.ceil((NetworkTablesSocket.CONNECTION_LOG_INTERVAL - timeSinceLastLog) / 1000) + 's',
+          });
+        }
 
         // Attempt to reconnect
         if (this.autoConnect) {
-          console.warn(`Reconnect will be attempted in ${NetworkTablesSocket.RECONNECT_TIMEOUT} milliseconds.`);
           setTimeout(() => {
             this._websocket = new WebSocket(this.serverUrl, [
               NetworkTablesSocket.PROTOCOL_V4_1,
@@ -201,6 +243,7 @@ export class NetworkTablesSocket {
    * @param serverUrl - The URL of the server to connect to.
    */
   reinstantiate(serverUrl: string) {
+    socketLogger.info('Socket reinstantiation', { oldUrl: this.serverUrl, newUrl: serverUrl });
     this.close();
     this.serverUrl = serverUrl;
     this._websocket = new WebSocket(this.serverUrl, [
@@ -270,6 +313,11 @@ export class NetworkTablesSocket {
    */
   addConnectionListener(callback: (_: boolean) => void, immediateNotify?: boolean) {
     this.connectionListeners.add(callback);
+    socketLogger.debug('Connection listener added', {
+      totalListeners: this.connectionListeners.size,
+      immediateNotify,
+      currentState: this.isConnected(),
+    });
 
     if (immediateNotify) {
       callback(this.isConnected());
@@ -284,6 +332,7 @@ export class NetworkTablesSocket {
    */
   removeConnectionListener(callback: (_: boolean) => void) {
     this.connectionListeners.delete(callback);
+    socketLogger.debug('Connection listener removed', { totalListeners: this.connectionListeners.size });
   }
 
   /**
@@ -297,6 +346,7 @@ export class NetworkTablesSocket {
    * Stops auto-reconnecting to the server.
    */
   stopAutoConnect() {
+    socketLogger.info('Auto-connect disabled');
     this.autoConnect = false;
   }
 
@@ -304,6 +354,7 @@ export class NetworkTablesSocket {
    * Starts auto-reconnecting to the server.
    */
   startAutoConnect() {
+    socketLogger.info('Auto-connect enabled');
     this.autoConnect = true;
   }
 
@@ -315,8 +366,12 @@ export class NetworkTablesSocket {
     this.connectionListeners?.forEach((f) => f(this.isConnected()));
 
     if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
+      socketLogger.debug('Binary frame received', { size: event.data.byteLength });
       this.handleBinaryFrame(event.data);
     } else {
+      socketLogger.debug('Text frame received', {
+        size: typeof event.data === 'string' ? event.data.length : 'unknown',
+      });
       this.handleTextFrame(event.data);
     }
   }
@@ -326,8 +381,20 @@ export class NetworkTablesSocket {
    * @param event - The error event.
    */
   private onError(event: Event | WS_ErrorEvent) {
-    // Log the error to the console
-    console.error('WebSocket error:', event);
+    // WebSocket errors typically precede close events, so we check if we should log
+    // The close handler will log the main connection failure message
+    // We only log error details if we haven't logged recently to avoid duplicate messages
+    const now = Date.now();
+    const timeSinceLastLog = now - this.lastConnectionLogTime;
+
+    // Only log if it's been a while since the last connection log (close handler handles most logging)
+    if (timeSinceLastLog >= NetworkTablesSocket.CONNECTION_LOG_INTERVAL) {
+      socketLogger.debug('WebSocket error occurred', {
+        error: event instanceof ErrorEvent ? event.message : 'Connection error',
+        note: 'Connection close details will follow',
+      });
+    }
+    // Otherwise, the close handler will log the full details, so we suppress this
   }
 
   /**
@@ -336,14 +403,19 @@ export class NetworkTablesSocket {
    */
   private handleBinaryFrame(frame: ArrayBuffer | Uint8Array) {
     // TODO: Use streams
+    const messages: BinaryMessageData[] = [];
     for (const f of decodeMulti(frame)) {
-      const message = msgPackSchema.parse(f);
+      const frameData = f as Uint8Array;
+      socketLogger.trace('Parsing message from multi-message frame', { frameSize: frameData.byteLength });
+      const message = msgPackSchema.parse(frameData);
+      socketLogger.trace('Message schema validated', { topicId: message[0], typeNum: message[2] });
       const messageData: BinaryMessageData = {
         topicId: message[0],
         serverTime: message[1],
         typeNum: message[2],
         value: message[3],
       };
+      messages.push(messageData);
 
       // Heartbeat message
       if (messageData.topicId === -1) {
@@ -352,6 +424,11 @@ export class NetworkTablesSocket {
         this.onTopicUpdate(messageData);
       }
     }
+    socketLogger.debug('Binary frame processed', {
+      messageCount: messages.length,
+      heartbeatCount: messages.filter((m) => m.topicId === -1).length,
+      topicUpdateCount: messages.filter((m) => m.topicId !== -1).length,
+    });
   }
 
   /**
@@ -363,7 +440,9 @@ export class NetworkTablesSocket {
     const messageData = JSON.parse(frame);
     const messages = messageSchema.parse(messageData);
 
+    const methodCounts: Record<string, number> = {};
     messages.forEach((message) => {
+      methodCounts[message.method] = (methodCounts[message.method] || 0) + 1;
       // Check the type of the message and handle it accordingly
       switch (message.method) {
         case 'announce':
@@ -376,9 +455,10 @@ export class NetworkTablesSocket {
           this.handlePropertiesParams(message.params);
           break;
         default:
-          console.warn('Client does not handle message method:', message.method);
+          socketLogger.warn('Client does not handle message method', { method: message.method });
       }
     });
+    socketLogger.debug('Text frame processed', { messageCount: messages.length, methodCounts });
   }
 
   /**
@@ -412,8 +492,14 @@ export class NetworkTablesSocket {
   sendTextFrame(message: Message) {
     // Send the message to the server
     if (this.isConnected()) {
+      socketLogger.debug('Text frame sent', { method: message.method });
       this._websocket.send(JSON.stringify([message]));
     } else {
+      socketLogger.debug('Message queued', {
+        method: message.method,
+        reason: 'not connected',
+        queueSize: this.messageQueue.length,
+      });
       this.messageQueue.push(JSON.stringify([message]));
     }
   }
@@ -424,11 +510,20 @@ export class NetworkTablesSocket {
    */
   private sendBinaryFrame(message: BinaryMessage) {
     const cleanMsg = msgPackSchema.parse(message);
+    const topicId = cleanMsg[0];
+    const typeNum = cleanMsg[2];
 
     // Send the message to the server
     if (this.isConnected()) {
+      socketLogger.debug('Binary frame sent', { topicId, typeNum });
       this._websocket.send(encode(cleanMsg));
     } else {
+      socketLogger.debug('Message queued', {
+        topicId,
+        typeNum,
+        reason: 'not connected',
+        queueSize: this.messageQueue.length,
+      });
       const encoded = encode(cleanMsg);
       this.messageQueue.push(new Uint8Array(encoded).buffer);
     }
@@ -439,6 +534,10 @@ export class NetworkTablesSocket {
    */
   private sendQueuedMessages() {
     if (this.isConnected()) {
+      const queuedCount = this.messageQueue.length;
+      if (queuedCount > 0) {
+        socketLogger.info('Sending queued messages', { count: queuedCount });
+      }
       while (this.messageQueue.length > 0) {
         const message = this.messageQueue.shift();
         if (message) {
@@ -467,6 +566,7 @@ export class NetworkTablesSocket {
    */
   private heartbeat() {
     const time = Util.getMicros();
+    socketLogger.debug('Heartbeat sent', { time });
     this.sendValueToTopic(-1, time, NetworkTablesTypeInfos.kDouble);
     this.lastHeartbeatDate = time;
   }
@@ -480,10 +580,18 @@ export class NetworkTablesSocket {
    */
   private handleRTT(serverTime: number) {
     const rtt = this.calcTimeDelta(this.lastHeartbeatDate);
-    if (rtt < this.bestRtt || this.bestRtt === -1) {
+    const wasUpdated = rtt < this.bestRtt || this.bestRtt === -1;
+    if (wasUpdated) {
       this.bestRtt = rtt;
       this.offset = Util.getMicros() - serverTime;
     }
+    socketLogger.debug('RTT calculated', {
+      rtt,
+      bestRtt: this.bestRtt,
+      offset: this.offset,
+      serverTime,
+      updated: wasUpdated,
+    });
   }
 
   /**
@@ -491,7 +599,15 @@ export class NetworkTablesSocket {
    * @returns The current server time.
    */
   private getServerTime() {
-    return Util.getMicros() - this.offset + this.bestRtt / 2;
+    const clientTime = Util.getMicros();
+    const serverTime = clientTime - this.offset + this.bestRtt / 2;
+    socketLogger.trace('Server time calculated', {
+      clientTime,
+      offset: this.offset,
+      bestRtt: this.bestRtt,
+      serverTime,
+    });
+    return serverTime;
   }
 
   /**
@@ -500,7 +616,10 @@ export class NetworkTablesSocket {
    * @returns The time delta.
    */
   private calcTimeDelta(sentDate: number) {
-    return Util.getMicros() - sentDate;
+    const currentTime = Util.getMicros();
+    const delta = currentTime - sentDate;
+    socketLogger.trace('Time delta calculated', { sentDate, currentTime, delta });
+    return delta;
   }
 
   /**

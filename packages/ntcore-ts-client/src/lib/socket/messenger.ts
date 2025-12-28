@@ -1,4 +1,5 @@
 import { messageSchema } from '../types/schemas';
+import { messengerLogger } from '../util/logger';
 
 import { NetworkTablesSocket } from './socket';
 
@@ -94,6 +95,11 @@ export class Messenger {
    * @param serverUrl - The URL of the server to connect to.
    */
   reinstantiate(serverUrl: string) {
+    messengerLogger.info('Reinstantiating messenger', {
+      newUrl: serverUrl,
+      subscriptionCount: this.subscriptions.size,
+      publicationCount: this.publications.size,
+    });
     this._socket.stopAutoConnect();
     this._socket.reinstantiate(serverUrl);
     this._socket.startAutoConnect();
@@ -119,11 +125,15 @@ export class Messenger {
    * Called when the socket opens.
    */
   onSocketOpen = () => {
+    const subscriptionCount = this.subscriptions.size;
+    const publicationCount = this.publications.size;
+    messengerLogger.debug('Subscribing all topics', { count: subscriptionCount });
     // Send all subscriptions
     this.subscriptions.forEach((params) => {
       this.subscribe(params, true);
     });
 
+    messengerLogger.debug('Publishing all topics', { count: publicationCount });
     // Send all publications
     this.publications.forEach((params) => {
       this.publish(params, true);
@@ -141,9 +151,20 @@ export class Messenger {
     method: Message['method']
   ): T[] {
     if (typeof event.data === 'string') {
+      messengerLogger.trace('Raw message received', { data: event.data });
       const messageData = JSON.parse(event.data);
+      messengerLogger.trace('Message parsed from JSON', {
+        messageCount: Array.isArray(messageData) ? messageData.length : 1,
+      });
       const messages = messageSchema.parse(messageData);
-      return messages.filter((msg) => msg.method === method) as T[];
+      messengerLogger.trace('Message schema validated', { messageCount: messages.length });
+      const filtered = messages.filter((msg) => msg.method === method) as T[];
+      messengerLogger.trace('Message filtered by method', {
+        method,
+        inputCount: messages.length,
+        outputCount: filtered.length,
+      });
+      return filtered;
     }
 
     return [];
@@ -156,38 +177,79 @@ export class Messenger {
    * @returns The announcement parameters.
    */
   async publish(params: PublishMessageParams, force?: boolean): Promise<AnnounceMessage> {
-    // Send the message to the server
-    const message: PublishMessage = {
-      method: 'publish',
-      params,
-    };
-
     return new Promise((resolve, reject) => {
       // Check if the topic is already published
-      if (this.publications.has(params.pubuid) && !force) reject(new Error('Topic is already published'));
+      if (this.publications.has(params.pubuid) && !force) {
+        messengerLogger.debug('Publish rejected', {
+          topicName: params.name,
+          pubuid: params.pubuid,
+          reason: 'already published',
+        });
+        reject(new Error('Topic is already published'));
+        return;
+      }
+
+      messengerLogger.debug('Publish request initiated', {
+        topicName: params.name,
+        pubuid: params.pubuid,
+        timeout: 3000,
+        force,
+      });
+
+      let timeoutId: NodeJS.Timeout | null = null;
+
+      // Cleanup function to remove listener and clear timeout
+      const cleanup = () => {
+        messengerLogger.trace('Cleanup: removing event listener and clearing timeout', { topicName: params.name });
+        this.socket.websocket.removeEventListener('message', wsHandler);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          messengerLogger.trace('Timeout cleared', { topicName: params.name });
+        }
+      };
 
       // Listen for the announcement
       const resolver = (msg: AnnounceMessage) => {
-        this.socket.websocket.removeEventListener('message', wsHandler);
+        messengerLogger.trace('Promise resolver called', { topicName: params.name, pubuid: params.pubuid });
+        cleanup();
         // Add the topic to the list of published topics
         this.publications.set(params.pubuid, params);
+        messengerLogger.debug('Topic published', { topicName: params.name, pubuid: params.pubuid });
 
         resolve(msg);
       };
 
+      // Rejector function to cleanup before rejecting
+      const rejector = (error: Error) => {
+        messengerLogger.trace('Promise rejector called', { topicName: params.name, error: error.message });
+        cleanup();
+        reject(error);
+      };
+
       const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
         const messages = this.parseAndFilterMessage<AnnounceMessage>(event, 'announce');
+        messengerLogger.debug('Messages filtered for announce', { count: messages.length });
         for (const message of messages) {
           if (message.params.name === params.name && message.params.pubuid === params.pubuid) {
+            messengerLogger.debug('Announcement received', {
+              topicName: message.params.name,
+              pubuid: message.params.pubuid,
+              matched: true,
+            });
             resolver(message);
             break;
           }
         }
       };
 
+      messengerLogger.trace('Event listener attached', { topicName: params.name });
       this.socket.websocket.addEventListener('message', wsHandler);
 
       // Send the message to the server
+      const message: PublishMessage = {
+        method: 'publish',
+        params,
+      };
       this._socket.sendTextFrame(message);
 
       // HOTFIX: Subscribe to the topic to get the announcement.
@@ -202,11 +264,16 @@ export class Messenger {
       this.subscribe(subMsg);
 
       // Reject the promise if the topic is not announced within 3 seconds
-      this.socket.waitForConnection().then(() => {
-        setTimeout(() => {
-          reject(new Error(`Topic ${params.name} was not announced within 3 seconds`));
-        }, 3000);
-      });
+      this.socket
+        .waitForConnection()
+        .then(() => {
+          timeoutId = setTimeout(() => {
+            rejector(new Error(`Topic ${params.name} was not announced within 3 seconds`));
+          }, 3000);
+        })
+        .catch((error) => {
+          rejector(error);
+        });
     });
   }
 
@@ -216,8 +283,10 @@ export class Messenger {
    */
   unpublish(pubuid: number) {
     // Check if the topic is not published
+    const params = this.publications.get(pubuid);
     if (!this.publications.delete(pubuid)) return;
 
+    messengerLogger.debug('Topic unpublished', { pubuid, topicName: params?.name });
     // Send the message to the server
     const message: UnpublishMessage = {
       method: 'unpublish',
@@ -235,9 +304,21 @@ export class Messenger {
    * @param force - Whether to force the subscription.
    */
   subscribe(params: SubscribeMessageParams, force?: boolean) {
-    if (this.subscriptions.has(params.subuid) && !force) return;
+    if (this.subscriptions.has(params.subuid) && !force) {
+      messengerLogger.debug('Subscription skipped', { subuid: params.subuid, reason: 'already exists' });
+      return;
+    }
+
+    if (force) {
+      messengerLogger.debug('Force subscribe', { subuid: params.subuid, topicNames: params.topics });
+    }
 
     this.subscriptions.set(params.subuid, params);
+    messengerLogger.debug('Subscription created', {
+      subuid: params.subuid,
+      topicNames: params.topics,
+      prefix: params.options?.prefix || false,
+    });
 
     // Create the message to send to the server
     const message: SubscribeMessage = {
@@ -255,10 +336,12 @@ export class Messenger {
    */
   unsubscribe(subuid: number) {
     // Check if the topic is not subscribed
+    const params = this.subscriptions.get(subuid);
     if (!this.subscriptions.has(subuid)) return;
 
     // Remove the topic from the list of subscribed topics
     this.subscriptions.delete(subuid);
+    messengerLogger.debug('Unsubscribed from topic', { subuid, topicNames: params?.topics });
 
     // Send the message to the server
     const message: Message = {
@@ -277,6 +360,7 @@ export class Messenger {
    * @returns The new properties of the topic.
    */
   async setProperties(params: SetPropertiesMessageParams): Promise<PropertiesMessage> {
+    messengerLogger.debug('Properties update initiated', { topicName: params.name, update: params.update });
     // Create the message to send to the server
     const message: SetPropertiesMessage = {
       method: 'setproperties',
@@ -284,16 +368,39 @@ export class Messenger {
     };
 
     return new Promise((resolve, reject) => {
-      const resolver = (message: PropertiesMessage) => {
+      let timeoutId: NodeJS.Timeout | null = null;
+
+      // Cleanup function to remove listener and clear timeout
+      const cleanup = () => {
+        messengerLogger.trace('Cleanup: removing event listener and clearing timeout', { topicName: params.name });
         this._socket.websocket.removeEventListener('message', wsHandler);
-        clearInterval(responseCheck);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          messengerLogger.trace('Timeout cleared', { topicName: params.name });
+        }
+        messengerLogger.debug('Cleanup performed', { topicName: params.name });
+      };
+
+      const resolver = (message: PropertiesMessage) => {
+        messengerLogger.trace('Promise resolver called', { topicName: params.name });
+        cleanup();
+        messengerLogger.debug('Properties ack received', { topicName: params.name, ack: message.params.ack });
         resolve(message);
       };
 
+      // Rejector function to cleanup before rejecting
+      const rejector = (error: Error) => {
+        messengerLogger.trace('Promise rejector called', { topicName: params.name, error: error.message });
+        cleanup();
+        reject(error);
+      };
+
       const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
-        const messages = this.parseAndFilterMessage<PropertiesMessage>(event, 'announce');
+        const messages = this.parseAndFilterMessage<PropertiesMessage>(event, 'properties');
+        messengerLogger.debug('Messages filtered for properties', { count: messages.length });
         for (const message of messages) {
           if (message.params.name === params.name && message.params.ack) {
+            messengerLogger.debug('Properties message matched', { topicName: params.name, ack: message.params.ack });
             resolver(message);
             break;
           }
@@ -306,12 +413,16 @@ export class Messenger {
       this._socket.sendTextFrame(message);
 
       // Reject the promise if the topic is not announced within 3 seconds
-
-      const responseCheck = setInterval(() => {
-        if (this.socket.isConnected()) {
-          reject(new Error(`Topic ${params.name} was not announced within 3 seconds`));
-        }
-      }, 3000);
+      this.socket
+        .waitForConnection()
+        .then(() => {
+          timeoutId = setTimeout(() => {
+            rejector(new Error(`Topic ${params.name} was not announced within 3 seconds`));
+          }, 3000);
+        })
+        .catch((error) => {
+          rejector(error);
+        });
     });
   }
 
@@ -330,7 +441,7 @@ export class Messenger {
     }
 
     if (!topic.announced) {
-      console.warn(`Topic ${topic.name} is not announced, but the new value will be queued`);
+      messengerLogger.warn('Topic is not announced, value will be queued', { topicName: topic.name });
     }
 
     return this._socket.sendValueToTopic(topic.pubuid, value, typeInfo);
@@ -341,7 +452,9 @@ export class Messenger {
    * @returns The next available publisher UID.
    */
   getNextPubUID() {
-    return this._currentPubUID++;
+    const pubuid = this._currentPubUID++;
+    messengerLogger.debug('Next PubUID generated', { pubuid });
+    return pubuid;
   }
 
   /**
@@ -349,6 +462,8 @@ export class Messenger {
    * @returns The next available subscriber UID.
    */
   getNextSubUID() {
-    return this._currentSubUID++;
+    const subuid = this._currentSubUID++;
+    messengerLogger.debug('Next SubUID generated', { subuid });
+    return subuid;
   }
 }

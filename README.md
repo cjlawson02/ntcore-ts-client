@@ -14,6 +14,7 @@ A TypeScript library for communication over [WPILib's NetworkTables 4.1 protocol
 - Generic types for Topics
 - Client-side data validation using [Zod](https://github.com/colinhacks/zod)
 - Server-matching timestamping using RTT calculation
+- Granular logging with configurable log levels per module
 
 ## Documentation
 
@@ -204,6 +205,98 @@ allTopics.subscribe((value, params) => {
 ### More Info
 
 The API for Topics is much more exhaustive than this quick example. Feel free to view the docs at [https://ntcore.chrislawson.dev](https://ntcore.chrislawson.dev).
+
+## Logging Configuration
+
+The library uses [tslog](https://github.com/fullstack-build/tslog) for structured logging with granular control over log levels. Logging is configured per module (socket, messenger, pubsub) and can be adjusted at runtime.
+
+### Available Log Levels
+
+- `LogLevel.TRACE` - Very detailed debugging information
+- `LogLevel.DEBUG` - Detailed debugging information
+- `LogLevel.INFO` - General informational messages (default)
+- `LogLevel.WARN` - Warning messages
+- `LogLevel.ERROR` - Error messages
+- `LogLevel.FATAL` - Fatal error messages
+- `LogLevel.SILENT` - Disable all logging
+
+### Setting Global Log Level
+
+Set the log level for all modules:
+
+```typescript
+import { NetworkTables, LogLevel } from 'ntcore-ts-client';
+
+// Set global log level to DEBUG
+NetworkTables.setLogLevel(LogLevel.DEBUG);
+
+// Disable all logging
+NetworkTables.setLogLevel(LogLevel.SILENT);
+```
+
+### Module-Specific Log Levels
+
+Configure log levels for specific modules to focus debugging on particular areas:
+
+```typescript
+import { NetworkTables, LogLevel } from 'ntcore-ts-client';
+
+// Enable detailed debugging for socket connections only
+NetworkTables.setModuleLogLevel('socket', LogLevel.DEBUG);
+
+// Set messenger to only show warnings and errors
+NetworkTables.setModuleLogLevel('messenger', LogLevel.WARN);
+
+// Disable pubsub logging completely
+NetworkTables.setModuleLogLevel('pubsub', LogLevel.SILENT);
+```
+
+Available modules:
+
+- `'socket'` - WebSocket connection management
+- `'messenger'` - Message publishing and subscription handling
+- `'pubsub'` - Topic management and value updates
+- `'default'` - General library logging
+
+### Getting Current Log Level
+
+Check the current log level for a module:
+
+```typescript
+import { NetworkTables, LogLevel } from 'ntcore-ts-client';
+
+const currentLevel = NetworkTables.getModuleLogLevel('socket');
+console.log(`Socket log level: ${LogLevel[currentLevel]}`);
+```
+
+### Logging Examples
+
+By default, the library logs:
+
+- **INFO**: Connection status, protocol version
+- **WARN**: Connection issues, unhandled message types
+- **ERROR**: WebSocket errors, connection failures
+- **DEBUG**: Reconnection attempts, unknown topics (development only)
+
+Example output:
+
+```
+2024.01.15 14:30:25:123	[INFO]	SOCKET	Connected on NT 4.1
+2024.01.15 14:30:25:124	[INFO]	SOCKET	Robot Connected!
+2024.01.15 14:30:30:456	[DEBUG]	PUBSUB	Received update for unknown topic { topicId: 42 }
+```
+
+### Advanced Usage
+
+You can also import and use the logger utilities directly:
+
+```typescript
+import { LogLevel, setLogLevel, setModuleLogLevel, LoggerModule } from 'ntcore-ts-client';
+
+// Set log levels programmatically
+setLogLevel(LogLevel.INFO);
+setModuleLogLevel('socket' as LoggerModule, LogLevel.DEBUG);
+```
 
 ## Known Limitations
 
