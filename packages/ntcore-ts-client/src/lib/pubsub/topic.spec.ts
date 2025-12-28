@@ -5,7 +5,7 @@ import { NetworkTablesTypeInfos } from '../types/types';
 import { PubSubClient } from './pubsub';
 import { NetworkTablesTopic } from './topic';
 
-import type { AnnounceMessage, SubscribeMessageParams } from '../types/types';
+import type { AnnounceMessage, PropertiesMessage, SubscribeMessageParams } from '../types/types';
 import type { Mock } from 'vitest';
 
 describe('Topic', () => {
@@ -254,6 +254,37 @@ describe('Topic', () => {
         expect(e).toEqual(new Error(`Topic ${topic.name} was not announced within 3 seconds`));
       }
     });
+
+    it('should clear timeout when announcement arrives quickly', async () => {
+      // This test verifies the timeout cleanup fix - if announcement comes back
+      // quickly, the timeout should be cleared to prevent it from firing later
+      const publishPromise = topic.publish({}, 2000);
+
+      // Send announcement quickly (100ms)
+      setTimeout(() => {
+        const announceMessage: AnnounceMessage = {
+          method: 'announce',
+          params: {
+            name: 'test',
+            id: 1,
+            pubuid: 2000,
+            type: 'string',
+            properties: {},
+          },
+        };
+        server.send(JSON.stringify([announceMessage]));
+      }, 100);
+
+      // Wait for publish to complete
+      await publishPromise;
+
+      // Wait longer than the 3 second timeout to ensure it was cleared
+      await new Promise((resolve) => setTimeout(resolve, 3200));
+
+      // If we get here without an error, the timeout was properly cleared
+      expect(topic.publisher).toBe(true);
+      expect(topic.pubuid).toBe(2000);
+    });
   });
 
   describe('unpublish', () => {
@@ -297,6 +328,46 @@ describe('Topic', () => {
           },
         },
       });
+    });
+
+    it('should clear timeout when properties response arrives quickly', async () => {
+      // First, publish the topic so it exists
+      setTimeout(() => {
+        const announceMessage: AnnounceMessage = {
+          method: 'announce',
+          params: {
+            name: 'test',
+            id: 1,
+            pubuid: 3000,
+            type: 'string',
+            properties: {},
+          },
+        };
+        server.send(JSON.stringify([announceMessage]));
+      }, 100);
+      await topic.publish({}, 3000);
+
+      // Test setProperties timeout cleanup
+      const setPropertiesPromise = topic.setProperties(true, true);
+
+      // Send properties response quickly (100ms) with ack: true
+      setTimeout(() => {
+        const propertiesResponse: PropertiesMessage = {
+          method: 'properties',
+          params: {
+            name: 'test',
+            ack: true,
+          },
+        };
+        server.send(JSON.stringify([propertiesResponse]));
+      }, 100);
+
+      // Wait for setProperties to complete
+      await setPropertiesPromise;
+
+      // Wait longer than the 3 second timeout to ensure it was cleared
+      // If the timeout wasn't cleared, this would throw an error
+      await new Promise((resolve) => setTimeout(resolve, 3200));
     });
   });
 });
