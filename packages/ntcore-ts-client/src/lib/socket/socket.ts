@@ -30,6 +30,7 @@ export class NetworkTablesSocket {
   private lastHeartbeatDate = 0;
   private offset = 0;
   private bestRtt = -1;
+  private heartbeatInterval: ReturnType<typeof setInterval> | undefined;
 
   private _websocket: WebSocket;
   get websocket() {
@@ -132,7 +133,11 @@ export class NetworkTablesSocket {
    * the socket to refresh itself.
    */
   private init() {
-    let heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+    // Clear any existing heartbeat interval before creating new socket
+    if (this.heartbeatInterval != null) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = undefined;
+    }
 
     if (this._websocket) {
       // Open handler
@@ -148,7 +153,7 @@ export class NetworkTablesSocket {
 
           // Start heartbeat
           // Only send heartbeat at this rate if we are on NT 4.0
-          heartbeatInterval = setInterval(() => {
+          this.heartbeatInterval = setInterval(() => {
             if (this.isConnected()) {
               this.heartbeat();
             }
@@ -168,8 +173,9 @@ export class NetworkTablesSocket {
         this.updateConnectionListeners();
         this.onSocketClose();
 
-        if (heartbeatInterval != null) {
-          clearInterval(heartbeatInterval);
+        if (this.heartbeatInterval != null) {
+          clearInterval(this.heartbeatInterval);
+          this.heartbeatInterval = undefined;
         }
 
         // Lost connection message

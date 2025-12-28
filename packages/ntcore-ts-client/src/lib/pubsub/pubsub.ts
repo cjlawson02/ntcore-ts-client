@@ -152,9 +152,13 @@ export class PubSubClient {
     const topic = this.topics.get(params.name);
     if (!topic) {
       console.warn(`Topic ${params.name} was unannounced, but does not exist`);
+      // Still clean up knownTopicParams even if topic doesn't exist locally
+      this.knownTopicParams.delete(params.id);
       return;
     }
     topic.unannounce();
+    // Clean up knownTopicParams when topic is unannounced
+    this.knownTopicParams.delete(params.id);
   };
 
   /**

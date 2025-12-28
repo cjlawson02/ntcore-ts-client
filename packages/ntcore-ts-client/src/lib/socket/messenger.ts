@@ -158,18 +158,32 @@ export class Messenger {
   async publish(params: PublishMessageParams, force?: boolean): Promise<AnnounceMessage> {
     return new Promise((resolve, reject) => {
       // Check if the topic is already published
-      if (this.publications.has(params.pubuid) && !force) reject(new Error('Topic is already published'));
+      if (this.publications.has(params.pubuid) && !force) {
+        reject(new Error('Topic is already published'));
+        return;
+      }
 
       let timeoutId: NodeJS.Timeout | null = null;
 
-      // Listen for the announcement
-      const resolver = (msg: AnnounceMessage) => {
+      // Cleanup function to remove listener and clear timeout
+      const cleanup = () => {
         this.socket.websocket.removeEventListener('message', wsHandler);
         if (timeoutId) clearTimeout(timeoutId);
+      };
+
+      // Listen for the announcement
+      const resolver = (msg: AnnounceMessage) => {
+        cleanup();
         // Add the topic to the list of published topics
         this.publications.set(params.pubuid, params);
 
         resolve(msg);
+      };
+
+      // Rejector function to cleanup before rejecting
+      const rejector = (error: Error) => {
+        cleanup();
+        reject(error);
       };
 
       const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
@@ -203,11 +217,16 @@ export class Messenger {
       this.subscribe(subMsg);
 
       // Reject the promise if the topic is not announced within 3 seconds
-      this.socket.waitForConnection().then(() => {
-        timeoutId = setTimeout(() => {
-          reject(new Error(`Topic ${params.name} was not announced within 3 seconds`));
-        }, 3000);
-      });
+      this.socket
+        .waitForConnection()
+        .then(() => {
+          timeoutId = setTimeout(() => {
+            rejector(new Error(`Topic ${params.name} was not announced within 3 seconds`));
+          }, 3000);
+        })
+        .catch((error) => {
+          rejector(error);
+        });
     });
   }
 
@@ -287,10 +306,21 @@ export class Messenger {
     return new Promise((resolve, reject) => {
       let timeoutId: NodeJS.Timeout | null = null;
 
-      const resolver = (message: PropertiesMessage) => {
+      // Cleanup function to remove listener and clear timeout
+      const cleanup = () => {
         this._socket.websocket.removeEventListener('message', wsHandler);
         if (timeoutId) clearTimeout(timeoutId);
+      };
+
+      const resolver = (message: PropertiesMessage) => {
+        cleanup();
         resolve(message);
+      };
+
+      // Rejector function to cleanup before rejecting
+      const rejector = (error: Error) => {
+        cleanup();
+        reject(error);
       };
 
       const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
@@ -309,11 +339,16 @@ export class Messenger {
       this._socket.sendTextFrame(message);
 
       // Reject the promise if the topic is not announced within 3 seconds
-      this.socket.waitForConnection().then(() => {
-        timeoutId = setTimeout(() => {
-          reject(new Error(`Topic ${params.name} was not announced within 3 seconds`));
-        }, 3000);
-      });
+      this.socket
+        .waitForConnection()
+        .then(() => {
+          timeoutId = setTimeout(() => {
+            rejector(new Error(`Topic ${params.name} was not announced within 3 seconds`));
+          }, 3000);
+        })
+        .catch((error) => {
+          rejector(error);
+        });
     });
   }
 
