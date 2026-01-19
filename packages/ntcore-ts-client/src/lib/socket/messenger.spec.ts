@@ -337,21 +337,29 @@ describe('Messenger', () => {
       await expect(publishPromise2).resolves.toEqual(announceMessage);
     });
 
-    it('should reject if announcement is not received within timeout', async () => {
+    it('should reject if no announcement is received within timeout (non-bug scenario)', async () => {
       const params: PublishMessageParams = {
-        name: 'test',
-        pubuid: 0,
+        name: '/timeout/topic',
+        pubuid: messenger.getNextPubUID(),
         type: 'string',
         properties: {},
       };
 
+      // Ensure this is NOT a "bug scenario" by creating an exact subscription match.
+      // If there is no matching subscription, publish() may optimistically resolve after 200ms.
+      messenger.subscribe({
+        topics: [params.name],
+        subuid: messenger.getNextSubUID(),
+        options: {},
+      });
+
       vi.useFakeTimers();
       try {
         const publishPromise = messenger.publish(params);
-        // Allow microtasks to run so the internal timeout is scheduled.
+        // Allow microtasks to run so the internal timeouts are scheduled.
         await Promise.resolve();
         vi.advanceTimersByTime(3000);
-        await expect(publishPromise).rejects.toThrow('was not announced within 3 seconds');
+        await expect(publishPromise).rejects.toThrow('was not announced within 3 seconds (3000ms)');
       } finally {
         vi.useRealTimers();
       }
@@ -386,6 +394,274 @@ describe('Messenger', () => {
 
       server.send(JSON.stringify([announceMessage]));
       await publishPromise;
+    });
+
+    describe('optimistic resolution (wpilibsuite/allwpilib#7680 workaround)', () => {
+      it('should optimistically resolve when publishing with prefix subscription (bug scenario)', async () => {
+        const subscribeParams: SubscribeMessageParams = {
+          options: { prefix: true },
+          topics: ['/test/'],
+          subuid: messenger.getNextSubUID(),
+        };
+        messenger.subscribe(subscribeParams);
+
+        const publishParams: PublishMessageParams = {
+          name: '/test/topic',
+          pubuid: messenger.getNextPubUID(),
+          type: 'string',
+          properties: {},
+        };
+
+        vi.useFakeTimers();
+        try {
+          const publishPromise = messenger.publish(publishParams);
+          await Promise.resolve();
+          vi.advanceTimersByTime(250);
+
+          const announcement = await publishPromise;
+          expect(announcement).toBeDefined();
+          expect(announcement.method).toBe('announce');
+          expect(announcement.params.name).toBe('/test/topic');
+          expect(announcement.params.pubuid).toBe(publishParams.pubuid);
+
+          // Optimistic resolution explicitly calls the onAnnounce callback.
+          expect(onAnnounce).toHaveBeenCalledWith(
+            expect.objectContaining({
+              name: '/test/topic',
+              pubuid: publishParams.pubuid,
+            })
+          );
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('should optimistically resolve when republishing retained topic after reconnection (bug scenario)', async () => {
+        vi.useFakeTimers();
+        try {
+          const publishParams: PublishMessageParams = {
+            name: '/retained/topic',
+            pubuid: messenger.getNextPubUID(),
+            type: 'string',
+            properties: { retained: true },
+          };
+
+          // First publish (normal) with real announcement.
+          setTimeout(() => {
+            const announceMessage: AnnounceMessage = {
+              method: 'announce',
+              params: {
+                name: '/retained/topic',
+                id: 1,
+                pubuid: publishParams.pubuid,
+                type: 'string',
+                properties: { retained: true },
+              },
+            };
+            server.send(JSON.stringify([announceMessage]));
+          }, 50);
+
+          const firstPublish = messenger.publish(publishParams);
+          vi.advanceTimersByTime(50);
+          await firstPublish;
+
+          // Clear mocks
+          vi.clearAllMocks();
+
+          // Republish with force=true (simulating reconnection). In this scenario, publish()
+          // should resolve optimistically after ~200ms even without an announcement.
+          const republishParams: PublishMessageParams = {
+            name: '/retained/topic',
+            pubuid: messenger.getNextPubUID(),
+            type: 'string',
+            properties: { retained: true },
+          };
+
+          const republishPromise = messenger.publish(republishParams, true);
+          await Promise.resolve();
+          vi.advanceTimersByTime(250);
+
+          const announcement = await republishPromise;
+          expect(announcement).toBeDefined();
+          expect(announcement.method).toBe('announce');
+          expect(announcement.params.name).toBe('/retained/topic');
+          expect(announcement.params.pubuid).toBe(republishParams.pubuid);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('should optimistically resolve when publishing without subscription (bug scenario)', async () => {
+        const publishParams: PublishMessageParams = {
+          name: '/no/subscription/topic',
+          pubuid: messenger.getNextPubUID(),
+          type: 'string',
+          properties: {},
+        };
+
+        vi.useFakeTimers();
+        try {
+          const publishPromise = messenger.publish(publishParams);
+          await Promise.resolve();
+          vi.advanceTimersByTime(250);
+
+          const announcement = await publishPromise;
+          expect(announcement).toBeDefined();
+          expect(announcement.method).toBe('announce');
+          expect(announcement.params.name).toBe('/no/subscription/topic');
+          expect(announcement.params.pubuid).toBe(publishParams.pubuid);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('should handle late announcement after optimistic resolution', async () => {
+        const subscribeParams: SubscribeMessageParams = {
+          options: { prefix: true },
+          topics: ['/test/'],
+          subuid: messenger.getNextSubUID(),
+        };
+        messenger.subscribe(subscribeParams);
+
+        const publishParams: PublishMessageParams = {
+          name: '/test/late',
+          pubuid: messenger.getNextPubUID(),
+          type: 'string',
+          properties: {},
+        };
+
+        vi.useFakeTimers();
+        try {
+          const publishPromise = messenger.publish(publishParams);
+
+          // Allow optimistic resolution to happen.
+          await Promise.resolve();
+          vi.advanceTimersByTime(250);
+
+          // Now send the actual announcement (late). This should not cause rejection.
+          const announceMessage: AnnounceMessage = {
+            method: 'announce',
+            params: {
+              name: '/test/late',
+              id: 1,
+              pubuid: publishParams.pubuid,
+              type: 'string',
+              properties: {},
+            },
+          };
+          server.send(JSON.stringify([announceMessage]));
+
+          const announcement = await publishPromise;
+          expect(announcement).toBeDefined();
+          expect(announcement.params.name).toBe('/test/late');
+
+          // At minimum, optimistic path should have invoked onAnnounce.
+          expect(onAnnounce).toHaveBeenCalled();
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('should not optimistically resolve when not in bug scenario', async () => {
+        const publishParams: PublishMessageParams = {
+          name: '/normal/topic',
+          pubuid: messenger.getNextPubUID(),
+          type: 'string',
+          properties: {},
+        };
+
+        // Exact subscription match makes this a non-bug scenario.
+        messenger.subscribe({
+          options: {},
+          topics: [publishParams.name],
+          subuid: messenger.getNextSubUID(),
+        });
+
+        vi.useFakeTimers();
+        try {
+          const publishPromise = messenger.publish(publishParams);
+
+          let resolved = false;
+          void publishPromise.then(() => {
+            resolved = true;
+          });
+
+          // Give the optimistic timer window time to pass.
+          await Promise.resolve();
+          vi.advanceTimersByTime(250);
+          await Promise.resolve();
+
+          expect(resolved).toBe(false);
+
+          // Now send the actual announcement.
+          const announceMessage: AnnounceMessage = {
+            method: 'announce',
+            params: {
+              name: publishParams.name,
+              id: 1,
+              pubuid: publishParams.pubuid,
+              type: publishParams.type,
+              properties: publishParams.properties,
+            },
+          };
+          server.send(JSON.stringify([announceMessage]));
+
+          const announcement = await publishPromise;
+          expect(announcement).toBeDefined();
+          expect(announcement.params.name).toBe(publishParams.name);
+          expect(announcement.params.pubuid).toBe(publishParams.pubuid);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('should handle multiple concurrent optimistic resolutions', async () => {
+        const subscribeParams: SubscribeMessageParams = {
+          options: { prefix: true },
+          topics: ['/concurrent/'],
+          subuid: messenger.getNextSubUID(),
+        };
+        messenger.subscribe(subscribeParams);
+
+        const publishParams1: PublishMessageParams = {
+          name: '/concurrent/topic1',
+          pubuid: messenger.getNextPubUID(),
+          type: 'string',
+          properties: {},
+        };
+        const publishParams2: PublishMessageParams = {
+          name: '/concurrent/topic2',
+          pubuid: messenger.getNextPubUID(),
+          type: 'string',
+          properties: {},
+        };
+        const publishParams3: PublishMessageParams = {
+          name: '/concurrent/topic3',
+          pubuid: messenger.getNextPubUID(),
+          type: 'string',
+          properties: {},
+        };
+
+        vi.useFakeTimers();
+        try {
+          const promises = [
+            messenger.publish(publishParams1),
+            messenger.publish(publishParams2),
+            messenger.publish(publishParams3),
+          ];
+
+          await Promise.resolve();
+          vi.advanceTimersByTime(250);
+
+          const results = await Promise.all(promises);
+          expect(results).toHaveLength(3);
+          expect(results[0].params.name).toBe('/concurrent/topic1');
+          expect(results[1].params.name).toBe('/concurrent/topic2');
+          expect(results[2].params.name).toBe('/concurrent/topic3');
+        } finally {
+          vi.useRealTimers();
+        }
+      });
     });
   });
 

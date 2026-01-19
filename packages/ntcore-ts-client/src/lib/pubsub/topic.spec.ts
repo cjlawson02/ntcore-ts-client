@@ -44,12 +44,9 @@ describe('Topic', () => {
     });
 
     it('should error if the existing topic has a different type', () => {
-      try {
-        new NetworkTablesTopic<boolean>(topic['client'], 'test', NetworkTablesTypeInfos.kBoolean, true);
-        fail('Should have thrown an error');
-      } catch (e) {
-        expect((e as Error).message).toEqual('Topic test already exists, but with a different type.');
-      }
+      expect(
+        () => new NetworkTablesTopic<boolean>(topic['client'], 'test', NetworkTablesTypeInfos.kBoolean, true)
+      ).toThrow('Topic test already exists, but with a different type.');
     });
 
     it('should return null if there is no default value', () => {
@@ -274,13 +271,21 @@ describe('Topic', () => {
       expect(id).toEqual(topic.pubuid);
     });
 
-    it('should throw an error if the topic is not announced', async () => {
+    it('should throw an error if the topic is not announced (non-bug scenario)', async () => {
+      topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
+
+      // Ensure publish() does NOT use the optimistic resolution workaround by creating an
+      // exact subscription match for this topic name.
+      topic.subscribe(() => {}, {}, undefined, false);
+
+      vi.useFakeTimers();
       try {
-        topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
-        await topic.publish({}, 1);
-        fail('Topic should have not been announced');
-      } catch (e) {
-        expect(e).toEqual(new Error(`Topic ${topic.name} was not announced within 3 seconds`));
+        const publishPromise = topic.publish({}, 1);
+        await Promise.resolve();
+        vi.advanceTimersByTime(3000);
+        await expect(publishPromise).rejects.toThrow('was not announced within 3 seconds');
+      } finally {
+        vi.useRealTimers();
       }
     });
 
