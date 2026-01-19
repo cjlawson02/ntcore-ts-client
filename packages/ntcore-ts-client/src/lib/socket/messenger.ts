@@ -410,7 +410,7 @@ export class Messenger {
 
       this.sendPublishFrames(params);
 
-      // Set up timeouts
+      // Reject the promise if the topic is not announced within 3 seconds
       this.socket
         .waitForConnection()
         .then(() => {
@@ -441,7 +441,7 @@ export class Messenger {
   }
 
   private sendPublishFrames(params: PublishMessageParams) {
-    // Send the message to the server
+    // Send publish frame
     const message: PublishMessage = {
       method: 'publish',
       params,
@@ -450,14 +450,17 @@ export class Messenger {
 
     // HOTFIX: Subscribe to the topic to get the announcement.
     // See: https://github.com/wpilibsuite/allwpilib/issues/7680
-    const subMsg: SubscribeMessageParams = {
-      options: {
-        topicsonly: true,
+    const subMsg: SubscribeMessage = {
+      method: 'subscribe',
+      params: {
+        options: {
+          topicsonly: true,
+        },
+        topics: [params.name],
+        subuid: this.getNextSubUID(),
       },
-      topics: [params.name],
-      subuid: this.getNextSubUID(),
     };
-    this.subscribe(subMsg);
+    this._socket.sendTextFrame(subMsg);
   }
 
   /**
