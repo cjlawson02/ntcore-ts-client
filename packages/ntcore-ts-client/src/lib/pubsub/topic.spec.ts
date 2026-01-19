@@ -68,22 +68,45 @@ describe('Topic', () => {
     });
 
     it('allows the value to be set if the client is the publisher', async () => {
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 1234,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
-      await topic.publish({}, 1234);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 1234,
+          type: 'string',
+          properties: {},
+        },
+      };
+
+      const publishPromise = topic.publish({}, 1234);
+      server.send(JSON.stringify([announceMessage]));
+      await publishPromise;
       topic.setValue('new value');
       expect(topic.getValue()).toEqual('new value');
+    });
+
+    it('queues outgoing values until the topic is announced, then flushes the latest value', () => {
+      // Arrange: make the topic a publisher but not yet announced
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 9000;
+
+      const sendToTopicSpy = vi.spyOn(topic['client'].messenger, 'sendToTopic').mockReturnValue(-1);
+
+      // Act: set values before announcement
+      topic.setValue('v1');
+      topic.setValue('v2');
+
+      // No server update should be attempted yet (no topic id)
+      expect(sendToTopicSpy).not.toHaveBeenCalled();
+
+      // Announce with matching pubuid so publisher stays true and queued value flushes
+      topic.announce({ name: 'test', id: 42, pubuid: 9000, type: 'string', properties: {} });
+
+      // Assert: only the latest value is flushed
+      expect(sendToTopicSpy).toHaveBeenCalledTimes(1);
+      expect(sendToTopicSpy).toHaveBeenCalledWith(topic, 'v2');
+      sendToTopicSpy.mockRestore();
     });
   });
 
@@ -200,45 +223,51 @@ describe('Topic', () => {
       topic.subscribe(callback);
       topic['value'] = 'foo';
       topic['notifySubscribers']();
-      expect(callback).toHaveBeenCalledWith('foo', null);
+      expect(callback).toHaveBeenCalledWith(
+        'foo',
+        expect.objectContaining({
+          name: 'test',
+          id: -1,
+          type: 'string',
+          properties: {},
+        })
+      );
     });
   });
 
   describe('publish', () => {
     it('sets the publisher to the client', async () => {
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 1000,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
-      await topic.publish({}, 1000);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 1000,
+          type: 'string',
+          properties: {},
+        },
+      };
+      const publishPromise = topic.publish({}, 1000);
+      server.send(JSON.stringify([announceMessage]));
+      await publishPromise;
       expect(topic.publisher).toBe(true);
       expect(topic.pubuid).toBeDefined();
     });
 
     it('does not set the publisher if the client is already the publisher', async () => {
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 1111,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
-      await topic.publish({}, 1111);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 1111,
+          type: 'string',
+          properties: {},
+        },
+      };
+      const publishPromise = topic.publish({}, 1111);
+      server.send(JSON.stringify([announceMessage]));
+      await publishPromise;
       const id = topic.pubuid;
 
       await topic.publish();
@@ -261,19 +290,17 @@ describe('Topic', () => {
       const publishPromise = topic.publish({}, 2000);
 
       // Send announcement quickly (100ms)
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 2000,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 2000,
+          type: 'string',
+          properties: {},
+        },
+      };
+      server.send(JSON.stringify([announceMessage]));
 
       // Wait for publish to complete
       await publishPromise;
@@ -289,20 +316,19 @@ describe('Topic', () => {
 
   describe('unpublish', () => {
     it('sets the publisher to false', async () => {
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 1001,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
-      await topic.publish({}, 1001);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 1001,
+          type: 'string',
+          properties: {},
+        },
+      };
+      const publishPromise = topic.publish({}, 1001);
+      server.send(JSON.stringify([announceMessage]));
+      await publishPromise;
       expect(topic.publisher).toBe(true);
       topic.unpublish();
       expect(topic.publisher).toBe(false);
@@ -332,35 +358,32 @@ describe('Topic', () => {
 
     it('should clear timeout when properties response arrives quickly', async () => {
       // First, publish the topic so it exists
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 3000,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
-      await topic.publish({}, 3000);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 3000,
+          type: 'string',
+          properties: {},
+        },
+      };
+      const publishPromise = topic.publish({}, 3000);
+      server.send(JSON.stringify([announceMessage]));
+      await publishPromise;
 
       // Test setProperties timeout cleanup
       const setPropertiesPromise = topic.setProperties(true, true);
 
       // Send properties response quickly (100ms) with ack: true
-      setTimeout(() => {
-        const propertiesResponse: PropertiesMessage = {
-          method: 'properties',
-          params: {
-            name: 'test',
-            ack: true,
-          },
-        };
-        server.send(JSON.stringify([propertiesResponse]));
-      }, 100);
+      const propertiesResponse: PropertiesMessage = {
+        method: 'properties',
+        params: {
+          name: 'test',
+          ack: true,
+        },
+      };
+      server.send(JSON.stringify([propertiesResponse]));
 
       // Wait for setProperties to complete
       await setPropertiesPromise;
