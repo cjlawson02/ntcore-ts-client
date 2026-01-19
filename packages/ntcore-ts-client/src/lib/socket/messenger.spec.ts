@@ -248,6 +248,41 @@ describe('Messenger', () => {
     });
   });
 
+  describe('parseAndFilterMessage', () => {
+    it('should return an empty array for non-string websocket payloads', () => {
+      const result = (
+        messenger as unknown as {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          parseAndFilterMessage: (event: any, method: string) => unknown[];
+        }
+      )['parseAndFilterMessage']({ data: new ArrayBuffer(0) }, 'announce');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should throw when JSON parses to a non-array message payload', () => {
+      const singleMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 0,
+          type: 'string',
+          properties: {},
+        },
+      };
+
+      expect(() => {
+        (
+          messenger as unknown as {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            parseAndFilterMessage: (event: any, method: string) => unknown[];
+          }
+        )['parseAndFilterMessage']({ data: JSON.stringify(singleMessage) }, 'announce');
+      }).toThrow();
+    });
+  });
+
   describe('publish', () => {
     it('should publish a topic and wait for announcement', async () => {
       const params: PublishMessageParams = {
@@ -277,6 +312,40 @@ describe('Messenger', () => {
 
       expect(result).toEqual(announceMessage);
       expect(messenger.getPublications().next().value).toBeDefined();
+    });
+
+    it('should resolve even if announce arrives immediately (before timeout scheduling)', async () => {
+      const params: PublishMessageParams = {
+        name: '/immediate/topic',
+        pubuid: messenger.getNextPubUID(),
+        type: 'string',
+        properties: {},
+      };
+
+      // Ensure this is NOT a bug scenario; otherwise publish() may resolve optimistically.
+      messenger.subscribe({
+        topics: [params.name],
+        subuid: messenger.getNextSubUID(),
+        options: {},
+      });
+
+      const publishPromise = messenger.publish(params);
+
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: params.name,
+          pubuid: params.pubuid,
+          type: params.type,
+          id: 1,
+          properties: {},
+        },
+      };
+
+      // Send immediately after publish() call.
+      server.send(JSON.stringify([announceMessage]));
+
+      await expect(publishPromise).resolves.toEqual(announceMessage);
     });
 
     it('should reject if topic is already published', async () => {
@@ -394,6 +463,97 @@ describe('Messenger', () => {
 
       server.send(JSON.stringify([announceMessage]));
       await publishPromise;
+    });
+
+    it('should reject when waitForConnection rejects (connection failure)', async () => {
+      const params: PublishMessageParams = {
+        name: '/waitForConnection/reject',
+        pubuid: messenger.getNextPubUID(),
+        type: 'string',
+        properties: {},
+      };
+
+      vi.spyOn(messenger.socket, 'waitForConnection').mockRejectedValueOnce(new Error('connection failed'));
+
+      await expect(messenger.publish(params)).rejects.toThrow('connection failed');
+
+      // Should not be added to publications on failure.
+      expect(Array.from(messenger.getPublications())).toHaveLength(0);
+    });
+
+    it('should ignore announce messages that do not match name + pubuid', async () => {
+      const params: PublishMessageParams = {
+        name: '/match/topic',
+        pubuid: messenger.getNextPubUID(),
+        type: 'string',
+        properties: {},
+      };
+
+      // Ensure this is NOT a bug scenario so the publish does not resolve optimistically.
+      messenger.subscribe({
+        topics: [params.name],
+        subuid: messenger.getNextSubUID(),
+        options: {},
+      });
+
+      const publishPromise = messenger.publish(params);
+
+      let resolved = false;
+      void publishPromise.then(() => {
+        resolved = true;
+      });
+
+      // Wrong pubuid (same name)
+      server.send(
+        JSON.stringify([
+          {
+            method: 'announce',
+            params: {
+              name: params.name,
+              id: 1,
+              pubuid: 9999,
+              type: 'string',
+              properties: {},
+            },
+          },
+        ])
+      );
+      await Promise.resolve();
+      expect(resolved).toBe(false);
+
+      // Wrong name (same pubuid)
+      server.send(
+        JSON.stringify([
+          {
+            method: 'announce',
+            params: {
+              name: '/other/topic',
+              id: 1,
+              pubuid: params.pubuid,
+              type: 'string',
+              properties: {},
+            },
+          },
+        ])
+      );
+      await Promise.resolve();
+      expect(resolved).toBe(false);
+
+      // Correct match
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: params.name,
+          id: 1,
+          pubuid: params.pubuid,
+          type: 'string',
+          properties: {},
+        },
+      };
+      server.send(JSON.stringify([announceMessage]));
+
+      const result = await publishPromise;
+      expect(result).toEqual(announceMessage);
     });
 
     describe('optimistic resolution (wpilibsuite/allwpilib#7680 workaround)', () => {
@@ -570,6 +730,21 @@ describe('Messenger', () => {
           properties: {},
         };
 
+        // Add a prefix subscription that does NOT match this topic name.
+        // This exercises the non-match branch in bug-scenario detection.
+        messenger.subscribe({
+          options: { prefix: true },
+          topics: ['/other/'],
+          subuid: messenger.getNextSubUID(),
+        });
+
+        // Add an exact subscription that does NOT match (exercise includes() false path).
+        messenger.subscribe({
+          options: {},
+          topics: ['/not/matching'],
+          subuid: messenger.getNextSubUID(),
+        });
+
         // Exact subscription match makes this a non-bug scenario.
         messenger.subscribe({
           options: {},
@@ -610,6 +785,74 @@ describe('Messenger', () => {
           expect(announcement).toBeDefined();
           expect(announcement.params.name).toBe(publishParams.name);
           expect(announcement.params.pubuid).toBe(publishParams.pubuid);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('should clear the optimistic timer when an announce arrives quickly (bug scenario)', async () => {
+        const subscribeParams: SubscribeMessageParams = {
+          options: { prefix: true },
+          topics: ['/fast/'],
+          subuid: messenger.getNextSubUID(),
+        };
+        messenger.subscribe(subscribeParams);
+
+        const publishParams: PublishMessageParams = {
+          name: '/fast/topic',
+          pubuid: messenger.getNextPubUID(),
+          type: 'string',
+          properties: {},
+        };
+
+        vi.useFakeTimers();
+        try {
+          const publishPromise = messenger.publish(publishParams);
+
+          // Allow waitForConnection().then(...) to schedule the early 200ms timer.
+          await Promise.resolve();
+
+          const announceMessage: AnnounceMessage = {
+            method: 'announce',
+            params: {
+              name: publishParams.name,
+              id: 1,
+              pubuid: publishParams.pubuid,
+              type: publishParams.type,
+              properties: publishParams.properties,
+            },
+          };
+          server.send(JSON.stringify([announceMessage]));
+
+          const result = await publishPromise;
+          expect(result).toEqual(announceMessage);
+
+          // Advance past the optimistic window; should not change result or throw.
+          vi.advanceTimersByTime(250);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('should default missing properties to {} in optimistic announce', async () => {
+        vi.useFakeTimers();
+        try {
+          // Force the optimistic path and omit properties to exercise `params.properties || {}`.
+          const publishParams = {
+            name: '/no-props/topic',
+            pubuid: messenger.getNextPubUID(),
+            type: 'string',
+            // properties intentionally omitted
+          } as unknown as PublishMessageParams;
+
+          const publishPromise = messenger.publish(publishParams);
+          await Promise.resolve();
+          vi.advanceTimersByTime(250);
+
+          const announcement = await publishPromise;
+          expect(announcement.method).toBe('announce');
+          expect(announcement.params.name).toBe('/no-props/topic');
+          expect(announcement.params.properties).toEqual({});
         } finally {
           vi.useRealTimers();
         }
@@ -842,6 +1085,17 @@ describe('Messenger', () => {
       }
     });
 
+    it('should reject when waitForConnection rejects (connection failure)', async () => {
+      const params: SetPropertiesMessageParams = {
+        name: '/waitForConnection/reject',
+        update: { persistent: true },
+      };
+
+      vi.spyOn(messenger.socket, 'waitForConnection').mockRejectedValueOnce(new Error('connection failed'));
+
+      await expect(messenger.setProperties(params)).rejects.toThrow('connection failed');
+    });
+
     it('should only resolve when ack is true', async () => {
       const params: SetPropertiesMessageParams = {
         name: 'test',
@@ -902,6 +1156,23 @@ describe('Messenger', () => {
       messenger.sendToTopic(topic, 'test-value');
 
       expect(sendValueToTopicSpy).toHaveBeenCalledWith(123, 'test-value', NetworkTablesTypeInfos.kString);
+    });
+
+    it('should return -1 if topic has no server id yet', () => {
+      const topic = {
+        name: 'test',
+        typeInfo: NetworkTablesTypeInfos.kString,
+        publisher: true,
+        pubuid: 0,
+        id: undefined,
+        announced: false,
+      } as unknown as NetworkTablesTopic<string>;
+
+      const sendValueToTopicSpy = vi.spyOn(messenger.socket, 'sendValueToTopic');
+      const result = messenger.sendToTopic(topic, 'test-value');
+
+      expect(result).toBe(-1);
+      expect(sendValueToTopicSpy).not.toHaveBeenCalled();
     });
 
     it('should throw error if topic is not a publisher', () => {
