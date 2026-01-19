@@ -5,5 +5,6 @@ export const vitestOverrides: Linter.ConfigOverride = {
   plugins: ['vitest'],
   rules: {
     '@typescript-eslint/dot-notation': 'off',
+    '@typescript-eslint/no-empty-function': 'off',
   },
 };
