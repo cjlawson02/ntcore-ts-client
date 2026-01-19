@@ -22,6 +22,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
   private _publisher: boolean;
   private _pubuid?: number;
   private _publishProperties?: TopicProperties;
+  private _pendingServerValue?: T;
 
   /**
    * Gets the type info for the topic.
@@ -95,6 +96,15 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
     pubsubLogger.debug('Value set', { topicName: this.name, oldValue, newValue: value, type: this._typeInfo[1] });
     this.value = value;
     this.notifySubscribers();
+
+    // If the topic has not been announced yet (no server topic id), queue the most recent value.
+    // This avoids sending binary updates with an unknown/invalid topic id during reconnect races.
+    if (!this.announced || this.id == null) {
+      this._pendingServerValue = value;
+      pubsubLogger.debug('Topic not announced yet; queued outgoing value', { topicName: this.name });
+      return;
+    }
+
     this.client.updateServer<T>(this, value);
   }
 
@@ -148,6 +158,14 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
       });
     }
     pubsubLogger.debug('Topic announced', { topicName: this.name, topicId: params.id, pubuid: params.pubuid });
+
+    // Flush any queued outgoing value now that the server topic id is known.
+    if (this._publisher && this._pendingServerValue !== undefined) {
+      const pendingValue = this._pendingServerValue;
+      this._pendingServerValue = undefined;
+      pubsubLogger.debug('Flushing queued outgoing value', { topicName: this.name });
+      this.client.updateServer<T>(this, pendingValue);
+    }
   }
 
   /** */
@@ -198,16 +216,26 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
   private notifySubscribers() {
     const subscriberCount = this.subscribers.size;
     pubsubLogger.debug('Subscribers notified', { topicName: this.name, count: subscriberCount });
-    // We know that _announceParams is not null here because we received a value update
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // If the topic has not been announced yet, synthesize params so callbacks always
+    // receive a well-formed object (rather than `null`).
+    const params =
+      this._announceParams ??
+      ({
+        name: this.name,
+        id: -1,
+        type: this._typeInfo[1],
+        properties: this._publishProperties ?? {},
+        ...(this._pubuid != null ? { pubuid: this._pubuid } : {}),
+      } as const);
+
     this.subscribers.forEach((info, subuid) => {
       pubsubLogger.trace('Callback invoked', {
         topicName: this.name,
         subuid,
         value: this.value,
-        params: this._announceParams!,
+        params,
       });
-      info.callback(this.value, this._announceParams!);
+      info.callback(this.value, params);
     });
   }
 

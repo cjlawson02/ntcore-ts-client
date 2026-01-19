@@ -136,9 +136,11 @@ export class Messenger {
     });
 
     messengerLogger.debug('Publishing all topics', { count: publicationCount });
-    // Send all publications
+    // Re-send publish frames best-effort on reconnect.
+    // Do not await announcements here (fire-and-forget) to avoid timers/rejections
+    // outliving the reconnect event.
     this.publications.forEach((params) => {
-      this.publish(params, true);
+      this.sendPublishFrames(params);
     });
   };
 
@@ -406,23 +408,7 @@ export class Messenger {
       messengerLogger.trace('Event listener attached', { topicName: params.name });
       this.socket.websocket.addEventListener('message', wsHandler);
 
-      // Send the message to the server
-      const message: PublishMessage = {
-        method: 'publish',
-        params,
-      };
-      this._socket.sendTextFrame(message);
-
-      // HOTFIX: Subscribe to the topic to get the announcement.
-      // See: https://github.com/wpilibsuite/allwpilib/issues/7680
-      const subMsg: SubscribeMessageParams = {
-        options: {
-          topicsonly: true,
-        },
-        topics: [params.name],
-        subuid: this.getNextSubUID(),
-      };
-      this.subscribe(subMsg);
+      this.sendPublishFrames(params);
 
       // Set up timeouts
       this.socket
@@ -452,6 +438,26 @@ export class Messenger {
           rejector(error);
         });
     });
+  }
+
+  private sendPublishFrames(params: PublishMessageParams) {
+    // Send the message to the server
+    const message: PublishMessage = {
+      method: 'publish',
+      params,
+    };
+    this._socket.sendTextFrame(message);
+
+    // HOTFIX: Subscribe to the topic to get the announcement.
+    // See: https://github.com/wpilibsuite/allwpilib/issues/7680
+    const subMsg: SubscribeMessageParams = {
+      options: {
+        topicsonly: true,
+      },
+      topics: [params.name],
+      subuid: this.getNextSubUID(),
+    };
+    this.subscribe(subMsg);
   }
 
   /**
@@ -589,12 +595,12 @@ export class Messenger {
       // Send the message to the server
       this._socket.sendTextFrame(message);
 
-      // Reject the promise if the topic is not announced within 3 seconds
+      // Reject the promise if an ACK is not received within 3 seconds
       this.socket
         .waitForConnection()
         .then(() => {
           timeoutId = setTimeout(() => {
-            rejector(new Error(`Topic ${params.name} was not announced within 3 seconds`));
+            rejector(new Error(`Properties for topic ${params.name} were not acknowledged within 3 seconds`));
           }, 3000);
         })
         .catch((error) => {
@@ -617,11 +623,12 @@ export class Messenger {
       throw new Error(`Topic ${topic.name} is not a publisher, so it cannot be updated`);
     }
 
-    if (!topic.announced) {
-      messengerLogger.warn('Topic is not announced, value will be queued', { topicName: topic.name });
+    if (topic.id == null) {
+      messengerLogger.debug('Topic is not announced; skipping server update', { topicName: topic.name });
+      return -1;
     }
 
-    return this._socket.sendValueToTopic(topic.pubuid, value, typeInfo);
+    return this._socket.sendValueToTopic(topic.id, value, typeInfo);
   }
 
   /**
