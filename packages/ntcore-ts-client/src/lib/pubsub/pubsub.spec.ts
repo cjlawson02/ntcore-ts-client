@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { NetworkTablesTypeInfos } from '../types/types';
 
 import { PubSubClient } from './pubsub';
@@ -149,5 +151,119 @@ describe('PubSubClient', () => {
     expect(topic2.resubscribeAll).toHaveBeenCalled();
     expect(topic.republish).toHaveBeenCalled();
     expect(topic2.republish).toHaveBeenCalled();
+  });
+
+  describe('getOrCreateInFlightOperation', () => {
+    it('returns the same promise for concurrent calls with the same key', async () => {
+      let callCount = 0;
+      const operation = async () => {
+        callCount++;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return `result-${callCount}`;
+      };
+
+      const promise1 = client.getOrCreateInFlightOperation('test-key', operation);
+      const promise2 = client.getOrCreateInFlightOperation('test-key', operation);
+      const promise3 = client.getOrCreateInFlightOperation('test-key', operation);
+
+      // All promises should be the same instance
+      expect(promise1).toBe(promise2);
+      expect(promise2).toBe(promise3);
+
+      const results = await Promise.all([promise1, promise2, promise3]);
+
+      // All should resolve to the same value
+      expect(results[0]).toBe(results[1]);
+      expect(results[1]).toBe(results[2]);
+      expect(results[0]).toBe('result-1');
+
+      // Operation should only be called once
+      expect(callCount).toBe(1);
+    });
+
+    it('creates separate promises for different keys', async () => {
+      let callCount = 0;
+      const operation1 = async () => {
+        callCount++;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return `result-1-${callCount}`;
+      };
+      const operation2 = async () => {
+        callCount++;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return `result-2-${callCount}`;
+      };
+
+      const promise1 = client.getOrCreateInFlightOperation('key-1', operation1);
+      const promise2 = client.getOrCreateInFlightOperation('key-2', operation2);
+
+      // Promises should be different instances
+      expect(promise1).not.toBe(promise2);
+
+      const results = await Promise.all([promise1, promise2]);
+
+      // Results should be different (different operations with different return values)
+      expect(results[0]).not.toBe(results[1]);
+      expect(results[0]).toContain('result-1');
+      expect(results[1]).toContain('result-2');
+
+      // Operation should be called twice (once per key)
+      expect(callCount).toBe(2);
+    });
+
+    it('cleans up the operation from the map after completion', async () => {
+      const operation = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return 'result';
+      };
+
+      const promise = client.getOrCreateInFlightOperation('cleanup-test', operation);
+      expect(client['inFlightOperations'].has('cleanup-test')).toBe(true);
+
+      await promise;
+
+      // After completion, the operation should be removed from the map
+      expect(client['inFlightOperations'].has('cleanup-test')).toBe(false);
+    });
+
+    it('cleans up the operation from the map after failure', async () => {
+      const operation = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        throw new Error('Operation failed');
+      };
+
+      const promise = client.getOrCreateInFlightOperation('cleanup-test-fail', operation);
+      expect(client['inFlightOperations'].has('cleanup-test-fail')).toBe(true);
+
+      await expect(promise).rejects.toThrow('Operation failed');
+
+      // After failure, the operation should still be removed from the map
+      expect(client['inFlightOperations'].has('cleanup-test-fail')).toBe(false);
+    });
+
+    it('allows retry after failure', async () => {
+      let attemptCount = 0;
+      const operation = async () => {
+        attemptCount++;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        if (attemptCount === 1) {
+          throw new Error('First attempt failed');
+        }
+        return 'success';
+      };
+
+      // First attempt should fail
+      const promise1 = client.getOrCreateInFlightOperation('retry-test', operation);
+      await expect(promise1).rejects.toThrow('First attempt failed');
+
+      // After failure, map should be cleaned up
+      expect(client['inFlightOperations'].has('retry-test')).toBe(false);
+
+      // Second attempt should succeed
+      const promise2 = client.getOrCreateInFlightOperation('retry-test', operation);
+      const result = await promise2;
+      expect(result).toBe('success');
+      expect(attemptCount).toBe(2);
+    });
   });
 });

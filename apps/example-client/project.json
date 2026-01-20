@@ -5,10 +5,20 @@
   "projectType": "application",
   "tags": [],
   "targets": {
+    "generate-types": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --proto_path={projectRoot}/src --ts_proto_out={projectRoot}/src/generated --ts_proto_opt=esModuleInterop=true,outputServices=generic-definitions,useExactTypes=false customproto.proto",
+        "cwd": "{workspaceRoot}"
+      },
+      "inputs": ["{projectRoot}/src/customproto.proto"],
+      "outputs": ["{projectRoot}/src/generated/**/*.ts"]
+    },
     "build": {
       "executor": "@nx/esbuild:esbuild",
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
+      "dependsOn": ["generate-types"],
       "options": {
         "platform": "node",
         "outputPath": "dist/apps/example-client",
@@ -16,7 +26,14 @@
         "bundle": false,
         "main": "apps/example-client/src/main.ts",
         "tsConfig": "apps/example-client/tsconfig.app.json",
-        "assets": ["apps/example-client/src/assets"],
+        "assets": [
+          "apps/example-client/src/assets",
+          {
+            "input": "apps/example-client/src",
+            "glob": "*.proto",
+            "output": "."
+          }
+        ],
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,

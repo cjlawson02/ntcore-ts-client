@@ -1,7 +1,11 @@
+import * as path from 'path';
 import { z as zod } from 'zod';
 
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { NetworkTables, NetworkTablesTypeInfos } from '../../../packages/ntcore-ts-client/src';
+
+// Import types generated from the proto file
+import type { TestData } from './generated/customproto';
 
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByURI('localhost');
@@ -28,22 +32,33 @@ gyroTopic.subscribe((value, params) => {
   console.log(`[Gryo Topic] Got Gyro Value: ${value} at from topic id ${params.id}`);
 });
 
-// ---------------------------------------------- //
-// Example of using a topic to publish to a value //
-// ---------------------------------------------- //
+// --------------------------------------------------------- //
+// Example of using a protobuf topic to subscribe to a value //
+// --------------------------------------------------------- //
 
-// Create the autoMode topic w/ a default return value of 'No Auto'
-(async () => {
-  const autoModeTopic = ntcore.createTopic<string>('/MyTable/autoMode', NetworkTablesTypeInfos.kString, 'No Auto');
-
-  // Make us the publisher
-  console.log('[Auto Topic] Publishing Auto Mode Topic');
-  await autoModeTopic.publish();
-  console.log('[Auto Topic] Published Auto Mode Topic');
-
-  // Set a new value, this will error if we aren't the publisher!
-  autoModeTopic.setValue('25 Ball Auto and Climb');
-})();
+// The library automatically fetches the protobuf schema from NetworkTables
+// and decodes values in subscriber callbacks. However, we cannot know at
+// compile time what the schema will be, so the library supports passing a
+// Zod schema to validate the decoded values at runtime.
+const translation2dSchema = zod.object({
+  x: zod.number(),
+  y: zod.number(),
+});
+const rotation2dSchema = zod.object({
+  value: zod.number(),
+});
+const pose2dSchema = zod.object({
+  translation: translation2dSchema,
+  rotation: rotation2dSchema,
+});
+const poseTopic = ntcore.createProtobufTopic<zod.infer<typeof pose2dSchema>>('/MyTable/Pose', {
+  validator: pose2dSchema,
+});
+poseTopic.subscribe((value) => {
+  console.log(
+    `[Pose Topic] Got Pose Value: x: ${value.translation.x}, y: ${value.translation.y}, rotation: ${value.rotation.value}`
+  );
+});
 
 // --------------------------------------------------------------- //
 // Example of using a prefix topic to subscribe to multiple topics //
@@ -91,3 +106,49 @@ const allTopics = ntcore.createPrefixTopic('');
 allTopics.subscribe((value, params) => {
   console.log(`[All Topics] Got Value: ${value} from topic ${params.name}`);
 });
+
+// ---------------------------------------------- //
+// Example of using a topic to publish to a value //
+// ---------------------------------------------- //
+
+// Create the AutoMode topic w/ a default return value of 'No Auto'
+(async () => {
+  const autoModeTopic = ntcore.createTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, 'No Auto');
+
+  // Make us the publisher
+  console.log('[Auto Topic] Publishing Auto Mode Topic');
+  await autoModeTopic.publish({
+    retained: true,
+  });
+  console.log('[Auto Topic] Published Auto Mode Topic');
+
+  // Set a new value, this will error if we aren't the publisher!
+  autoModeTopic.setValue('25 Ball Auto and Climb');
+})();
+
+// --------------------------------------------------------- //
+// Example of using a protobuf topic to publish a value //
+// --------------------------------------------------------- //
+
+(async () => {
+  // Create a protobuf topic with the proto file path
+  // The schema will be automatically registered to NetworkTables when publishing
+  const customProtoTopic = ntcore.createProtobufTopic<TestData>('/MyTable/CustomProto', {
+    protoFilePath: path.join(__dirname, '../../..', 'customproto.proto'),
+  });
+
+  // Make us the publisher
+  console.log('[Custom Proto Topic] Publishing Custom Proto Topic');
+  await customProtoTopic.publish();
+  console.log('[Custom Proto Topic] Published Custom Proto Topic');
+
+  // Create a TestData value object matching the proto schema
+  // The TestData type is automatically inferred from the proto file
+  const testDataValue: TestData = {
+    timestamp: Date.now(),
+    value: 42.5,
+    info: 'Example sensor data',
+  };
+
+  customProtoTopic.setValue(testDataValue);
+})();

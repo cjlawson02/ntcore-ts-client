@@ -1,6 +1,8 @@
-import { NetworkTablesTypeInfos, NetworkTablesTypes } from '../types/types';
+import { NetworkTablesTypeInfos } from '../types/types';
 
 import { Util } from './util';
+
+import type { NetworkTablesTypes } from '../types/types';
 
 describe('Util', () => {
   describe('getMicros', () => {

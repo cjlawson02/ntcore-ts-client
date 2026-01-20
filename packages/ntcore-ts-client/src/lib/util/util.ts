@@ -1,11 +1,10 @@
 import {
   NetworkTablesTypeInfos,
-  TypeNum,
-  TypeString,
   type BinaryMessage,
   type NetworkTablesTypeInfo,
   type NetworkTablesTypes,
 } from '../types/types';
+import type { TypeNum, TypeString } from '../types/types';
 
 /**
  * Class for holding utility functions.

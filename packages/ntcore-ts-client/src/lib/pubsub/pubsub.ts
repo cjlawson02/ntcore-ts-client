@@ -9,6 +9,8 @@ import {
 } from '../types/types';
 import { pubsubLogger } from '../util/logger';
 
+import { ProtobufSchemaManager } from './protobuf-schema-manager';
+
 import type { NetworkTablesBaseTopic } from './base-topic';
 import type { NetworkTablesPrefixTopic } from './prefix-topic';
 import type { NetworkTablesTopic } from './topic';
@@ -20,10 +22,17 @@ export class PubSubClient {
   private readonly prefixTopics: Map<string, NetworkTablesPrefixTopic>;
   // topic id -> topic params
   private readonly knownTopicParams: Map<number, AnnounceMessageParams>;
+  private readonly _protobufSchemaManager: ProtobufSchemaManager;
   private static _instances = new Map<string, PubSubClient>();
+  // Unified in-flight operations tracking (schema registrations and topic publishes)
+  private readonly inFlightOperations = new Map<string, Promise<unknown>>();
 
   get messenger() {
     return this._messenger;
+  }
+
+  get protobufSchemaManager() {
+    return this._protobufSchemaManager;
   }
 
   private constructor(serverUrl: string) {
@@ -37,6 +46,7 @@ export class PubSubClient {
     this.topics = new Map();
     this.prefixTopics = new Map();
     this.knownTopicParams = new Map();
+    this._protobufSchemaManager = new ProtobufSchemaManager(this);
 
     // In the DOM, auto-cleanup
     if (typeof window !== 'undefined') {
@@ -313,6 +323,37 @@ export class PubSubClient {
       pubsubLogger.debug('Known topic params not found', { topicId: id });
     }
     return params;
+  }
+
+  /**
+   * Gets or creates an in-flight operation to prevent race conditions.
+   * If an operation with the same key is already in progress, returns the existing promise.
+   * Otherwise, creates a new operation and stores it.
+   * @param key - Unique key for the operation (e.g., "schema:/.schema/proto:filename" or "publish:/topic/name")
+   * @param operation - The async operation to execute
+   * @returns A promise that resolves to the operation result
+   */
+  getOrCreateInFlightOperation<T>(key: string, operation: () => Promise<T>): Promise<T> {
+    const existing = this.inFlightOperations.get(key);
+    if (existing) {
+      return existing as Promise<T>;
+    }
+
+    const promise = (async () => {
+      try {
+        return await operation();
+      } finally {
+        // Always cleanup, regardless of success or failure
+        // This allows retries if the operation failed
+        this.inFlightOperations.delete(key);
+      }
+    })();
+
+    // Store the promise IMMEDIATELY so concurrent calls wait for the same operation
+    // This must happen synchronously before any await in the promise
+    this.inFlightOperations.set(key, promise);
+
+    return promise;
   }
 
   /**

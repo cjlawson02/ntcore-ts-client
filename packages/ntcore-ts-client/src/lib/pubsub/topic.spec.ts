@@ -246,13 +246,10 @@ describe('Topic', () => {
     });
 
     it('should throw an error if the topic is not announced', async () => {
-      try {
-        topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
-        await topic.publish({}, 1);
-        fail('Topic should have not been announced');
-      } catch (e) {
-        expect(e).toEqual(new Error(`Topic ${topic.name} was not announced within 3 seconds`));
-      }
+      topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
+      await expect(topic.publish({}, 1)).rejects.toThrow(
+        new Error(`Topic ${topic.name} was not announced within 3 seconds (3000ms)`)
+      );
     });
 
     it('should clear timeout when announcement arrives quickly', async () => {
@@ -284,6 +281,97 @@ describe('Topic', () => {
       // If we get here without an error, the timeout was properly cleared
       expect(topic.publisher).toBe(true);
       expect(topic.pubuid).toBe(2000);
+    });
+
+    it('should prevent race conditions when publish is called concurrently', async () => {
+      // This test verifies that concurrent calls to publish() share the same operation
+      let publishCallCount = 0;
+      const originalMessengerPublish = client.messenger.publish.bind(client.messenger);
+
+      // Track how many times messenger.publish is called
+      client.messenger.publish = vi.fn().mockImplementation(async (params) => {
+        publishCallCount++;
+        return originalMessengerPublish(params);
+      });
+
+      // Send announcement
+      setTimeout(() => {
+        const announceMessage: AnnounceMessage = {
+          method: 'announce',
+          params: {
+            name: 'test',
+            id: 1,
+            pubuid: 3000,
+            type: 'string',
+            properties: {},
+          },
+        };
+        server.send(JSON.stringify([announceMessage]));
+      }, 100);
+
+      // Call publish concurrently multiple times
+      const publishPromises = [topic.publish({}, 3000), topic.publish({}, 3000), topic.publish({}, 3000)];
+
+      // All promises should resolve
+      await Promise.all(publishPromises);
+
+      // messenger.publish should only be called once (not three times)
+      expect(publishCallCount).toBe(1);
+      expect(topic.publisher).toBe(true);
+      expect(topic.pubuid).toBe(3000);
+
+      // Restore original method
+      client.messenger.publish = originalMessengerPublish;
+    });
+
+    it('should allow separate publish operations for different topics', async () => {
+      const topic2 = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
+
+      let publishCallCount = 0;
+      const originalMessengerPublish = client.messenger.publish.bind(client.messenger);
+
+      client.messenger.publish = vi.fn().mockImplementation(async (params) => {
+        publishCallCount++;
+        return originalMessengerPublish(params);
+      });
+
+      // Send announcements for both topics
+      setTimeout(() => {
+        const announceMessages: AnnounceMessage[] = [
+          {
+            method: 'announce',
+            params: {
+              name: 'test',
+              id: 1,
+              pubuid: 4000,
+              type: 'string',
+              properties: {},
+            },
+          },
+          {
+            method: 'announce',
+            params: {
+              name: 'test2',
+              id: 2,
+              pubuid: 4001,
+              type: 'string',
+              properties: {},
+            },
+          },
+        ];
+        server.send(JSON.stringify(announceMessages));
+      }, 100);
+
+      // Publish both topics concurrently
+      await Promise.all([topic.publish({}, 4000), topic2.publish({}, 4001)]);
+
+      // messenger.publish should be called twice (once per topic)
+      expect(publishCallCount).toBe(2);
+      expect(topic.publisher).toBe(true);
+      expect(topic2.publisher).toBe(true);
+
+      // Restore original method
+      client.messenger.publish = originalMessengerPublish;
     });
   });
 
@@ -331,6 +419,9 @@ describe('Topic', () => {
     });
 
     it('should clear timeout when properties response arrives quickly', async () => {
+      // Use a unique pubuid to avoid conflicts with other tests
+      const uniquePubuid = 5000 + Math.floor(Math.random() * 1000);
+
       // First, publish the topic so it exists
       setTimeout(() => {
         const announceMessage: AnnounceMessage = {
@@ -338,14 +429,17 @@ describe('Topic', () => {
           params: {
             name: 'test',
             id: 1,
-            pubuid: 3000,
+            pubuid: uniquePubuid,
             type: 'string',
             properties: {},
           },
         };
         server.send(JSON.stringify([announceMessage]));
       }, 100);
-      await topic.publish({}, 3000);
+      await topic.publish({}, uniquePubuid);
+
+      // Wait a bit to ensure the in-flight operation is fully cleaned up
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Test setProperties timeout cleanup
       const setPropertiesPromise = topic.setProperties(true, true);

@@ -222,23 +222,29 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * @returns A promise that resolves when the topic is published.
    */
   async publish(properties: TopicProperties = {}, id?: number): Promise<AnnounceMessage | void> {
-    if (this.publisher) {
-      pubsubLogger.debug('Publish skipped', { topicName: this.name, reason: 'already publisher' });
-      return;
-    }
+    // Use unified in-flight protection from PubSubClient
+    // Key format: "publish:" prefix to avoid conflicts with schema registrations
+    const operationKey = `publish:${this.name}`;
+    return this.client.getOrCreateInFlightOperation(operationKey, async () => {
+      // Check if already publisher inside the in-flight operation to prevent race conditions
+      if (this.publisher) {
+        pubsubLogger.debug('Publish skipped', { topicName: this.name, reason: 'already publisher' });
+        return;
+      }
 
-    this._pubuid = id ?? this.client.messenger.getNextPubUID();
-    this._publishProperties = properties;
-    pubsubLogger.debug('Topic published', { topicName: this.name, pubuid: this._pubuid, properties });
+      this._pubuid = id ?? this.client.messenger.getNextPubUID();
+      this._publishProperties = properties;
+      pubsubLogger.debug('Topic published', { topicName: this.name, pubuid: this._pubuid, properties });
 
-    const publishParams: PublishMessageParams = {
-      type: this.typeInfo[1],
-      name: this.name,
-      pubuid: this._pubuid,
-      properties,
-    };
+      const publishParams: PublishMessageParams = {
+        type: this.typeInfo[1],
+        name: this.name,
+        pubuid: this._pubuid,
+        properties,
+      };
 
-    return await this.client.messenger.publish(publishParams);
+      return await this.client.messenger.publish(publishParams);
+    });
   }
 
   /**

@@ -222,6 +222,9 @@ simgui.json
 # Simulation data log directory
 logs/
 
+# Generated protobuf types
+apps/example-client/src/generated/
+
 # Folder that has CTRE Phoenix Sim device config storage
 ctre_sim/
 

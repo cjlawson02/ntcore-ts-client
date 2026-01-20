@@ -1,6 +1,8 @@
 import { NetworkTablesPrefixTopic } from './pubsub/prefix-topic';
+import { NetworkTablesProtobufTopic } from './pubsub/protobuf-topic';
 import { PubSubClient } from './pubsub/pubsub';
 import { NetworkTablesTopic } from './pubsub/topic';
+import { NetworkTablesTypeInfos, type NetworkTablesTypeInfo, type NetworkTablesTypes } from './types/types';
 import {
   defaultLogger,
   setLogLevel,
@@ -11,7 +13,7 @@ import {
 } from './util/logger';
 import { Util } from './util/util';
 
-import type { NetworkTablesTypeInfo, NetworkTablesTypes } from './types/types';
+import type { z } from 'zod';
 
 /** Properties for creating the NetworkTables class. */
 interface NT_PROPS {
@@ -167,13 +169,42 @@ export class NetworkTables {
   /**
    * Creates a new topic.
    * @param name - The name of the topic.
-   * @param typeInfo - The type information of the topic.
+   * @param typeInfo - The type information of the topic. Protobuf types are not allowed (use createProtobufTopic instead).
    * @param defaultValue - The default value of the topic.
    * @returns The topic.
    */
   createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
+    if (typeInfo == NetworkTablesTypeInfos.kProtobuf) {
+      defaultLogger.error(`Please use createProtobufTopic instead of createTopic for protobuf topics.`, {
+        topicName: name,
+        type: typeInfo[1],
+      });
+    }
     defaultLogger.debug('Topic created', { topicName: name, type: typeInfo[1] });
     return new NetworkTablesTopic<T>(this._client, name, typeInfo, defaultValue);
+  }
+
+  /**
+   * Creates a new protobuf topic.
+   * @param name - The name of the topic.
+   * @param defaultValue - The default value of the topic.
+   * @param validator - Optional Zod schema to validate decoded protobuf values at runtime.
+   * @param protoFilePath - Optional path to the .proto file. If provided, the schema will be registered automatically when publishing.
+   * @param options
+   * @param options.defaultValue
+   * @param options.validator
+   * @param options.protoFilePath
+   * @returns The topic.
+   */
+  createProtobufTopic<T extends Record<string, any>>(
+    name: string,
+    options?: {
+      defaultValue?: T;
+      validator?: z.ZodSchema<T>;
+      protoFilePath?: string;
+    }
+  ) {
+    return new NetworkTablesProtobufTopic<T>(this._client, name, options);
   }
 
   /**
