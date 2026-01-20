@@ -21,6 +21,7 @@ public class Robot extends TimedRobot {
   private DoublePublisher m_zPub;
   private DoublePublisher m_gyroPub;
   private StringSubscriber m_autoSub;
+  private ProtobufPublisher<Pose2d> m_posePub;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -35,8 +36,8 @@ public class Robot extends TimedRobot {
     m_yPub = nt.getDoubleTopic("/MyTable/Accelerometer/Y").publish();
     m_zPub = nt.getDoubleTopic("/MyTable/Accelerometer/Z").publish();
 
-    var posePublisher = nt.getProtobufTopic("/MyTable/Pose", Pose2d.proto).publish();
-    posePublisher.set(new Pose2d(1, 2, new Rotation2d(Math.PI)));
+    m_posePub = nt.getProtobufTopic("/MyTable/Pose", Pose2d.proto).publish();
+    m_posePub.set(new Pose2d(1, 2, new Rotation2d(Math.PI)));
 
     m_gyroPub = nt.getDoubleTopic("/MyTable/Gyro").publish();
   }
