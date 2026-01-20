@@ -1146,8 +1146,8 @@ describe('Messenger', () => {
         name: 'test',
         typeInfo: NetworkTablesTypeInfos.kString,
         publisher: true,
-        pubuid: 0,
-        id: 123,
+        pubuid: 123,
+        id: 0,
         announced: true,
       } as NetworkTablesTopic<string>;
 

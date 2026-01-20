@@ -625,13 +625,7 @@ export class Messenger {
     if (!topic.publisher || topic.pubuid == null) {
       throw new Error(`Topic ${topic.name} is not a publisher, so it cannot be updated`);
     }
-
-    if (topic.id == null) {
-      messengerLogger.debug('Topic is not announced; skipping server update', { topicName: topic.name });
-      return -1;
-    }
-
-    return this._socket.sendValueToTopic(topic.id, value, typeInfo);
+    return this._socket.sendValueToTopic(topic.pubuid, value, typeInfo);
   }
 
   /**
