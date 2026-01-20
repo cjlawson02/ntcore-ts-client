@@ -16,8 +16,8 @@ public class Robot extends TimedRobot {
   StringSubscriber autoSub;
 
   public Robot() {
-    // autoMode string topic
-    autoSub = nt.getStringTopic("/MyTable/autoMode").subscribe("not initialized");
+    // AutoMode string topic
+    autoSub = nt.getStringTopic("/MyTable/AutoMode").subscribe("not initialized");
 
     // Accelerometer values
     xPub = nt.getDoubleTopic("/MyTable/Accelerometer/X").publish();
@@ -40,7 +40,7 @@ public class Robot extends TimedRobot {
     yPub.set(2.5);
     zPub.set(3.6);
 
-    // Read the autoMode string from NetworkTables
+    // Read the AutoMode string from NetworkTables
     String autoMode = autoSub.get();
     System.out.println("Auto Mode: " + autoMode);
   }
