@@ -120,20 +120,20 @@ export class Util {
 
   /**
    * Create a binary message from a topic.
-   * @param topicId - The topic ID.
+   * @param pubuid - The topic's publisher UID.
    * @param timestamp - The timestamp of the message, matching the server.
    * @param data - The data.
    * @param typeInfo - The type info.
    * @returns The binary message.
    */
   static createBinaryMessage(
-    topicId: number,
+    pubuid: number,
     timestamp: number,
     data: NetworkTablesTypes,
     typeInfo?: NetworkTablesTypeInfo
   ): BinaryMessage {
     const type = typeInfo ?? this.getNetworkTablesTypeFromObject(data);
-    return [topicId, timestamp, type[0], data];
+    return [pubuid, timestamp, type[0], data];
   }
 
   /**

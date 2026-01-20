@@ -25,7 +25,6 @@ export class NetworkTablesSocket {
   private static readonly PROTOCOL_V4_1 = 'v4.1.networktables.first.wpi.edu';
   private static readonly RECONNECT_TIMEOUT = 1000;
   private static readonly RTT_PERIOD_V4_0 = 1000;
-  private static readonly TIMEOUT_V4_1 = 1000;
 
   private readonly connectionListeners = new Set<(_: boolean) => void>();
   private lastHeartbeatDate = 0;
@@ -363,7 +362,7 @@ export class NetworkTablesSocket {
    * @param event - The message event.
    */
   private onMessage(event: MessageEvent | WS_MessageEvent) {
-    this.connectionListeners?.forEach((f) => f(this.isConnected()));
+    this.connectionListeners.forEach((f) => f(this.isConnected()));
 
     if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
       socketLogger.debug('Binary frame received', { size: event.data.byteLength });
@@ -549,14 +548,14 @@ export class NetworkTablesSocket {
 
   /**
    * Send a message to a topic.
-   * @param id - The topic ID.
+   * @param pubuid - The topic's publisher UID.
    * @param value - The value to send.
    * @param typeInfo - The type info for the value.
    * @returns The time the message was sent.
    */
-  sendValueToTopic(id: number, value: NetworkTablesTypes, typeInfo: NetworkTablesTypeInfo) {
+  sendValueToTopic(pubuid: number, value: NetworkTablesTypes, typeInfo: NetworkTablesTypeInfo) {
     const time = Math.ceil(this.getServerTime());
-    const message = Util.createBinaryMessage(id, time, value, typeInfo);
+    const message = Util.createBinaryMessage(pubuid, time, value, typeInfo);
     this.sendBinaryFrame(message);
     return time;
   }
