@@ -129,8 +129,8 @@ import { NetworkTables, NetworkTablesTypeInfos } from 'ntcore-ts-client';
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
 
-// Create the autoMode topic w/ a default return value of 'No Auto'
-const autoModeTopic = ntcore.createTopic<string>('/MyTable/autoMode', NetworkTablesTypeInfos.kString, 'No Auto');
+// Create the AutoMode topic w/ a default return value of 'No Auto'
+const autoModeTopic = ntcore.createTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, 'No Auto');
 
 // Make us the publisher
 await autoModeTopic.publish();
