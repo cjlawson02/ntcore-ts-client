@@ -25,9 +25,9 @@ gyroTopic.subscribe((value, params) => {
 // Example of using a topic to publish to a value //
 // ---------------------------------------------
 
-// Create the autoMode topic w/ a default return value of 'No Auto'
+// Create the AutoMode topic w/ a default return value of 'No Auto'
 (async () => {
-  const autoModeTopic = ntcore.createTopic<string>('/MyTable/autoMode', NetworkTablesTypeInfos.kString, 'No Auto');
+  const autoModeTopic = ntcore.createTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, 'No Auto');
 
   // Make us the publisher
   await autoModeTopic.publish();
