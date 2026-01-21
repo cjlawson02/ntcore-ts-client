@@ -19,8 +19,8 @@ import type {
   typeNumSchema,
 } from './schemas';
 
-type TypeString = z.infer<typeof typeStringSchema>;
-type TypeNum = z.infer<typeof typeNumSchema>;
+export type TypeString = z.infer<typeof typeStringSchema>;
+export type TypeNum = z.infer<typeof typeNumSchema>;
 export type NetworkTablesTypeInfo = [TypeNum, TypeString];
 
 export type PublishMessage = z.infer<typeof publishMessageSchema>;

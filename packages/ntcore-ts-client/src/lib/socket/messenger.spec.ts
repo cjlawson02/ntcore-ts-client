@@ -175,7 +175,7 @@ describe('Messenger', () => {
       expect(sendTextFrameSpy).toHaveBeenCalled();
       const callArgs = sendTextFrameSpy.mock.calls.find((call) => call[0].method === 'publish');
       expect(callArgs).toBeDefined();
-      expect(callArgs![0].params).toEqual(params);
+      expect(callArgs?.[0].params).toEqual(params);
     });
   });
 
