@@ -12,7 +12,6 @@
       "options": {
         "platform": "node",
         "outputPath": "dist/apps/example-client",
-        "format": ["cjs"],
         "bundle": false,
         "main": "apps/example-client/src/main.ts",
         "tsConfig": "apps/example-client/tsconfig.app.json",
@@ -53,9 +52,6 @@
           "buildTarget": "example-client:build:production"
         }
       }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint"
     }
   }
 }

@@ -171,16 +171,17 @@ describe('Topic', () => {
 
   describe('unsubscribe', () => {
     it('removes the subscriber from the topic', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback = (_: string | null) => vi.fn();
       const options = {};
       topic.subscribe(callback, options);
       expect(topic.subscribers.size).toBe(1);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       topic.unsubscribe(topic.subscribers.keys().next().value!, true);
       expect(topic.subscribers.size).toBe(0);
     });
     it('does nothing if the callback is not a subscriber', () => {
       expect(topic.subscribers.size).toBe(0);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       topic.unsubscribe(topic.subscribers.keys().next().value!);
       expect(topic.subscribers.size).toBe(0);
     });
@@ -188,7 +189,6 @@ describe('Topic', () => {
 
   describe('unsubscribeAll', () => {
     it('removes all subscribers from the topic', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback = (_: string | null) => vi.fn();
       const options = {};
       topic.subscribe(callback, options);
@@ -201,7 +201,6 @@ describe('Topic', () => {
 
   describe('resubscribeAll', () => {
     it('resubscribes all subscribers to the topic', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback = (_: string | null) => vi.fn();
       const options = {};
       topic.subscribe(callback, options);
@@ -389,7 +388,8 @@ describe('Topic', () => {
       server.send(JSON.stringify([propertiesResponse]));
 
       // Wait for setProperties to complete
-      await setPropertiesPromise;
+      const result = await setPropertiesPromise;
+      expect(result).toEqual(propertiesResponse);
 
       // Wait longer than the 3 second timeout to ensure it was cleared
       // If the timeout wasn't cleared, this would throw an error

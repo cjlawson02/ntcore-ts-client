@@ -270,6 +270,7 @@ describe('NetworkTablesSocket', () => {
       orderingSocket.addConnectionListener(() => order.push('listener'));
 
       // Simulate a (re)connect open event. We call the handler directly so the test is deterministic.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       orderingSocket['_websocket'].onopen?.(new Event('open') as any);
 
       expect(order).toEqual(['onSocketOpen', 'listener']);
