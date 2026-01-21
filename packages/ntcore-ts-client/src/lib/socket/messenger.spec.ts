@@ -992,6 +992,7 @@ describe('Messenger', () => {
         params: {
           name: 'test',
           ack: true,
+          update: { persistent: true },
         },
       };
 
@@ -1043,7 +1044,7 @@ describe('Messenger', () => {
         method: 'properties',
         params: {
           name: 'test',
-          ack: false,
+          update: { persistent: true },
         },
       };
 
@@ -1052,6 +1053,7 @@ describe('Messenger', () => {
         params: {
           name: 'test',
           ack: true,
+          update: { persistent: true },
         },
       };
 
