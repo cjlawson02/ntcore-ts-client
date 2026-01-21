@@ -31,6 +31,7 @@ export class Messenger {
   private static _instances = new Map<string, Messenger>();
   private _currentPubUID = 0;
   private _currentSubUID = 0;
+  private readonly _onAnnounce: (_: AnnounceMessageParams) => void;
 
   /**
    * Gets the NetworkTablesSocket used by the Messenger.
@@ -55,6 +56,7 @@ export class Messenger {
     onUnannounce: (_: UnannounceMessageParams) => void,
     onTopicProperties: (_: PropertiesMessageParams) => void
   ) {
+    this._onAnnounce = onAnnounce;
     this._socket = NetworkTablesSocket.getInstance(
       serverUrl,
       this.onSocketOpen,
@@ -157,6 +159,72 @@ export class Messenger {
   }
 
   /**
+   * Detects if we're in a scenario where the server bug (wpilibsuite/allwpilib#7680)
+   * could cause publish-triggered announcements to be blocked.
+   * @param params - The publication parameters.
+   * @param force - Whether this is a forced publication (republish scenario).
+   * @returns True if we're likely in a bug scenario.
+   */
+  private _isLikelyBugScenario(params: PublishMessageParams, force?: boolean): boolean {
+    const topicName = params.name;
+
+    // Scan subscriptions once for both prefix and exact matches.
+    // Note: A matching prefix subscription is its own "bug scenario" (Scenario 1).
+    let matchingPrefix: string | undefined;
+    let hasMatchingExactSubscription = false;
+    for (const subscription of this.subscriptions.values()) {
+      if (subscription.options?.prefix === true) {
+        for (const subscribedTopic of subscription.topics) {
+          if (topicName.startsWith(subscribedTopic)) {
+            matchingPrefix = subscribedTopic;
+            break;
+          }
+        }
+      } else {
+        if (subscription.topics.includes(topicName)) {
+          hasMatchingExactSubscription = true;
+        }
+      }
+
+      // Scenario 1 takes precedence, so we can stop early once a matching prefix is found.
+      if (matchingPrefix) break;
+    }
+
+    // Scenario 1: Prefix subscription scenario
+    // If a client has a prefix subscription and publishes a topic matching that prefix
+    if (matchingPrefix) {
+      messengerLogger.debug('Bug scenario detected: prefix subscription match', {
+        topicName,
+        prefix: matchingPrefix,
+      });
+      return true;
+    }
+
+    // Scenario 2: Retained topic after reconnection
+    // When a client reconnects and republishes a retained topic
+    if (params.properties?.retained === true && force === true) {
+      messengerLogger.debug('Bug scenario detected: retained topic after reconnection', {
+        topicName,
+        pubuid: params.pubuid,
+      });
+      return true;
+    }
+
+    // Scenario 3: Publishing without subscription
+    // Check if there are NO subscriptions (prefix or exact) that match the topic name
+    // (If we reached here, no prefix subscription matched; see Scenario 1 above.)
+    if (!hasMatchingExactSubscription) {
+      messengerLogger.debug('Bug scenario detected: publishing without subscription', {
+        topicName,
+        pubuid: params.pubuid,
+      });
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Publishes a topic to the server.
    * @param params - The publication parameters.
    * @param force - Whether to force the publication.
@@ -175,28 +243,49 @@ export class Messenger {
         return;
       }
 
+      // Detect if we're in a bug scenario
+      const isBugScenario = this._isLikelyBugScenario(params, force);
+
       messengerLogger.debug('Publish request initiated', {
         topicName: params.name,
         pubuid: params.pubuid,
         timeout: 3000,
         force,
+        isBugScenario,
       });
 
       let timeoutId: NodeJS.Timeout | null = null;
+      let earlyTimeoutId: NodeJS.Timeout | null = null;
+      let resolved = false;
 
-      // Cleanup function to remove listener and clear timeout
+      // Cleanup function to remove listener and clear timeouts
       const cleanup = () => {
-        messengerLogger.trace('Cleanup: removing event listener and clearing timeout', { topicName: params.name });
+        messengerLogger.trace('Cleanup: removing event listener and clearing timeouts', { topicName: params.name });
         this.socket.websocket.removeEventListener('message', wsHandler);
         if (timeoutId) {
           clearTimeout(timeoutId);
-          messengerLogger.trace('Timeout cleared', { topicName: params.name });
+          messengerLogger.trace('Main timeout cleared', { topicName: params.name });
+        }
+        if (earlyTimeoutId) {
+          clearTimeout(earlyTimeoutId);
+          messengerLogger.trace('Early timeout cleared', { topicName: params.name });
         }
       };
 
       // Listen for the announcement
       const resolver = (msg: AnnounceMessage) => {
+        if (resolved) {
+          // Already resolved optimistically, just update state
+          messengerLogger.debug('Late announcement received after optimistic resolution', {
+            topicName: params.name,
+            pubuid: params.pubuid,
+          });
+          this.publications.set(params.pubuid, params);
+          return;
+        }
+
         messengerLogger.trace('Promise resolver called', { topicName: params.name, pubuid: params.pubuid });
+        resolved = true;
         cleanup();
         // Add the topic to the list of published topics
         this.publications.set(params.pubuid, params);
@@ -207,16 +296,84 @@ export class Messenger {
 
       // Rejector function to cleanup before rejecting
       const rejector = (error: Error) => {
+        if (resolved) {
+          // Already resolved optimistically, don't reject
+          messengerLogger.debug('Rejection attempted after optimistic resolution, ignoring', {
+            topicName: params.name,
+            error: error.message,
+          });
+          return;
+        }
+
         messengerLogger.trace('Promise rejector called', { topicName: params.name, error: error.message });
+        resolved = true;
         cleanup();
         reject(error);
+      };
+
+      // Optimistic resolver for bug scenarios
+      const optimisticResolver = () => {
+        if (resolved) {
+          return;
+        }
+
+        messengerLogger.warn(
+          'No announcement received within 200ms in bug scenario. Optimistically resolving. ' +
+            'This may be due to server bug: https://github.com/wpilibsuite/allwpilib/issues/7680',
+          {
+            topicName: params.name,
+            pubuid: params.pubuid,
+          }
+        );
+
+        resolved = true;
+        // Clear all timeouts since we're resolving optimistically
+        if (earlyTimeoutId) {
+          clearTimeout(earlyTimeoutId);
+          earlyTimeoutId = null;
+        }
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+
+        // Construct a mock announcement message
+        const mockAnnouncement: AnnounceMessage = {
+          method: 'announce',
+          params: {
+            name: params.name,
+            pubuid: params.pubuid,
+            type: params.type,
+            id: 0, // Will be updated if real announcement arrives
+            properties: params.properties || {},
+          },
+        };
+
+        // Add the topic to the list of published topics
+        this.publications.set(params.pubuid, params);
+        messengerLogger.debug('Topic published (optimistic)', { topicName: params.name, pubuid: params.pubuid });
+
+        // Trigger the onAnnounce callback so the topic gets marked as a publisher
+        // This ensures the topic's announce() method is called, which sets _publisher = true
+        this._onAnnounce(mockAnnouncement.params);
+
+        resolve(mockAnnouncement);
+
+        // Continue listening for the actual announcement (but don't reject if it never comes)
+        // The wsHandler will still update state if announcement arrives
       };
 
       const wsHandler = (event: MessageEvent | WS_MessageEvent) => {
         const messages = this.parseAndFilterMessage<AnnounceMessage>(event, 'announce');
         messengerLogger.debug('Messages filtered for announce', { count: messages.length });
         for (const message of messages) {
-          if (message.params.name === params.name && message.params.pubuid === params.pubuid) {
+          // Match by name and pubuid
+          // We published with a pubuid, so we require the announcement to have the same pubuid
+          // This ensures we get the publish-triggered announcement, not a subscription-triggered one
+          // (per spec, server must respond to publish with announce containing pubuid)
+          const nameMatches = message.params.name === params.name;
+          const pubuidMatches = message.params.pubuid === params.pubuid;
+          if (nameMatches && pubuidMatches) {
             messengerLogger.debug('Announcement received', {
               topicName: message.params.name,
               pubuid: message.params.pubuid,
@@ -237,9 +394,25 @@ export class Messenger {
       this.socket
         .waitForConnection()
         .then(() => {
-          timeoutId = setTimeout(() => {
-            rejector(new Error(`Topic ${params.name} was not announced within 3 seconds`));
-          }, 3000);
+          // Don't set up timeouts if already resolved (e.g., optimistic resolution happened)
+          if (resolved) {
+            return;
+          }
+
+          // If in bug scenario, set up early 200ms timeout for optimistic resolution
+          if (isBugScenario && !resolved) {
+            earlyTimeoutId = setTimeout(() => {
+              optimisticResolver();
+            }, 200);
+          }
+
+          // Main timeout: reject the promise if the topic is not announced within 3 seconds (3000ms)
+          // Only set if not already resolved
+          if (!resolved) {
+            timeoutId = setTimeout(() => {
+              rejector(new Error(`Topic ${params.name} was not announced within 3 seconds (3000ms)`));
+            }, 3000);
+          }
         })
         .catch((error) => {
           rejector(error);
@@ -256,10 +429,7 @@ export class Messenger {
     this._socket.sendTextFrame(message);
 
     // HOTFIX: Subscribe to the topic to get the announcement.
-    // This is a bug in 2025.2.1 WPILib
-    //
-    // IMPORTANT: This is intentionally NOT stored in `this.subscriptions`.
-    // It is internal, best-effort, and should not pollute public subscription state.
+    // See: https://github.com/wpilibsuite/allwpilib/issues/7680
     const subMsg: SubscribeMessage = {
       method: 'subscribe',
       params: {
