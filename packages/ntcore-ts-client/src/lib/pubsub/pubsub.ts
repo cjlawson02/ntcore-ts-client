@@ -41,7 +41,25 @@ export class PubSubClient {
     // When the connection drops, local server-side announcement state is no longer reliable.
     // Clear known ids so outgoing updates can be safely queued until re-announced.
     this._messenger.socket.addConnectionListener((isConnected) => {
-      if (isConnected) return;
+      if (isConnected) {
+        // Flush any latest-only queued outgoing values after reconnect.
+        // This is scheduled as a microtask so it happens after the socket's onopen handler
+        // has run (which re-sends publish frames). This ensures publish frames precede
+        // any value frames on the wire.
+        queueMicrotask(() => {
+          this.topics.forEach((topic) => {
+            try {
+              topic.resendLatestValue();
+            } catch (error: unknown) {
+              pubsubLogger.warn('Failed to flush queued outgoing value after reconnect', {
+                topicName: topic.name,
+                error,
+              });
+            }
+          });
+        });
+        return;
+      }
       pubsubLogger.info('Socket disconnected; clearing announcement state', {
         topicCount: this.topics.size,
         prefixTopicCount: this.prefixTopics.size,

@@ -49,7 +49,7 @@ export class NetworkTablesSocket {
   private readonly onProperties: (_: PropertiesMessageParams) => void;
 
   private autoConnect = true;
-  private messageQueue: (string | ArrayBuffer)[] = [];
+  private messageQueue: string[] = [];
 
   /**
    * Creates a new NetworkTables socket.
@@ -173,9 +173,11 @@ export class NetworkTablesSocket {
         }
 
         socketLogger.info('Robot Connected!');
-        this.updateConnectionListeners();
+        // Ensure protocol re-subscribe/re-publish happens before notifying connection listeners.
+        // Otherwise callers may race value sends ahead of publish frames on reconnect.
         this.onSocketOpen();
         this.sendQueuedMessages();
+        this.updateConnectionListeners();
       };
 
       // Close handler
@@ -482,26 +484,23 @@ export class NetworkTablesSocket {
    * @param pubuid - The topic's publisher UID.
    * @param value - The value to send.
    * @param typeInfo - The type info for the value.
-   * @returns The time the message was sent.
+   * @returns The time the message was sent, or -1 if not connected.
    */
   sendValueToTopic(pubuid: number, value: NetworkTablesTypes, typeInfo: NetworkTablesTypeInfo) {
+    if (!this.isConnected()) {
+      socketLogger.debug('sendValueToTopic skipped (not connected)', { pubuid, typeNum: typeInfo[0] });
+      return -1;
+    }
     const time = Math.ceil(this.getServerTime());
     const message = Util.createBinaryMessage(pubuid, time, value, typeInfo);
 
     const cleanMsg = msgPackSchema.parse(message);
-    const topicId = cleanMsg[0];
+    const framePubuid = cleanMsg[0];
     const typeNum = cleanMsg[2];
 
-    // Send the message to the server
-    if (this.isConnected()) {
-      socketLogger.debug('Binary frame sent', { topicId, typeNum });
-      this._websocket.send(encode(cleanMsg));
-    } else {
-      socketLogger.debug('Binary frame dropped (not connected)', {
-        topicId,
-        typeNum,
-      });
-    }
+    // Send the message to the server (binary frames are never queued).
+    socketLogger.debug('Binary frame sent', { pubuid: framePubuid, typeNum });
+    this._websocket.send(encode(cleanMsg));
 
     return time;
   }
