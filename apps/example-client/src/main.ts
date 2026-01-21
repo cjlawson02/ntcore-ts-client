@@ -1,3 +1,5 @@
+import { z as zod } from 'zod';
+
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { NetworkTables, NetworkTablesTypeInfos } from '../../../packages/ntcore-ts-client/src';
 
@@ -13,24 +15,26 @@ const gyroTopic = ntcore.createTopic<number>('/MyTable/Gyro', NetworkTablesTypeI
 
 // Subscribe and immediately call the callback with the current value
 gyroTopic.subscribe((value) => {
-  console.log(`Got Gyro Value: ${value}`);
+  console.log(`[Gryo Topic] Got Gyro Value: ${value}`);
 });
 
 // Or you can use the topic's announce parameters to get more info, like the topic ID
 gyroTopic.subscribe((value, params) => {
-  console.log(`Got Gyro Value: ${value} at from topic id ${params.id}`);
+  console.log(`[Gryo Topic] Got Gyro Value: ${value} at from topic id ${params.id}`);
 });
 
 // ---------------------------------------------- //
 // Example of using a topic to publish to a value //
-// ---------------------------------------------
+// ---------------------------------------------- //
 
 // Create the AutoMode topic w/ a default return value of 'No Auto'
 (async () => {
   const autoModeTopic = ntcore.createTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, 'No Auto');
 
   // Make us the publisher
+  console.log('[Auto Topic] Publishing Auto Mode Topic');
   await autoModeTopic.publish();
+  console.log('[Auto Topic] Published Auto Mode Topic');
 
   // Set a new value, this will error if we aren't the publisher!
   autoModeTopic.setValue('25 Ball Auto and Climb');
@@ -43,35 +47,31 @@ gyroTopic.subscribe((value, params) => {
 // Create the accelerator topic
 const accelerometerTopic = ntcore.createPrefixTopic('/MyTable/Accelerometer/');
 
-let x: unknown;
-let y: unknown;
-let z: unknown;
+let x: number;
+let y: number;
+let z: number;
 
 // Subscribe to all topics under the prefix /MyTable/Accelerometer/
 accelerometerTopic.subscribe((value, params) => {
-  console.log(`Got Accelerometer Value: ${value} from topic ${params.name}`); // i.e. Got Accelerometer Value: 9.81 from topic /MyTable/Accelerometer/Y
+  console.log(`[Accel Prefix Topic] Got Accelerometer Value: ${value} from topic ${params.name}`); // i.e. Got Accelerometer Value: 9.81 from topic /MyTable/Accelerometer/Y
 
   // You can also use the topic name to determine which value to set
   if (params.name.endsWith('X')) {
-    x = value;
+    x = zod.number().parse(value);
   } else if (params.name.endsWith('Y')) {
-    y = value;
+    y = zod.number().parse(value);
   } else if (params.name.endsWith('Z')) {
-    z = value;
+    z = zod.number().parse(value);
   }
 
   // Since there can be THAT many different types in subtopics,
   // you can use the type information for other checks...
   if (params.type === 'int') {
-    console.warn('Hmm... the accelerometer seems low precision');
+    console.warn('[Accel Prefix Topic] Hmm... the accelerometer seems low precision');
   } else if (params.type === 'double') {
-    console.log('The accelerometer is high precision');
+    console.log('[Accel Prefix Topic] The accelerometer is high precision');
 
-    const typedX = x as number;
-    const typedY = y as number;
-    const typedZ = z as number;
-
-    console.log(`Latest update: X: ${typedX}, Y: ${typedY}, Z: ${typedZ}`);
+    console.log(`[Accel Prefix Topic] Latest update: X: ${x}, Y: ${y}, Z: ${z}`);
   }
 });
 
@@ -86,5 +86,5 @@ const allTopics = ntcore.createPrefixTopic('');
 
 // Sub scribe to all topics
 allTopics.subscribe((value, params) => {
-  console.log(`Got Value: ${value} from topic ${params.name}`);
+  console.log(`[All Topics] Got Value: ${value} from topic ${params.name}`);
 });
