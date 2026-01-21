@@ -498,6 +498,7 @@ describe('NetworkTablesSocket', () => {
     const params: PropertiesMessageParams = {
       name: 'foo',
       ack: true,
+      update: {},
     };
 
     const message: PropertiesMessage = {

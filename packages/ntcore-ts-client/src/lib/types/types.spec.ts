@@ -258,6 +258,7 @@ describe('Message', () => {
       params: {
         name: 'some name',
         ack: false,
+        update: {},
       },
     };
     expect(propertiesMessage).toEqual({

@@ -191,17 +191,25 @@ describe('schema', () => {
   });
 
   describe('propertiesMessageParamsSchema', () => {
-    it('accepts objects with the "name" and "ack" properties', () => {
+    it('accepts objects with the required properties', () => {
+      expect(
+        propertiesMessageParamsSchema.safeParse({
+          name: 'testTopic',
+          update: { persistent: true },
+        }).success
+      ).toBe(true);
       expect(
         propertiesMessageParamsSchema.safeParse({
           name: 'testTopic',
           ack: true,
+          update: { persistent: true },
         }).success
       ).toBe(true);
     });
 
-    it('rejects objects without the "name" and "ack" properties', () => {
+    it('rejects objects without the required properties', () => {
       expect(propertiesMessageParamsSchema.safeParse({}).success).toBe(false);
+      expect(propertiesMessageParamsSchema.safeParse({ name: 'testTopic' }).success).toBe(false);
     });
   });
 
@@ -457,7 +465,13 @@ describe('schema', () => {
       expect(
         propertiesMessageSchema.safeParse({
           method: 'properties',
-          params: { name: 'testTopic', ack: true },
+          params: { name: 'testTopic', update: { persistent: true } },
+        }).success
+      ).toBe(true);
+      expect(
+        propertiesMessageSchema.safeParse({
+          method: 'properties',
+          params: { name: 'testTopic', ack: true, update: { persistent: true } },
         }).success
       ).toBe(true);
     });
@@ -466,7 +480,7 @@ describe('schema', () => {
       expect(
         propertiesMessageSchema.safeParse({
           method: 'invalidMethod',
-          params: { name: 'testTopic', ack: true },
+          params: { name: 'testTopic', ack: true, update: { persistent: true } },
         }).success
       ).toBe(false);
     });
