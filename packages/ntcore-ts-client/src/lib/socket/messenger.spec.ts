@@ -185,6 +185,41 @@ describe('Messenger', () => {
     });
   });
 
+  describe('parseAndFilterMessage', () => {
+    it('should return an empty array for non-string websocket payloads', () => {
+      const result = (
+        messenger as unknown as {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          parseAndFilterMessage: (event: any, method: string) => unknown[];
+        }
+      )['parseAndFilterMessage']({ data: new ArrayBuffer(0) }, 'announce');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should throw when JSON parses to a non-array message payload', () => {
+      const singleMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 0,
+          type: 'string',
+          properties: {},
+        },
+      };
+
+      expect(() => {
+        (
+          messenger as unknown as {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            parseAndFilterMessage: (event: any, method: string) => unknown[];
+          }
+        )['parseAndFilterMessage']({ data: JSON.stringify(singleMessage) }, 'announce');
+      }).toThrow();
+    });
+  });
+
   describe('publish', () => {
     it('should publish a topic and wait for announcement', async () => {
       const params: PublishMessageParams = {
@@ -214,6 +249,39 @@ describe('Messenger', () => {
 
       expect(result).toEqual(announceMessage);
       expect(messenger['publications'].has(0)).toBe(true);
+    });
+
+    it('should resolve even if announce arrives immediately (before timeout scheduling)', async () => {
+      const params: PublishMessageParams = {
+        name: '/immediate/topic',
+        pubuid: messenger.getNextPubUID(),
+        type: 'string',
+        properties: {},
+      };
+
+      messenger.subscribe({
+        topics: [params.name],
+        subuid: messenger.getNextSubUID(),
+        options: {},
+      });
+
+      const publishPromise = messenger.publish(params);
+
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: params.name,
+          pubuid: params.pubuid,
+          type: params.type,
+          id: 1,
+          properties: {},
+        },
+      };
+
+      // Send immediately after publish() call.
+      server.send(JSON.stringify([announceMessage]));
+
+      await expect(publishPromise).resolves.toEqual(announceMessage);
     });
 
     it('should reject if topic is already published', async () => {
@@ -274,18 +342,24 @@ describe('Messenger', () => {
       await expect(publishPromise2).resolves.toEqual(announceMessage);
     });
 
-    it('should reject if announcement is not received within timeout', async () => {
+    it('should reject if no announcement is received within timeout', async () => {
       const params: PublishMessageParams = {
-        name: 'test',
-        pubuid: 0,
+        name: '/timeout/topic',
+        pubuid: messenger.getNextPubUID(),
         type: 'string',
         properties: {},
       };
 
+      messenger.subscribe({
+        topics: [params.name],
+        subuid: messenger.getNextSubUID(),
+        options: {},
+      });
+
       vi.useFakeTimers();
       try {
         const publishPromise = messenger.publish(params);
-        // Allow microtasks to run so the internal timeout is scheduled.
+        // Allow microtasks to run so the internal timeouts are scheduled.
         await Promise.resolve();
         vi.advanceTimersByTime(3000);
         await expect(publishPromise).rejects.toThrow('was not announced within 3 seconds');
@@ -323,6 +397,96 @@ describe('Messenger', () => {
 
       server.send(JSON.stringify([announceMessage]));
       await publishPromise;
+    });
+
+    it('should reject when waitForConnection rejects (connection failure)', async () => {
+      const params: PublishMessageParams = {
+        name: '/waitForConnection/reject',
+        pubuid: messenger.getNextPubUID(),
+        type: 'string',
+        properties: {},
+      };
+
+      vi.spyOn(messenger.socket, 'waitForConnection').mockRejectedValueOnce(new Error('connection failed'));
+
+      await expect(messenger.publish(params)).rejects.toThrow('connection failed');
+
+      // Should not be added to publications on failure.
+      expect(Array.from(messenger['publications'].entries())).toHaveLength(0);
+    });
+
+    it('should ignore announce messages that do not match name + pubuid', async () => {
+      const params: PublishMessageParams = {
+        name: '/match/topic',
+        pubuid: messenger.getNextPubUID(),
+        type: 'string',
+        properties: {},
+      };
+
+      messenger.subscribe({
+        topics: [params.name],
+        subuid: messenger.getNextSubUID(),
+        options: {},
+      });
+
+      const publishPromise = messenger.publish(params);
+
+      let resolved = false;
+      void publishPromise.then(() => {
+        resolved = true;
+      });
+
+      // Wrong pubuid (same name)
+      server.send(
+        JSON.stringify([
+          {
+            method: 'announce',
+            params: {
+              name: params.name,
+              id: 1,
+              pubuid: 9999,
+              type: 'string',
+              properties: {},
+            },
+          },
+        ])
+      );
+      await Promise.resolve();
+      expect(resolved).toBe(false);
+
+      // Wrong name (same pubuid)
+      server.send(
+        JSON.stringify([
+          {
+            method: 'announce',
+            params: {
+              name: '/other/topic',
+              id: 1,
+              pubuid: params.pubuid,
+              type: 'string',
+              properties: {},
+            },
+          },
+        ])
+      );
+      await Promise.resolve();
+      expect(resolved).toBe(false);
+
+      // Correct match
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: params.name,
+          id: 1,
+          pubuid: params.pubuid,
+          type: 'string',
+          properties: {},
+        },
+      };
+      server.send(JSON.stringify([announceMessage]));
+
+      const result = await publishPromise;
+      expect(result).toEqual(announceMessage);
     });
   });
 
@@ -501,6 +665,17 @@ describe('Messenger', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it('should reject when waitForConnection rejects (connection failure)', async () => {
+      const params: SetPropertiesMessageParams = {
+        name: '/waitForConnection/reject',
+        update: { persistent: true },
+      };
+
+      vi.spyOn(messenger.socket, 'waitForConnection').mockRejectedValueOnce(new Error('connection failed'));
+
+      await expect(messenger.setProperties(params)).rejects.toThrow('connection failed');
     });
 
     it('should only resolve when ack is true', async () => {

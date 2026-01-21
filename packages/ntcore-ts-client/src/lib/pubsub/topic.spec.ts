@@ -271,6 +271,10 @@ describe('Topic', () => {
     it('should throw an error if the topic is not announced', async () => {
       topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
 
+      // Ensure publish() does NOT use the optimistic resolution workaround by creating an
+      // exact subscription match for this topic name.
+      topic.subscribe(() => {}, {}, undefined, false);
+
       vi.useFakeTimers();
       try {
         const publishPromise = topic.publish({}, 1);
