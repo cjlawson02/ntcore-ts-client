@@ -19,8 +19,8 @@ import type {
   typeNumSchema,
 } from './schemas';
 
-export type TypeString = z.infer<typeof typeStringSchema>;
-export type TypeNum = z.infer<typeof typeNumSchema>;
+type TypeString = z.infer<typeof typeStringSchema>;
+type TypeNum = z.infer<typeof typeNumSchema>;
 export type NetworkTablesTypeInfo = [TypeNum, TypeString];
 
 export type PublishMessage = z.infer<typeof publishMessageSchema>;
@@ -72,46 +72,6 @@ export class NetworkTablesTypeInfos {
   static readonly kIntegerArray: NetworkTablesTypeInfo = [18, 'int[]'];
   static readonly kFloatArray: NetworkTablesTypeInfo = [19, 'float[]'];
   static readonly kStringArray: NetworkTablesTypeInfo = [20, 'string[]'];
-
-  static readonly typeNumMap = new Map<number, NetworkTablesTypeInfo>();
-
-  static {
-    const all = [
-      this.kBoolean,
-      this.kDouble,
-      this.kInteger,
-      this.kFloat,
-      this.kString,
-      this.kJson,
-      this.kUint8Array,
-      this.kRPC,
-      this.kMsgpack,
-      this.kProtobuf,
-      this.kBooleanArray,
-      this.kDoubleArray,
-      this.kIntegerArray,
-      this.kFloatArray,
-      this.kStringArray,
-    ];
-
-    for (const info of all) {
-      const [num] = info;
-      if (!this.typeNumMap.has(num)) {
-        this.typeNumMap.set(num, info);
-      }
-    }
-  }
-
-  /**
-   * Given a type number, find the NT type info.
-   * @param typeNum - The NT type number.
-   * @returns The corresponding type info.
-   */
-  static getFromTypeNum(typeNum: number): NetworkTablesTypeInfo {
-    const info = this.typeNumMap.get(typeNum);
-    if (!info) throw new Error(`Invalid type number: ${typeNum}`);
-    return info;
-  }
 
   /**
    * Validates and parses a value based on the expected NetworkTables type information.
