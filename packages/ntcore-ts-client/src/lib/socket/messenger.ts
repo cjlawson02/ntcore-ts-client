@@ -168,21 +168,36 @@ export class Messenger {
   private _isLikelyBugScenario(params: PublishMessageParams, force?: boolean): boolean {
     const topicName = params.name;
 
-    // Scenario 1: Prefix subscription scenario
-    // If a client has a prefix subscription and publishes a topic matching that prefix
+    // Scan subscriptions once for both prefix and exact matches.
+    // Note: A matching prefix subscription is its own "bug scenario" (Scenario 1).
+    let matchingPrefix: string | undefined;
+    let hasMatchingExactSubscription = false;
     for (const subscription of this.subscriptions.values()) {
       if (subscription.options?.prefix === true) {
-        // Check if any of the subscribed topics (prefixes) match
         for (const subscribedTopic of subscription.topics) {
           if (topicName.startsWith(subscribedTopic)) {
-            messengerLogger.debug('Bug scenario detected: prefix subscription match', {
-              topicName,
-              prefix: subscribedTopic,
-            });
-            return true;
+            matchingPrefix = subscribedTopic;
+            break;
           }
         }
+      } else {
+        if (subscription.topics.includes(topicName)) {
+          hasMatchingExactSubscription = true;
+        }
       }
+
+      // Scenario 1 takes precedence, so we can stop early once a matching prefix is found.
+      if (matchingPrefix) break;
+    }
+
+    // Scenario 1: Prefix subscription scenario
+    // If a client has a prefix subscription and publishes a topic matching that prefix
+    if (matchingPrefix) {
+      messengerLogger.debug('Bug scenario detected: prefix subscription match', {
+        topicName,
+        prefix: matchingPrefix,
+      });
+      return true;
     }
 
     // Scenario 2: Retained topic after reconnection
@@ -197,27 +212,8 @@ export class Messenger {
 
     // Scenario 3: Publishing without subscription
     // Check if there are NO subscriptions (prefix or exact) that match the topic name
-    let hasMatchingSubscription = false;
-    for (const subscription of this.subscriptions.values()) {
-      if (subscription.options?.prefix === true) {
-        // Check if topic name starts with any prefix subscription
-        for (const subscribedTopic of subscription.topics) {
-          if (topicName.startsWith(subscribedTopic)) {
-            hasMatchingSubscription = true;
-            break;
-          }
-        }
-      } else {
-        // Check if topic name exactly matches any exact subscription
-        if (subscription.topics.includes(topicName)) {
-          hasMatchingSubscription = true;
-          break;
-        }
-      }
-      if (hasMatchingSubscription) break;
-    }
-
-    if (!hasMatchingSubscription) {
+    // (If we reached here, no prefix subscription matched; see Scenario 1 above.)
+    if (!hasMatchingExactSubscription) {
       messengerLogger.debug('Bug scenario detected: publishing without subscription', {
         topicName,
         pubuid: params.pubuid,
