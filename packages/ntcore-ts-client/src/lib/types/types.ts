@@ -73,46 +73,6 @@ export class NetworkTablesTypeInfos {
   static readonly kFloatArray: NetworkTablesTypeInfo = [19, 'float[]'];
   static readonly kStringArray: NetworkTablesTypeInfo = [20, 'string[]'];
 
-  static readonly typeNumMap = new Map<number, NetworkTablesTypeInfo>();
-
-  static {
-    const all = [
-      this.kBoolean,
-      this.kDouble,
-      this.kInteger,
-      this.kFloat,
-      this.kString,
-      this.kJson,
-      this.kUint8Array,
-      this.kRPC,
-      this.kMsgpack,
-      this.kProtobuf,
-      this.kBooleanArray,
-      this.kDoubleArray,
-      this.kIntegerArray,
-      this.kFloatArray,
-      this.kStringArray,
-    ];
-
-    for (const info of all) {
-      const [num] = info;
-      if (!this.typeNumMap.has(num)) {
-        this.typeNumMap.set(num, info);
-      }
-    }
-  }
-
-  /**
-   * Given a type number, find the NT type info.
-   * @param typeNum - The NT type number.
-   * @returns The corresponding type info.
-   */
-  static getFromTypeNum(typeNum: number): NetworkTablesTypeInfo {
-    const info = this.typeNumMap.get(typeNum);
-    if (!info) throw new Error(`Invalid type number: ${typeNum}`);
-    return info;
-  }
-
   /**
    * Validates and parses a value based on the expected NetworkTables type information.
    * @param expectedTypeInfo - The expected type information from `NetworkTablesTypeInfo`.

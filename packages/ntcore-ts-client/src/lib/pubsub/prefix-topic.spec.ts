@@ -98,15 +98,16 @@ describe('Prefix Topic', () => {
 
   describe('unsubscribe', () => {
     it('removes the subscriber from the topic', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback: CallbackFn<NetworkTablesTypes> = (_: NetworkTablesTypes | null) => vi.fn();
       topic.subscribe(callback);
       expect(topic.subscribers.size).toBe(1);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       topic.unsubscribe(topic.subscribers.keys().next().value!, true);
       expect(topic.subscribers.size).toBe(0);
     });
     it('does nothing if the callback is not a subscriber', () => {
       expect(topic.subscribers.size).toBe(0);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       topic.unsubscribe(topic.subscribers.keys().next().value!);
       expect(topic.subscribers.size).toBe(0);
     });
@@ -114,7 +115,6 @@ describe('Prefix Topic', () => {
 
   describe('unsubscribeAll', () => {
     it('removes all subscribers from the topic', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback: CallbackFn<NetworkTablesTypes> = (_: NetworkTablesTypes | null) => vi.fn();
       topic.subscribe(callback);
       topic.subscribe(callback);
@@ -126,7 +126,6 @@ describe('Prefix Topic', () => {
 
   describe('resubscribeAll', () => {
     it('resubscribes all subscribers to the topic', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback: CallbackFn<NetworkTablesTypes> = (_: NetworkTablesTypes | null) => vi.fn();
       topic.subscribe(callback);
       topic.subscribe(callback);

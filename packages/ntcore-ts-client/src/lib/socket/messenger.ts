@@ -106,22 +106,6 @@ export class Messenger {
   }
 
   /**
-   * Gets all publications.
-   * @returns An iterator of all publications in the form [id, params].
-   */
-  getPublications() {
-    return this.publications.entries();
-  }
-
-  /**
-   * Gets all subscriptions.
-   * @returns An iterator of all subscriptions in the form [id, params].
-   */
-  getSubscriptions() {
-    return this.subscriptions.entries();
-  }
-
-  /**
    * Called when the socket opens.
    */
   onSocketOpen = () => {
@@ -134,9 +118,11 @@ export class Messenger {
     });
 
     messengerLogger.debug('Publishing all topics', { count: publicationCount });
-    // Send all publications
+    // Re-send publish frames best-effort on reconnect.
+    // Do not await announcements here (fire-and-forget) to avoid timers/rejections
+    // outliving the reconnect event.
     this.publications.forEach((params) => {
-      this.publish(params, true);
+      this.sendPublishFrames(params);
     });
   };
 
@@ -245,23 +231,7 @@ export class Messenger {
       messengerLogger.trace('Event listener attached', { topicName: params.name });
       this.socket.websocket.addEventListener('message', wsHandler);
 
-      // Send the message to the server
-      const message: PublishMessage = {
-        method: 'publish',
-        params,
-      };
-      this._socket.sendTextFrame(message);
-
-      // HOTFIX: Subscribe to the topic to get the announcement.
-      // This is a bug in 2025.2.1 WPILib
-      const subMsg: SubscribeMessageParams = {
-        options: {
-          topicsonly: true,
-        },
-        topics: [params.name],
-        subuid: this.getNextSubUID(),
-      };
-      this.subscribe(subMsg);
+      this.sendPublishFrames(params);
 
       // Reject the promise if the topic is not announced within 3 seconds
       this.socket
@@ -275,6 +245,32 @@ export class Messenger {
           rejector(error);
         });
     });
+  }
+
+  private sendPublishFrames(params: PublishMessageParams) {
+    // Send publish frame
+    const message: PublishMessage = {
+      method: 'publish',
+      params,
+    };
+    this._socket.sendTextFrame(message);
+
+    // HOTFIX: Subscribe to the topic to get the announcement.
+    // This is a bug in 2025.2.1 WPILib
+    //
+    // IMPORTANT: This is intentionally NOT stored in `this.subscriptions`.
+    // It is internal, best-effort, and should not pollute public subscription state.
+    const subMsg: SubscribeMessage = {
+      method: 'subscribe',
+      params: {
+        options: {
+          topicsonly: true,
+        },
+        topics: [params.name],
+        subuid: this.getNextSubUID(),
+      },
+    };
+    this._socket.sendTextFrame(subMsg);
   }
 
   /**
@@ -412,12 +408,12 @@ export class Messenger {
       // Send the message to the server
       this._socket.sendTextFrame(message);
 
-      // Reject the promise if the topic is not announced within 3 seconds
+      // Reject the promise if an ACK is not received within 3 seconds
       this.socket
         .waitForConnection()
         .then(() => {
           timeoutId = setTimeout(() => {
-            rejector(new Error(`Topic ${params.name} was not announced within 3 seconds`));
+            rejector(new Error(`Properties for topic ${params.name} were not acknowledged within 3 seconds`));
           }, 3000);
         })
         .catch((error) => {
@@ -431,7 +427,7 @@ export class Messenger {
    * This should only be called by the PubSubClient.
    * @param topic - The topic to update.
    * @param value - The value to update the topic to.
-   * @returns The timestamp of the update, or -1 if the topic is not announced.
+   * @returns The timestamp of the update, or -1 if the socket is not connected.
    */
   sendToTopic<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>, value: T) {
     const typeInfo = topic.typeInfo;
@@ -439,11 +435,6 @@ export class Messenger {
     if (!topic.publisher || topic.pubuid == null) {
       throw new Error(`Topic ${topic.name} is not a publisher, so it cannot be updated`);
     }
-
-    if (!topic.announced) {
-      messengerLogger.warn('Topic is not announced, value will be queued', { topicName: topic.name });
-    }
-
     return this._socket.sendValueToTopic(topic.pubuid, value, typeInfo);
   }
 

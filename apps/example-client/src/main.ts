@@ -32,9 +32,9 @@ gyroTopic.subscribe((value, params) => {
 // Example of using a topic to publish to a value //
 // ---------------------------------------------- //
 
-// Create the autoMode topic w/ a default return value of 'No Auto'
+// Create the AutoMode topic w/ a default return value of 'No Auto'
 (async () => {
-  const autoModeTopic = ntcore.createTopic<string>('/MyTable/autoMode', NetworkTablesTypeInfos.kString, 'No Auto');
+  const autoModeTopic = ntcore.createTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, 'No Auto');
 
   // Make us the publisher
   console.log('[Auto Topic] Publishing Auto Mode Topic');
@@ -52,7 +52,9 @@ gyroTopic.subscribe((value, params) => {
 // Create the accelerator topic
 const accelerometerTopic = ntcore.createPrefixTopic('/MyTable/Accelerometer/');
 
-let x: number, y: number, z: number;
+let x: unknown;
+let y: unknown;
+let z: unknown;
 
 // Subscribe to all topics under the prefix /MyTable/Accelerometer/
 accelerometerTopic.subscribe((value, params) => {

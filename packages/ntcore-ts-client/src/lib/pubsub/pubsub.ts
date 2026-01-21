@@ -38,6 +38,54 @@ export class PubSubClient {
     this.prefixTopics = new Map();
     this.knownTopicParams = new Map();
 
+    // When the connection drops, local server-side announcement state is no longer reliable.
+    // Clear known ids so outgoing updates can be safely queued until re-announced.
+    this._messenger.socket.addConnectionListener((isConnected) => {
+      if (isConnected) {
+        // Flush any latest-only queued outgoing values after reconnect.
+        // This is scheduled as a microtask so it happens after the socket's onopen handler
+        // has run (which re-sends publish frames). This ensures publish frames precede
+        // any value frames on the wire.
+        queueMicrotask(() => {
+          this.topics.forEach((topic) => {
+            try {
+              topic.resendLatestValue();
+            } catch (error: unknown) {
+              pubsubLogger.warn('Failed to flush queued outgoing value after reconnect', {
+                topicName: topic.name,
+                error,
+              });
+            }
+          });
+        });
+        return;
+      }
+      pubsubLogger.info('Socket disconnected; clearing announcement state', {
+        topicCount: this.topics.size,
+        prefixTopicCount: this.prefixTopics.size,
+        knownTopicParams: this.knownTopicParams.size,
+      });
+      this.knownTopicParams.clear();
+      // Ensure disconnect cleanup never throws.
+      this.topics.forEach((topic) => {
+        try {
+          topic.unannounce();
+        } catch (error: unknown) {
+          pubsubLogger.warn('Failed to unannounce topic during disconnect cleanup', { topicName: topic.name, error });
+        }
+      });
+      this.prefixTopics.forEach((prefixTopic) => {
+        try {
+          prefixTopic.unannounce();
+        } catch (error: unknown) {
+          pubsubLogger.warn('Failed to unannounce prefix topic during disconnect cleanup', {
+            prefix: prefixTopic.name,
+            error,
+          });
+        }
+      });
+    });
+
     // In the DOM, auto-cleanup
     if (typeof window !== 'undefined') {
       window.onbeforeunload = () => {
@@ -73,9 +121,37 @@ export class PubSubClient {
       prefixTopicCount: this.prefixTopics.size,
     });
     this._messenger.reinstantiate(url);
+
+    // Clear announcement state so ids are reacquired from the new connection.
+    this.knownTopicParams.clear();
+    // Ensure reinstantiation cleanup never throws (tests may register lightweight mocks).
+    this.topics.forEach((topic) => {
+      try {
+        topic.unannounce();
+      } catch (error: unknown) {
+        pubsubLogger.warn('Failed to unannounce topic during reinstantiate', { topicName: topic.name, error });
+      }
+    });
+    this.prefixTopics.forEach((prefixTopic) => {
+      try {
+        prefixTopic.unannounce();
+      } catch (error: unknown) {
+        pubsubLogger.warn('Failed to unannounce prefix topic during reinstantiate', {
+          prefix: prefixTopic.name,
+          error,
+        });
+      }
+    });
+
+    // Re-subscribe and re-publish local state for the new connection.
     this.topics.forEach((topic) => {
       topic.resubscribeAll(this);
-      if (topic.publisher) topic.republish(this);
+      if (topic.publisher) {
+        // Fire-and-forget but always handle rejections to avoid unhandled promises.
+        void Promise.resolve(topic.republish(this)).catch((error: unknown) => {
+          pubsubLogger.warn('Topic republish failed during reinstantiate', { topicName: topic.name, error });
+        });
+      }
     });
     this.prefixTopics.forEach((prefixTopic) => {
       prefixTopic.resubscribeAll(this);

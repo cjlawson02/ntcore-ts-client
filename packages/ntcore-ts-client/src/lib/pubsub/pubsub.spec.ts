@@ -130,6 +130,7 @@ describe('PubSubClient', () => {
       isRegular: () => true,
       isPrefix: () => false,
       announce: vi.fn(),
+      unannounce: vi.fn(),
       resubscribeAll: vi.fn(),
       republish: vi.fn(),
     };
@@ -139,6 +140,7 @@ describe('PubSubClient', () => {
       isRegular: () => true,
       isPrefix: () => false,
       announce: vi.fn(),
+      unannounce: vi.fn(),
       resubscribeAll: vi.fn(),
       republish: vi.fn(),
     };

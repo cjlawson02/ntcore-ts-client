@@ -8,7 +8,6 @@ import { Util } from '../util/util';
 
 import type {
   AnnounceMessageParams,
-  BinaryMessage,
   Message,
   PropertiesMessageParams,
   UnannounceMessageParams,
@@ -25,7 +24,6 @@ export class NetworkTablesSocket {
   private static readonly PROTOCOL_V4_1 = 'v4.1.networktables.first.wpi.edu';
   private static readonly RECONNECT_TIMEOUT = 1000;
   private static readonly RTT_PERIOD_V4_0 = 1000;
-  private static readonly TIMEOUT_V4_1 = 1000;
 
   private readonly connectionListeners = new Set<(_: boolean) => void>();
   private lastHeartbeatDate = 0;
@@ -41,9 +39,6 @@ export class NetworkTablesSocket {
     return this._websocket;
   }
 
-  set websocket(websocket: WebSocket) {
-    this._websocket = websocket;
-  }
   private serverUrl: string;
 
   private readonly onSocketOpen: () => void;
@@ -54,7 +49,7 @@ export class NetworkTablesSocket {
   private readonly onProperties: (_: PropertiesMessageParams) => void;
 
   private autoConnect = true;
-  private messageQueue: (string | ArrayBuffer)[] = [];
+  private messageQueue: string[] = [];
 
   /**
    * Creates a new NetworkTables socket.
@@ -178,9 +173,11 @@ export class NetworkTablesSocket {
         }
 
         socketLogger.info('Robot Connected!');
-        this.updateConnectionListeners();
+        // Ensure protocol re-subscribe/re-publish happens before notifying connection listeners.
+        // Otherwise callers may race value sends ahead of publish frames on reconnect.
         this.onSocketOpen();
         this.sendQueuedMessages();
+        this.updateConnectionListeners();
       };
 
       // Close handler
@@ -270,22 +267,6 @@ export class NetworkTablesSocket {
   }
 
   /**
-   * Returns whether the socket is closing.
-   * @returns Whether the socket is closing.
-   */
-  isClosing() {
-    return this._websocket.readyState === WebSocket.CLOSING;
-  }
-
-  /**
-   * Returns whether the socket is closed.
-   * @returns Whether the socket is closed.
-   */
-  isClosed() {
-    return this._websocket.readyState === WebSocket.CLOSED;
-  }
-
-  /**
    * Wait for the socket to connect.
    * @returns A promise that resolves when the socket is connected.
    */
@@ -363,7 +344,7 @@ export class NetworkTablesSocket {
    * @param event - The message event.
    */
   private onMessage(event: MessageEvent | WS_MessageEvent) {
-    this.connectionListeners?.forEach((f) => f(this.isConnected()));
+    this.connectionListeners.forEach((f) => f(this.isConnected()));
 
     if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
       socketLogger.debug('Binary frame received', { size: event.data.byteLength });
@@ -446,43 +427,19 @@ export class NetworkTablesSocket {
       // Check the type of the message and handle it accordingly
       switch (message.method) {
         case 'announce':
-          this.handleAnnounceParams(message.params);
+          this.onAnnounce(message.params);
           break;
         case 'unannounce':
-          this.handleUnannounceParams(message.params);
+          this.onUnannounce(message.params);
           break;
         case 'properties':
-          this.handlePropertiesParams(message.params);
+          this.onProperties(message.params);
           break;
         default:
           socketLogger.warn('Client does not handle message method', { method: message.method });
       }
     });
     socketLogger.debug('Text frame processed', { messageCount: messages.length, methodCounts });
-  }
-
-  /**
-   * Handle an announce message from the server.
-   * @param params - The message params.
-   */
-  private handleAnnounceParams(params: AnnounceMessageParams) {
-    this.onAnnounce(params);
-  }
-
-  /**
-   * Handle an unannounce message from the server.
-   * @param params - The message params.
-   */
-  private handleUnannounceParams(params: UnannounceMessageParams) {
-    this.onUnannounce(params);
-  }
-
-  /**
-   * Handle a properties message from the server.
-   * @param params - The message params.
-   */
-  private handlePropertiesParams(params: PropertiesMessageParams) {
-    this.onProperties(params);
   }
 
   /**
@@ -501,31 +458,6 @@ export class NetworkTablesSocket {
         queueSize: this.messageQueue.length,
       });
       this.messageQueue.push(JSON.stringify([message]));
-    }
-  }
-
-  /**
-   * Send a binary frame to the server.
-   * @param message - The message to send.
-   */
-  private sendBinaryFrame(message: BinaryMessage) {
-    const cleanMsg = msgPackSchema.parse(message);
-    const topicId = cleanMsg[0];
-    const typeNum = cleanMsg[2];
-
-    // Send the message to the server
-    if (this.isConnected()) {
-      socketLogger.debug('Binary frame sent', { topicId, typeNum });
-      this._websocket.send(encode(cleanMsg));
-    } else {
-      socketLogger.debug('Message queued', {
-        topicId,
-        typeNum,
-        reason: 'not connected',
-        queueSize: this.messageQueue.length,
-      });
-      const encoded = encode(cleanMsg);
-      this.messageQueue.push(new Uint8Array(encoded).buffer);
     }
   }
 
@@ -549,15 +481,27 @@ export class NetworkTablesSocket {
 
   /**
    * Send a message to a topic.
-   * @param id - The topic ID.
+   * @param pubuid - The topic's publisher UID.
    * @param value - The value to send.
    * @param typeInfo - The type info for the value.
-   * @returns The time the message was sent.
+   * @returns The time the message was sent, or -1 if not connected.
    */
-  sendValueToTopic(id: number, value: NetworkTablesTypes, typeInfo: NetworkTablesTypeInfo) {
+  sendValueToTopic(pubuid: number, value: NetworkTablesTypes, typeInfo: NetworkTablesTypeInfo) {
+    if (!this.isConnected()) {
+      socketLogger.debug('sendValueToTopic skipped (not connected)', { pubuid, typeNum: typeInfo[0] });
+      return -1;
+    }
     const time = Math.ceil(this.getServerTime());
-    const message = Util.createBinaryMessage(id, time, value, typeInfo);
-    this.sendBinaryFrame(message);
+    const message = Util.createBinaryMessage(pubuid, time, value, typeInfo);
+
+    const cleanMsg = msgPackSchema.parse(message);
+    const framePubuid = cleanMsg[0];
+    const typeNum = cleanMsg[2];
+
+    // Send the message to the server (binary frames are never queued).
+    socketLogger.debug('Binary frame sent', { pubuid: framePubuid, typeNum });
+    this._websocket.send(encode(cleanMsg));
+
     return time;
   }
 

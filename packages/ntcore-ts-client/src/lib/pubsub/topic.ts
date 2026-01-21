@@ -95,7 +95,33 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
     pubsubLogger.debug('Value set', { topicName: this.name, oldValue, newValue: value, type: this._typeInfo[1] });
     this.value = value;
     this.notifySubscribers();
+
+    // If we're disconnected, just keep our local retained value.
+    // We will always resend the latest retained value after reconnect.
+    if (!this.client.messenger.socket.isConnected()) {
+      pubsubLogger.debug('Skipped server update (awaiting reconnect)', { topicName: this.name });
+      return;
+    }
+
     this.client.updateServer<T>(this, value);
+  }
+
+  /**
+   * Resends the latest retained value after reconnect.
+   *
+   * This is intended to be called after reconnect, once publish frames have been re-sent.
+   * This ensures that if the server/robot restarted, it receives the current state.
+   */
+  resendLatestValue() {
+    if (!this._publisher || this._pubuid == null || !this.client.messenger.socket.isConnected() || this.value == null) {
+      return;
+    }
+
+    pubsubLogger.debug('Resending latest retained value after reconnect', {
+      topicName: this.name,
+      pubuid: this._pubuid,
+    });
+    this.client.updateServer<T>(this, this.value);
   }
 
   /**
@@ -198,16 +224,26 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
   private notifySubscribers() {
     const subscriberCount = this.subscribers.size;
     pubsubLogger.debug('Subscribers notified', { topicName: this.name, count: subscriberCount });
-    // We know that _announceParams is not null here because we received a value update
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // If the topic has not been announced yet, synthesize params so callbacks always
+    // receive a well-formed object (rather than `null`).
+    const params =
+      this._announceParams ??
+      ({
+        name: this.name,
+        id: -1,
+        type: this._typeInfo[1],
+        properties: this._publishProperties ?? {},
+        ...(this._pubuid != null ? { pubuid: this._pubuid } : {}),
+      } as const);
+
     this.subscribers.forEach((info, subuid) => {
       pubsubLogger.trace('Callback invoked', {
         topicName: this.name,
         subuid,
         value: this.value,
-        params: this._announceParams!,
+        params,
       });
-      info.callback(this.value, this._announceParams!);
+      info.callback(this.value, params);
     });
   }
 

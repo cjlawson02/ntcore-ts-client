@@ -113,7 +113,8 @@ export const unannounceMessageParamsSchema = z.object({
 /** Schema for the properties message params in the NT protocol. */
 export const propertiesMessageParamsSchema = z.object({
   name: z.string(),
-  ack: z.boolean(),
+  ack: z.boolean().optional(),
+  update: topicPropertiesSchema,
 });
 
 /** Schema for a publish message in the NT protocol. */

@@ -44,12 +44,9 @@ describe('Topic', () => {
     });
 
     it('should error if the existing topic has a different type', () => {
-      try {
-        new NetworkTablesTopic<boolean>(topic['client'], 'test', NetworkTablesTypeInfos.kBoolean, true);
-        fail('Should have thrown an error');
-      } catch (e) {
-        expect((e as Error).message).toEqual('Topic test already exists, but with a different type.');
-      }
+      expect(
+        () => new NetworkTablesTopic<boolean>(topic['client'], 'test', NetworkTablesTypeInfos.kBoolean, true)
+      ).toThrow('Topic test already exists, but with a different type.');
     });
 
     it('should return null if there is no default value', () => {
@@ -68,22 +65,43 @@ describe('Topic', () => {
     });
 
     it('allows the value to be set if the client is the publisher', async () => {
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 1234,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
-      await topic.publish({}, 1234);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 1234,
+          type: 'string',
+          properties: {},
+        },
+      };
+
+      const publishPromise = topic.publish({}, 1234);
+      server.send(JSON.stringify([announceMessage]));
+      await publishPromise;
       topic.setValue('new value');
       expect(topic.getValue()).toEqual('new value');
+    });
+
+    it('resends the latest value after reconnect (publisher)', () => {
+      // Arrange: make the topic a publisher with a pubuid and a retained local value
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 9000;
+
+      const sendToTopicSpy = vi.spyOn(topic['client'].messenger, 'sendToTopic').mockReturnValue(123);
+      const isConnectedSpy = vi.spyOn(topic['client'].messenger.socket, 'isConnected').mockReturnValue(true);
+
+      topic.setValue('v2');
+      sendToTopicSpy.mockClear();
+
+      // Act: simulate a reconnect flush
+      topic.resendLatestValue();
+
+      expect(sendToTopicSpy).toHaveBeenCalledTimes(1);
+      expect(sendToTopicSpy).toHaveBeenCalledWith(topic, 'v2');
+
+      sendToTopicSpy.mockRestore();
+      isConnectedSpy.mockRestore();
     });
   });
 
@@ -153,16 +171,17 @@ describe('Topic', () => {
 
   describe('unsubscribe', () => {
     it('removes the subscriber from the topic', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback = (_: string | null) => vi.fn();
       const options = {};
       topic.subscribe(callback, options);
       expect(topic.subscribers.size).toBe(1);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       topic.unsubscribe(topic.subscribers.keys().next().value!, true);
       expect(topic.subscribers.size).toBe(0);
     });
     it('does nothing if the callback is not a subscriber', () => {
       expect(topic.subscribers.size).toBe(0);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       topic.unsubscribe(topic.subscribers.keys().next().value!);
       expect(topic.subscribers.size).toBe(0);
     });
@@ -170,7 +189,6 @@ describe('Topic', () => {
 
   describe('unsubscribeAll', () => {
     it('removes all subscribers from the topic', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback = (_: string | null) => vi.fn();
       const options = {};
       topic.subscribe(callback, options);
@@ -183,7 +201,6 @@ describe('Topic', () => {
 
   describe('resubscribeAll', () => {
     it('resubscribes all subscribers to the topic', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const callback = (_: string | null) => vi.fn();
       const options = {};
       topic.subscribe(callback, options);
@@ -200,45 +217,51 @@ describe('Topic', () => {
       topic.subscribe(callback);
       topic['value'] = 'foo';
       topic['notifySubscribers']();
-      expect(callback).toHaveBeenCalledWith('foo', null);
+      expect(callback).toHaveBeenCalledWith(
+        'foo',
+        expect.objectContaining({
+          name: 'test',
+          id: -1,
+          type: 'string',
+          properties: {},
+        })
+      );
     });
   });
 
   describe('publish', () => {
     it('sets the publisher to the client', async () => {
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 1000,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
-      await topic.publish({}, 1000);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 1000,
+          type: 'string',
+          properties: {},
+        },
+      };
+      const publishPromise = topic.publish({}, 1000);
+      server.send(JSON.stringify([announceMessage]));
+      await publishPromise;
       expect(topic.publisher).toBe(true);
       expect(topic.pubuid).toBeDefined();
     });
 
     it('does not set the publisher if the client is already the publisher', async () => {
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 1111,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
-      await topic.publish({}, 1111);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 1111,
+          type: 'string',
+          properties: {},
+        },
+      };
+      const publishPromise = topic.publish({}, 1111);
+      server.send(JSON.stringify([announceMessage]));
+      await publishPromise;
       const id = topic.pubuid;
 
       await topic.publish();
@@ -246,12 +269,20 @@ describe('Topic', () => {
     });
 
     it('should throw an error if the topic is not announced', async () => {
+      topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
+
+      // Ensure publish() does NOT use the optimistic resolution workaround by creating an
+      // exact subscription match for this topic name.
+      topic.subscribe(() => {}, {}, undefined, false);
+
+      vi.useFakeTimers();
       try {
-        topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
-        await topic.publish({}, 1);
-        fail('Topic should have not been announced');
-      } catch (e) {
-        expect(e).toEqual(new Error(`Topic ${topic.name} was not announced within 3 seconds`));
+        const publishPromise = topic.publish({}, 1);
+        await Promise.resolve();
+        vi.advanceTimersByTime(3000);
+        await expect(publishPromise).rejects.toThrow('was not announced within 3 seconds');
+      } finally {
+        vi.useRealTimers();
       }
     });
 
@@ -261,19 +292,17 @@ describe('Topic', () => {
       const publishPromise = topic.publish({}, 2000);
 
       // Send announcement quickly (100ms)
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 2000,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 2000,
+          type: 'string',
+          properties: {},
+        },
+      };
+      server.send(JSON.stringify([announceMessage]));
 
       // Wait for publish to complete
       await publishPromise;
@@ -289,20 +318,19 @@ describe('Topic', () => {
 
   describe('unpublish', () => {
     it('sets the publisher to false', async () => {
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 1001,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
-      await topic.publish({}, 1001);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 1001,
+          type: 'string',
+          properties: {},
+        },
+      };
+      const publishPromise = topic.publish({}, 1001);
+      server.send(JSON.stringify([announceMessage]));
+      await publishPromise;
       expect(topic.publisher).toBe(true);
       topic.unpublish();
       expect(topic.publisher).toBe(false);
@@ -332,38 +360,37 @@ describe('Topic', () => {
 
     it('should clear timeout when properties response arrives quickly', async () => {
       // First, publish the topic so it exists
-      setTimeout(() => {
-        const announceMessage: AnnounceMessage = {
-          method: 'announce',
-          params: {
-            name: 'test',
-            id: 1,
-            pubuid: 3000,
-            type: 'string',
-            properties: {},
-          },
-        };
-        server.send(JSON.stringify([announceMessage]));
-      }, 100);
-      await topic.publish({}, 3000);
+      const announceMessage: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: 'test',
+          id: 1,
+          pubuid: 3000,
+          type: 'string',
+          properties: {},
+        },
+      };
+      const publishPromise = topic.publish({}, 3000);
+      server.send(JSON.stringify([announceMessage]));
+      await publishPromise;
 
       // Test setProperties timeout cleanup
       const setPropertiesPromise = topic.setProperties(true, true);
 
       // Send properties response quickly (100ms) with ack: true
-      setTimeout(() => {
-        const propertiesResponse: PropertiesMessage = {
-          method: 'properties',
-          params: {
-            name: 'test',
-            ack: true,
-          },
-        };
-        server.send(JSON.stringify([propertiesResponse]));
-      }, 100);
+      const propertiesResponse: PropertiesMessage = {
+        method: 'properties',
+        params: {
+          name: 'test',
+          ack: true,
+          update: { persistent: true, retained: true },
+        },
+      };
+      server.send(JSON.stringify([propertiesResponse]));
 
       // Wait for setProperties to complete
-      await setPropertiesPromise;
+      const result = await setPropertiesPromise;
+      expect(result).toEqual(propertiesResponse);
 
       // Wait longer than the 3 second timeout to ensure it was cleared
       // If the timeout wasn't cleared, this would throw an error
