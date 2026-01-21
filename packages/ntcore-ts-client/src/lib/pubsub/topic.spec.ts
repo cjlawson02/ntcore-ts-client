@@ -383,6 +383,7 @@ describe('Topic', () => {
         params: {
           name: 'test',
           ack: true,
+          update: { persistent: true, retained: true },
         },
       };
       server.send(JSON.stringify([propertiesResponse]));
