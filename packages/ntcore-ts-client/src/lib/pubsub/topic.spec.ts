@@ -268,7 +268,7 @@ describe('Topic', () => {
       expect(id).toEqual(topic.pubuid);
     });
 
-    it('should throw an error if the topic is not announced (non-bug scenario)', async () => {
+    it('should throw an error if the topic is not announced', async () => {
       topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
 
       // Ensure publish() does NOT use the optimistic resolution workaround by creating an

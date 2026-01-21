@@ -343,7 +343,7 @@ describe('Messenger', () => {
       await expect(publishPromise2).resolves.toEqual(announceMessage);
     });
 
-    it('should reject if no announcement is received within timeout (non-bug scenario)', async () => {
+    it('should reject if no announcement is received within timeout', async () => {
       const params: PublishMessageParams = {
         name: '/timeout/topic',
         pubuid: messenger.getNextPubUID(),
@@ -415,7 +415,7 @@ describe('Messenger', () => {
       await expect(messenger.publish(params)).rejects.toThrow('connection failed');
 
       // Should not be added to publications on failure.
-      expect(Array.from(messenger.getPublications())).toHaveLength(0);
+      expect(Array.from(messenger['publications'].entries())).toHaveLength(0);
     });
 
     it('should ignore announce messages that do not match name + pubuid', async () => {
