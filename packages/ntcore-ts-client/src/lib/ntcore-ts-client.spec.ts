@@ -8,9 +8,9 @@ describe('NetworkTables', () => {
 
   it('gets the client', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
-    expect(networkTables.client).toBe(NetworkTables.getInstanceByTeam(973).client);
-    const anotherClient = NetworkTables.getInstanceByTeam(9973).client;
-    expect(anotherClient).not.toBe(networkTables.client);
+    expect(networkTables['_client']).toBe(NetworkTables.getInstanceByTeam(973)['_client']);
+    const anotherClient = NetworkTables.getInstanceByTeam(9973)['_client'];
+    expect(anotherClient).not.toBe(networkTables['_client']);
   });
 
   it('creates a new NetworkTables instance with the correct port number', () => {

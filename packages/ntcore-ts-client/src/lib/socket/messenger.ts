@@ -106,22 +106,6 @@ export class Messenger {
   }
 
   /**
-   * Gets all publications.
-   * @returns An iterator of all publications in the form [id, params].
-   */
-  getPublications() {
-    return this.publications.entries();
-  }
-
-  /**
-   * Gets all subscriptions.
-   * @returns An iterator of all subscriptions in the form [id, params].
-   */
-  getSubscriptions() {
-    return this.subscriptions.entries();
-  }
-
-  /**
    * Called when the socket opens.
    */
   onSocketOpen = () => {

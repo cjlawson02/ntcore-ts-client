@@ -8,7 +8,6 @@ import { Util } from '../util/util';
 
 import type {
   AnnounceMessageParams,
-  BinaryMessage,
   Message,
   PropertiesMessageParams,
   UnannounceMessageParams,
@@ -40,9 +39,6 @@ export class NetworkTablesSocket {
     return this._websocket;
   }
 
-  set websocket(websocket: WebSocket) {
-    this._websocket = websocket;
-  }
   private serverUrl: string;
 
   private readonly onSocketOpen: () => void;
@@ -269,22 +265,6 @@ export class NetworkTablesSocket {
   }
 
   /**
-   * Returns whether the socket is closing.
-   * @returns Whether the socket is closing.
-   */
-  isClosing() {
-    return this._websocket.readyState === WebSocket.CLOSING;
-  }
-
-  /**
-   * Returns whether the socket is closed.
-   * @returns Whether the socket is closed.
-   */
-  isClosed() {
-    return this._websocket.readyState === WebSocket.CLOSED;
-  }
-
-  /**
    * Wait for the socket to connect.
    * @returns A promise that resolves when the socket is connected.
    */
@@ -445,43 +425,19 @@ export class NetworkTablesSocket {
       // Check the type of the message and handle it accordingly
       switch (message.method) {
         case 'announce':
-          this.handleAnnounceParams(message.params);
+          this.onAnnounce(message.params);
           break;
         case 'unannounce':
-          this.handleUnannounceParams(message.params);
+          this.onUnannounce(message.params);
           break;
         case 'properties':
-          this.handlePropertiesParams(message.params);
+          this.onProperties(message.params);
           break;
         default:
           socketLogger.warn('Client does not handle message method', { method: message.method });
       }
     });
     socketLogger.debug('Text frame processed', { messageCount: messages.length, methodCounts });
-  }
-
-  /**
-   * Handle an announce message from the server.
-   * @param params - The message params.
-   */
-  private handleAnnounceParams(params: AnnounceMessageParams) {
-    this.onAnnounce(params);
-  }
-
-  /**
-   * Handle an unannounce message from the server.
-   * @param params - The message params.
-   */
-  private handleUnannounceParams(params: UnannounceMessageParams) {
-    this.onUnannounce(params);
-  }
-
-  /**
-   * Handle a properties message from the server.
-   * @param params - The message params.
-   */
-  private handlePropertiesParams(params: PropertiesMessageParams) {
-    this.onProperties(params);
   }
 
   /**
@@ -500,31 +456,6 @@ export class NetworkTablesSocket {
         queueSize: this.messageQueue.length,
       });
       this.messageQueue.push(JSON.stringify([message]));
-    }
-  }
-
-  /**
-   * Send a binary frame to the server.
-   * @param message - The message to send.
-   */
-  private sendBinaryFrame(message: BinaryMessage) {
-    const cleanMsg = msgPackSchema.parse(message);
-    const topicId = cleanMsg[0];
-    const typeNum = cleanMsg[2];
-
-    // Send the message to the server
-    if (this.isConnected()) {
-      socketLogger.debug('Binary frame sent', { topicId, typeNum });
-      this._websocket.send(encode(cleanMsg));
-    } else {
-      socketLogger.debug('Message queued', {
-        topicId,
-        typeNum,
-        reason: 'not connected',
-        queueSize: this.messageQueue.length,
-      });
-      const encoded = encode(cleanMsg);
-      this.messageQueue.push(new Uint8Array(encoded).buffer);
     }
   }
 
@@ -556,7 +487,22 @@ export class NetworkTablesSocket {
   sendValueToTopic(pubuid: number, value: NetworkTablesTypes, typeInfo: NetworkTablesTypeInfo) {
     const time = Math.ceil(this.getServerTime());
     const message = Util.createBinaryMessage(pubuid, time, value, typeInfo);
-    this.sendBinaryFrame(message);
+
+    const cleanMsg = msgPackSchema.parse(message);
+    const topicId = cleanMsg[0];
+    const typeNum = cleanMsg[2];
+
+    // Send the message to the server
+    if (this.isConnected()) {
+      socketLogger.debug('Binary frame sent', { topicId, typeNum });
+      this._websocket.send(encode(cleanMsg));
+    } else {
+      socketLogger.debug('Binary frame dropped (not connected)', {
+        topicId,
+        typeNum,
+      });
+    }
+
     return time;
   }
 

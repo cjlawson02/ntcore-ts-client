@@ -70,38 +70,6 @@ describe('NetworkTablesSocket', () => {
     });
   });
 
-  describe('isClosing', () => {
-    it('should return true if the WebSocket is closing', () => {
-      // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSING`
-      socket.websocket = {
-        ...socket.websocket,
-        readyState: WebSocket.CLOSING,
-      } as WebSocket;
-
-      expect(socket.isClosing()).toBe(true);
-    });
-
-    it('should return false if the WebSocket is not closing', () => {
-      expect(socket.isClosing()).toBe(false);
-    });
-  });
-
-  describe('isClosed', () => {
-    it('should return true if the WebSocket is closed', () => {
-      // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSED`
-      socket.websocket = {
-        ...socket.websocket,
-        readyState: WebSocket.CLOSED,
-      } as WebSocket;
-
-      expect(socket.isClosed()).toBe(true);
-    });
-
-    it('should return false if the WebSocket is not closed', () => {
-      expect(socket.isClosed()).toBe(false);
-    });
-  });
-
   describe('sendQueuedMessages', () => {
     it('should send all queued messages through the WebSocket', async () => {
       // Queue some messages
@@ -120,7 +88,7 @@ describe('NetworkTablesSocket', () => {
     it('should not send any messages if the WebSocket is not open', async () => {
       // Mock the WebSocket's `send` method
       const send = vi.fn();
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         send,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,7 +99,7 @@ describe('NetworkTablesSocket', () => {
       socket['messageQueue'].push(...messages);
 
       // Set the WebSocket's `readyState` property to be `WebSocket.CONNECTING`
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         readyState: WebSocket.CONNECTING,
       } as WebSocket;
@@ -148,7 +116,7 @@ describe('NetworkTablesSocket', () => {
     it('should send a heartbeat message through the WebSocket', () => {
       // Mock the WebSocket's `send` method
       const send = vi.fn();
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         send,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

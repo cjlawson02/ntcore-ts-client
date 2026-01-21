@@ -1,13 +1,11 @@
 import { NetworkTablesTypeInfos } from '../types/types';
 
-import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTablesTypes, TypeNum, TypeString } from '../types/types';
+import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTablesTypes } from '../types/types';
 
 /**
  * Class for holding utility functions.
  */
 export class Util {
-  private static usedIds: Set<number> = new Set();
-
   /**
    * Get the DOM time in microseconds.
    * @returns The current microseconds of the DOM.
@@ -63,61 +61,6 @@ export class Util {
     throw new Error(`Invalid data for NT: ${data}`);
   }
 
-  static getNetworkTablesTypeFromTypeNum(typeNum: TypeNum) {
-    switch (typeNum) {
-      case NetworkTablesTypeInfos.kBoolean[0]:
-        return NetworkTablesTypeInfos.kBoolean;
-      case NetworkTablesTypeInfos.kDouble[0]:
-        return NetworkTablesTypeInfos.kDouble;
-      case NetworkTablesTypeInfos.kInteger[0]:
-        return NetworkTablesTypeInfos.kInteger;
-      case NetworkTablesTypeInfos.kString[0]:
-        return NetworkTablesTypeInfos.kString;
-      case NetworkTablesTypeInfos.kUint8Array[0]:
-        return NetworkTablesTypeInfos.kUint8Array;
-      case NetworkTablesTypeInfos.kBooleanArray[0]:
-        return NetworkTablesTypeInfos.kBooleanArray;
-      case NetworkTablesTypeInfos.kDoubleArray[0]:
-        return NetworkTablesTypeInfos.kDoubleArray;
-      case NetworkTablesTypeInfos.kIntegerArray[0]:
-        return NetworkTablesTypeInfos.kIntegerArray;
-      case NetworkTablesTypeInfos.kStringArray[0]:
-        return NetworkTablesTypeInfos.kStringArray;
-      default:
-        throw new Error(`Invalid type number: ${typeNum}`);
-    }
-  }
-
-  /**
-   * Get the type info from a type string.
-   * @param typeString - The type string.
-   * @returns The type info.
-   */
-  static getNetworkTablesTypeFromTypeString(typeString: TypeString) {
-    switch (typeString) {
-      case NetworkTablesTypeInfos.kBoolean[1]:
-        return NetworkTablesTypeInfos.kBoolean;
-      case NetworkTablesTypeInfos.kDouble[1]:
-        return NetworkTablesTypeInfos.kDouble;
-      case NetworkTablesTypeInfos.kInteger[1]:
-        return NetworkTablesTypeInfos.kInteger;
-      case NetworkTablesTypeInfos.kString[1]:
-        return NetworkTablesTypeInfos.kString;
-      case NetworkTablesTypeInfos.kUint8Array[1]:
-        return NetworkTablesTypeInfos.kUint8Array;
-      case NetworkTablesTypeInfos.kBooleanArray[1]:
-        return NetworkTablesTypeInfos.kBooleanArray;
-      case NetworkTablesTypeInfos.kDoubleArray[1]:
-        return NetworkTablesTypeInfos.kDoubleArray;
-      case NetworkTablesTypeInfos.kIntegerArray[1]:
-        return NetworkTablesTypeInfos.kIntegerArray;
-      case NetworkTablesTypeInfos.kStringArray[1]:
-        return NetworkTablesTypeInfos.kStringArray;
-      default:
-        throw new Error(`Unsupported type string: ${typeString}`);
-    }
-  }
-
   /**
    * Create a binary message from a topic.
    * @param pubuid - The topic's publisher UID.
@@ -134,27 +77,6 @@ export class Util {
   ): BinaryMessage {
     const type = typeInfo ?? this.getNetworkTablesTypeFromObject(data);
     return [pubuid, timestamp, type[0], data];
-  }
-
-  /**
-   * Splits an ArrayBuffer into chunks of a specified size.
-   * @param buffer - The ArrayBuffer to split.
-   * @param chunkSize - The size of each chunk, in bytes.
-   * @returns An array of ArrayBuffer chunks.
-   * @throws Error If the chunk size is not divisible by the ArrayBuffer size.
-   */
-  static splitArrayBuffer(buffer: ArrayBuffer, chunkSize: number) {
-    if (buffer.byteLength % chunkSize !== 0) {
-      throw new Error('Chunk size must be divisible by ArrayBuffer size');
-    }
-    const chunks: ArrayBuffer[] = [];
-    let offset = 0;
-    while (offset < buffer.byteLength) {
-      const chunk = buffer.slice(offset, offset + chunkSize);
-      chunks.push(chunk);
-      offset += chunkSize;
-    }
-    return chunks;
   }
 
   /**

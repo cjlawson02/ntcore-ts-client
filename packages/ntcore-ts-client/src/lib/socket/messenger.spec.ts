@@ -118,69 +118,6 @@ describe('Messenger', () => {
     });
   });
 
-  describe('getPublications', () => {
-    it('should return an empty iterator when no publications exist', () => {
-      const publications = Array.from(messenger.getPublications());
-      expect(publications).toHaveLength(0);
-    });
-
-    it('should return all publications', async () => {
-      const params: PublishMessageParams = {
-        name: 'test',
-        pubuid: 0,
-        type: 'string',
-        properties: {},
-      };
-
-      // Mock the announce response
-      const announceMessage: AnnounceMessage = {
-        method: 'announce',
-        params: {
-          name: 'test',
-          pubuid: 0,
-          type: 'string',
-          id: 1,
-          properties: {},
-        },
-      };
-
-      // Set up promise to wait for publish
-      const publishPromise = messenger.publish(params);
-
-      // Send the announce message
-      server.send(JSON.stringify([announceMessage]));
-
-      await publishPromise;
-
-      const publications = Array.from(messenger.getPublications());
-      expect(publications).toHaveLength(1);
-      expect(publications[0][0]).toBe(0);
-      expect(publications[0][1]).toEqual(params);
-    });
-  });
-
-  describe('getSubscriptions', () => {
-    it('should return an empty iterator when no subscriptions exist', () => {
-      const subscriptions = Array.from(messenger.getSubscriptions());
-      expect(subscriptions).toHaveLength(0);
-    });
-
-    it('should return all subscriptions', () => {
-      const params: SubscribeMessageParams = {
-        topics: ['test'],
-        subuid: 0,
-        options: {},
-      };
-
-      messenger.subscribe(params);
-
-      const subscriptions = Array.from(messenger.getSubscriptions());
-      expect(subscriptions).toHaveLength(1);
-      expect(subscriptions[0][0]).toBe(0);
-      expect(subscriptions[0][1]).toEqual(params);
-    });
-  });
-
   describe('onSocketOpen', () => {
     it('should resubscribe all topics when socket opens', () => {
       const params: SubscribeMessageParams = {
@@ -276,7 +213,7 @@ describe('Messenger', () => {
       const result = await publishPromise;
 
       expect(result).toEqual(announceMessage);
-      expect(messenger.getPublications().next().value).toBeDefined();
+      expect(messenger['publications'].has(0)).toBe(true);
     });
 
     it('should reject if topic is already published', async () => {
@@ -424,7 +361,7 @@ describe('Messenger', () => {
         params: { pubuid: 0 },
       });
 
-      const publications = Array.from(messenger.getPublications());
+      const publications = Array.from(messenger['publications'].entries());
       expect(publications).toHaveLength(0);
     });
 
@@ -454,7 +391,7 @@ describe('Messenger', () => {
         params,
       });
 
-      const subscriptions = Array.from(messenger.getSubscriptions());
+      const subscriptions = Array.from(messenger['subscriptions'].entries());
       expect(subscriptions).toHaveLength(1);
       expect(subscriptions[0][1]).toEqual(params);
     });
@@ -511,7 +448,7 @@ describe('Messenger', () => {
         params: { subuid: 0 },
       });
 
-      const subscriptions = Array.from(messenger.getSubscriptions());
+      const subscriptions = Array.from(messenger['subscriptions'].entries());
       expect(subscriptions).toHaveLength(0);
     });
 
