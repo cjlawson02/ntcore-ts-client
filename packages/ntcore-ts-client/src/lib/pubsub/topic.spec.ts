@@ -83,27 +83,25 @@ describe('Topic', () => {
       expect(topic.getValue()).toEqual('new value');
     });
 
-    it('queues outgoing values until the topic is announced, then flushes the latest value', () => {
-      // Arrange: make the topic a publisher but not yet announced
+    it('resends the latest value after reconnect (publisher)', () => {
+      // Arrange: make the topic a publisher with a pubuid and a retained local value
       topic['_publisher'] = true;
       topic['_pubuid'] = 9000;
 
-      const sendToTopicSpy = vi.spyOn(topic['client'].messenger, 'sendToTopic').mockReturnValue(-1);
+      const sendToTopicSpy = vi.spyOn(topic['client'].messenger, 'sendToTopic').mockReturnValue(123);
+      const isConnectedSpy = vi.spyOn(topic['client'].messenger.socket, 'isConnected').mockReturnValue(true);
 
-      // Act: set values before announcement
-      topic.setValue('v1');
       topic.setValue('v2');
+      sendToTopicSpy.mockClear();
 
-      // No server update should be attempted yet (no topic id)
-      expect(sendToTopicSpy).not.toHaveBeenCalled();
+      // Act: simulate a reconnect flush
+      topic.resendLatestValue();
 
-      // Announce with matching pubuid so publisher stays true and queued value flushes
-      topic.announce({ name: 'test', id: 42, pubuid: 9000, type: 'string', properties: {} });
-
-      // Assert: only the latest value is flushed
       expect(sendToTopicSpy).toHaveBeenCalledTimes(1);
       expect(sendToTopicSpy).toHaveBeenCalledWith(topic, 'v2');
+
       sendToTopicSpy.mockRestore();
+      isConnectedSpy.mockRestore();
     });
   });
 

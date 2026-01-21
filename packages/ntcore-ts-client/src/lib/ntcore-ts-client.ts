@@ -37,14 +37,6 @@ export class NetworkTables {
   private static _instances = new Map<string, NetworkTables>();
 
   /**
-   * Gets the PubSubClient instance used to establish and manage the connection to the robot.
-   * @returns The PubSubClient instance.
-   */
-  get client() {
-    return this._client;
-  }
-
-  /**
    * Creates a new NetworkTables instance.
    * @param props - The properties to use to create the instance.
    * @throws Error if the team number or URI is not provided.

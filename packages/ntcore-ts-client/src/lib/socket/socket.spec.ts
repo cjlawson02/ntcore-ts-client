@@ -2,10 +2,11 @@ import { encode } from '@msgpack/msgpack';
 import WebSocket from 'isomorphic-ws';
 import WSMock from 'vitest-websocket-mock';
 
-import { NetworkTablesSocket } from './socket';
 import { NetworkTablesTypeInfos } from '../types/types';
 import { LogLevel, setLogLevel } from '../util/logger';
 import { Util } from '../util/util';
+
+import { NetworkTablesSocket } from './socket';
 
 import type {
   AnnounceMessage,
@@ -87,7 +88,7 @@ describe('NetworkTablesSocket', () => {
     });
 
     it('should return false if the WebSocket is closed', () => {
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         readyState: WebSocket.CLOSED,
       } as WebSocket;
@@ -96,42 +97,10 @@ describe('NetworkTablesSocket', () => {
     });
   });
 
-  describe('isClosing', () => {
-    it('should return true if the WebSocket is closing', () => {
-      // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSING`
-      socket.websocket = {
-        ...socket.websocket,
-        readyState: WebSocket.CLOSING,
-      } as WebSocket;
-
-      expect(socket.isClosing()).toBe(true);
-    });
-
-    it('should return false if the WebSocket is not closing', () => {
-      expect(socket.isClosing()).toBe(false);
-    });
-  });
-
-  describe('isClosed', () => {
-    it('should return true if the WebSocket is closed', () => {
-      // Mock the WebSocket's `readyState` property to be `WebSocket.CLOSED`
-      socket.websocket = {
-        ...socket.websocket,
-        readyState: WebSocket.CLOSED,
-      } as WebSocket;
-
-      expect(socket.isClosed()).toBe(true);
-    });
-
-    it('should return false if the WebSocket is not closed', () => {
-      expect(socket.isClosed()).toBe(false);
-    });
-  });
-
   describe('sendTextFrame', () => {
     it('should queue messages when not connected', () => {
       const send = vi.fn();
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         readyState: WebSocket.CONNECTING,
         send,
@@ -150,7 +119,7 @@ describe('NetworkTablesSocket', () => {
 
   describe('waitForConnection', () => {
     it('should resolve via listener once the socket becomes connected', async () => {
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         readyState: WebSocket.CONNECTING,
       } as WebSocket;
@@ -161,7 +130,7 @@ describe('NetworkTablesSocket', () => {
       expect(socket['connectionListeners'].size).toBeGreaterThan(0);
 
       // Flip to OPEN and notify listeners.
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         readyState: WebSocket.OPEN,
       } as WebSocket;
@@ -180,7 +149,7 @@ describe('NetworkTablesSocket', () => {
 
       expect(listener).toHaveBeenCalledWith(true);
 
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         readyState: WebSocket.CLOSED,
       } as WebSocket;
@@ -188,7 +157,7 @@ describe('NetworkTablesSocket', () => {
       expect(listener).toHaveBeenLastCalledWith(false);
 
       dispose();
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         readyState: WebSocket.OPEN,
       } as WebSocket;
@@ -217,8 +186,8 @@ describe('NetworkTablesSocket', () => {
     it('should not send any messages if the WebSocket is not open', async () => {
       // Mock the WebSocket's `send` method
       const send = vi.fn();
-      socket.websocket = {
-        ...socket.websocket,
+      socket['_websocket'] = {
+        ...socket['_websocket'],
         send,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
@@ -228,7 +197,7 @@ describe('NetworkTablesSocket', () => {
       socket['messageQueue'].push(...messages);
 
       // Set the WebSocket's `readyState` property to be `WebSocket.CONNECTING`
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         readyState: WebSocket.CONNECTING,
       } as WebSocket;
@@ -242,24 +211,68 @@ describe('NetworkTablesSocket', () => {
   });
 
   describe('sendValueToTopic', () => {
-    it('should queue a binary frame when not connected', () => {
+    it('should return -1 and not send when not connected', () => {
       const send = vi.fn();
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         readyState: WebSocket.CONNECTING,
         send,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
 
-      vi.spyOn(Util, 'getMicros').mockReturnValueOnce(1000);
-
-      const time = socket.sendValueToTopic(42, 123, NetworkTablesTypeInfos.kInteger);
-
-      expect(time).toBe(1000);
+      const result = socket.sendValueToTopic(123, 456, NetworkTablesTypeInfos.kInteger);
+      expect(result).toBe(-1);
       expect(send).not.toHaveBeenCalled();
+      expect(socket['messageQueue']).toHaveLength(0);
+    });
 
-      const queued = socket['messageQueue'][socket['messageQueue'].length - 1];
-      expect(queued).toBeInstanceOf(ArrayBuffer);
+    it('should send and return a timestamp when connected', () => {
+      const send = vi.fn();
+      socket['_websocket'] = {
+        ...socket.websocket,
+        readyState: WebSocket.OPEN,
+        send,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+
+      const getMicrosSpy = vi.spyOn(Util, 'getMicros').mockReturnValueOnce(1000);
+
+      const result = socket.sendValueToTopic(123, 456, NetworkTablesTypeInfos.kInteger);
+      expect(result).not.toBe(-1);
+      expect(send).toHaveBeenCalled();
+      getMicrosSpy.mockRestore();
+    });
+  });
+
+  describe('connection open ordering', () => {
+    it('should run onSocketOpen before notifying connection listeners', async () => {
+      const order: string[] = [];
+      const orderingServerUrl = 'ws://localhost:5810/nt/ordering-test';
+      const orderingServer = new WSMock(orderingServerUrl);
+
+      const orderingSocket = NetworkTablesSocket.getInstance(
+        orderingServerUrl,
+        () => order.push('onSocketOpen'),
+        () => {},
+        () => {},
+        () => {},
+        () => {},
+        () => {},
+        false
+      );
+
+      await orderingServer.connected;
+
+      // The mock server connection will have already triggered one open cycle.
+      // Clear any prior calls so this test only asserts ordering for the manual (re)open below.
+      order.length = 0;
+
+      orderingSocket.addConnectionListener(() => order.push('listener'));
+
+      // Simulate a (re)connect open event. We call the handler directly so the test is deterministic.
+      orderingSocket['_websocket'].onopen?.(new Event('open') as any);
+
+      expect(order).toEqual(['onSocketOpen', 'listener']);
     });
   });
 
@@ -267,7 +280,7 @@ describe('NetworkTablesSocket', () => {
     it('should send a heartbeat message through the WebSocket', () => {
       // Mock the WebSocket's `send` method
       const send = vi.fn();
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         send,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -352,7 +365,7 @@ describe('NetworkTablesSocket', () => {
         .spyOn(globalThis, 'setTimeout')
         // Don't actually schedule anything; we only want to observe that it would.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .mockImplementation(((fn: any, _ms?: any) => 1 as any) as any);
+        .mockImplementation(((_fn: any, _ms?: any) => 1 as any) as any);
 
       socket.websocket.onclose?.({
         code: 1000,
@@ -372,7 +385,7 @@ describe('NetworkTablesSocket', () => {
       const setTimeoutSpy = vi
         .spyOn(globalThis, 'setTimeout')
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .mockImplementation(((fn: any, _ms?: any) => 1 as any) as any);
+        .mockImplementation(((_fn: any, _ms?: any) => 1 as any) as any);
 
       socket.websocket.onclose?.({
         code: 1000,
@@ -398,7 +411,7 @@ describe('NetworkTablesSocket', () => {
       expect(listeners[1]).toHaveBeenCalledWith(true);
 
       // Simulate disconnect.
-      socket.websocket = {
+      socket['_websocket'] = {
         ...socket.websocket,
         readyState: WebSocket.CLOSED,
       } as WebSocket;

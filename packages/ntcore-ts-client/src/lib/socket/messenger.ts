@@ -108,22 +108,6 @@ export class Messenger {
   }
 
   /**
-   * Gets all publications.
-   * @returns An iterator of all publications in the form [id, params].
-   */
-  getPublications() {
-    return this.publications.entries();
-  }
-
-  /**
-   * Gets all subscriptions.
-   * @returns An iterator of all subscriptions in the form [id, params].
-   */
-  getSubscriptions() {
-    return this.subscriptions.entries();
-  }
-
-  /**
    * Called when the socket opens.
    */
   onSocketOpen = () => {
@@ -617,7 +601,7 @@ export class Messenger {
    * This should only be called by the PubSubClient.
    * @param topic - The topic to update.
    * @param value - The value to update the topic to.
-   * @returns The timestamp of the update, or -1 if the topic is not announced.
+   * @returns The timestamp of the update, or -1 if the socket is not connected.
    */
   sendToTopic<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>, value: T) {
     const typeInfo = topic.typeInfo;

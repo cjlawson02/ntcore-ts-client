@@ -1,7 +1,8 @@
-import * as root from './index';
 import * as lib from './lib';
 import * as pubsub from './lib/pubsub';
 import * as types from './lib/types';
+
+import * as root from './index';
 
 describe('barrel exports', () => {
   it('should export expected symbols from root and nested barrels', () => {
