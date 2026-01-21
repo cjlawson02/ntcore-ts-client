@@ -1,5 +1,3 @@
-import { NetworkTablesTypeInfos } from '../types/types';
-
 import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTablesTypes } from '../types/types';
 
 /**
@@ -28,40 +26,6 @@ export class Util {
   }
 
   /**
-   * Given a value, find the NT type number.
-   * @param data - The value.
-   * @returns The NT type number.
-   */
-  static getNetworkTablesTypeFromObject(data: NetworkTablesTypes): NetworkTablesTypeInfo {
-    if (typeof data === 'boolean') {
-      return NetworkTablesTypeInfos.kBoolean;
-    } else if (typeof data === 'number') {
-      if (this.isDouble(data)) {
-        return NetworkTablesTypeInfos.kDouble;
-      }
-      return NetworkTablesTypeInfos.kInteger;
-    } else if (typeof data === 'string') {
-      return NetworkTablesTypeInfos.kString;
-    } else if (data instanceof Uint8Array) {
-      return NetworkTablesTypeInfos.kUint8Array;
-    } else if (Array.isArray(data)) {
-      if (new Set(data.map((x) => typeof x)).size <= 1) {
-        if (typeof data[0] === 'boolean') {
-          return NetworkTablesTypeInfos.kBooleanArray;
-        } else if (typeof data[0] === 'number') {
-          if ((data as number[]).every((e) => this.isDouble(e))) {
-            return NetworkTablesTypeInfos.kDoubleArray;
-          }
-          return NetworkTablesTypeInfos.kIntegerArray;
-        } else if (typeof data[0] === 'string') {
-          return NetworkTablesTypeInfos.kStringArray;
-        }
-      }
-    }
-    throw new Error(`Invalid data for NT: ${data}`);
-  }
-
-  /**
    * Create a binary message from a topic.
    * @param pubuid - The topic's publisher UID.
    * @param timestamp - The timestamp of the message, matching the server.
@@ -73,10 +37,9 @@ export class Util {
     pubuid: number,
     timestamp: number,
     data: NetworkTablesTypes,
-    typeInfo?: NetworkTablesTypeInfo
+    typeInfo: NetworkTablesTypeInfo
   ): BinaryMessage {
-    const type = typeInfo ?? this.getNetworkTablesTypeFromObject(data);
-    return [pubuid, timestamp, type[0], data];
+    return [pubuid, timestamp, typeInfo[0], data];
   }
 
   /**
