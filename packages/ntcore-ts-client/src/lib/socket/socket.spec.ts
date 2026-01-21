@@ -2,6 +2,9 @@ import { encode } from '@msgpack/msgpack';
 import WebSocket from 'isomorphic-ws';
 import WSMock from 'vitest-websocket-mock';
 
+import { NetworkTablesTypeInfos } from '../types/types';
+import { Util } from '../util/util';
+
 import { NetworkTablesSocket } from './socket';
 
 import type {
@@ -109,6 +112,72 @@ describe('NetworkTablesSocket', () => {
 
       expect(send).not.toHaveBeenCalled();
       expect(socket['messageQueue']).toHaveLength(messages.length);
+    });
+  });
+
+  describe('sendValueToTopic', () => {
+    it('should return -1 and not send when not connected', () => {
+      const send = vi.fn();
+      socket['_websocket'] = {
+        ...socket.websocket,
+        readyState: WebSocket.CONNECTING,
+        send,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+
+      const result = socket.sendValueToTopic(123, 456, NetworkTablesTypeInfos.kInteger);
+      expect(result).toBe(-1);
+      expect(send).not.toHaveBeenCalled();
+      expect(socket['messageQueue']).toHaveLength(0);
+    });
+
+    it('should send and return a timestamp when connected', () => {
+      const send = vi.fn();
+      socket['_websocket'] = {
+        ...socket.websocket,
+        readyState: WebSocket.OPEN,
+        send,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+
+      const getMicrosSpy = vi.spyOn(Util, 'getMicros').mockReturnValueOnce(1000);
+
+      const result = socket.sendValueToTopic(123, 456, NetworkTablesTypeInfos.kInteger);
+      expect(result).not.toBe(-1);
+      expect(send).toHaveBeenCalled();
+      getMicrosSpy.mockRestore();
+    });
+  });
+
+  describe('connection open ordering', () => {
+    it('should run onSocketOpen before notifying connection listeners', async () => {
+      const order: string[] = [];
+      const orderingServerUrl = 'ws://localhost:5810/nt/ordering-test';
+      const orderingServer = new WSMock(orderingServerUrl);
+
+      const orderingSocket = NetworkTablesSocket.getInstance(
+        orderingServerUrl,
+        () => order.push('onSocketOpen'),
+        () => {},
+        () => {},
+        () => {},
+        () => {},
+        () => {},
+        false
+      );
+
+      await orderingServer.connected;
+
+      // The mock server connection will have already triggered one open cycle.
+      // Clear any prior calls so this test only asserts ordering for the manual (re)open below.
+      order.length = 0;
+
+      orderingSocket.addConnectionListener(() => order.push('listener'));
+
+      // Simulate a (re)connect open event. We call the handler directly so the test is deterministic.
+      orderingSocket['_websocket'].onopen?.(new Event('open') as any);
+
+      expect(order).toEqual(['onSocketOpen', 'listener']);
     });
   });
 

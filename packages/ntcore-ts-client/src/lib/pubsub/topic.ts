@@ -22,7 +22,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
   private _publisher: boolean;
   private _pubuid?: number;
   private _publishProperties?: TopicProperties;
-  private _pendingServerValue?: T;
 
   /**
    * Gets the type info for the topic.
@@ -97,15 +96,32 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
     this.value = value;
     this.notifySubscribers();
 
-    // If the topic has not been announced yet (no server topic id), queue the most recent value.
-    // This avoids sending binary updates with an unknown/invalid topic id during reconnect races.
-    if (!this.announced || this.id == null) {
-      this._pendingServerValue = value;
-      pubsubLogger.debug('Topic not announced yet; queued outgoing value', { topicName: this.name });
+    // If we're disconnected, just keep our local retained value.
+    // We will always resend the latest retained value after reconnect.
+    if (!this.client.messenger.socket.isConnected()) {
+      pubsubLogger.debug('Skipped server update (awaiting reconnect)', { topicName: this.name });
       return;
     }
 
     this.client.updateServer<T>(this, value);
+  }
+
+  /**
+   * Resends the latest retained value after reconnect.
+   *
+   * This is intended to be called after reconnect, once publish frames have been re-sent.
+   * This ensures that if the server/robot restarted, it receives the current state.
+   */
+  resendLatestValue() {
+    if (!this._publisher || this._pubuid == null || !this.client.messenger.socket.isConnected() || this.value == null) {
+      return;
+    }
+
+    pubsubLogger.debug('Resending latest retained value after reconnect', {
+      topicName: this.name,
+      pubuid: this._pubuid,
+    });
+    this.client.updateServer<T>(this, this.value);
   }
 
   /**
@@ -158,14 +174,6 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
       });
     }
     pubsubLogger.debug('Topic announced', { topicName: this.name, topicId: params.id, pubuid: params.pubuid });
-
-    // Flush any queued outgoing value now that the server topic id is known.
-    if (this._publisher && this._pendingServerValue !== undefined) {
-      const pendingValue = this._pendingServerValue;
-      this._pendingServerValue = undefined;
-      pubsubLogger.debug('Flushing queued outgoing value', { topicName: this.name });
-      this.client.updateServer<T>(this, pendingValue);
-    }
   }
 
   /** */
