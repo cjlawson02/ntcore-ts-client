@@ -43,9 +43,9 @@ gyroTopic.subscribe((value, params) => {
 // Create the accelerator topic
 const accelerometerTopic = ntcore.createPrefixTopic('/MyTable/Accelerometer/');
 
-let x: any;
-let y: any;
-let z: any;
+let x: unknown;
+let y: unknown;
+let z: unknown;
 
 // Subscribe to all topics under the prefix /MyTable/Accelerometer/
 accelerometerTopic.subscribe((value, params) => {
