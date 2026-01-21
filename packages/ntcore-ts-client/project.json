@@ -6,15 +6,15 @@
   "tags": [],
   "targets": {
     "build": {
-      "executor": "@nx/js:tsc",
+      "executor": "@nx/rollup:rollup",
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/packages/ntcore-ts-client",
         "main": "packages/ntcore-ts-client/src/index.ts",
         "tsConfig": "packages/ntcore-ts-client/tsconfig.lib.json",
-        "assets": ["packages/ntcore-ts-client/*.md"],
-        "updateBuildableProjectDepsInPackageJson": true,
-        "buildableProjectDepsInPackageJsonType": "dependencies"
+        "format": ["esm", "cjs"],
+        "generateExportsField": true,
+        "sourceMap": true
       }
     },
     "publish": {
@@ -23,15 +23,6 @@
         "command": "node tools/scripts/publish.mjs ntcore-ts-client {args.ver} {args.tag}"
       },
       "dependsOn": ["build"]
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint"
-    },
-    "lint:fix": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "fix": true
-      }
     },
     "test": {
       "executor": "@nx/vitest:test",
