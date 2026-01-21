@@ -2,20 +2,20 @@
   "compileOnSave": false,
   "compilerOptions": {
     "rootDir": ".",
+    "strict": true,
     "sourceMap": true,
     "declaration": false,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "importHelpers": true,
-    "target": "ES2015",
+    "target": "ESNext",
     "module": "ESNext",
-    "lib": ["ES2015", "DOM"],
+    "lib": ["ESNext", "DOM"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "eslint-config": ["packages/eslint-config/src/index.ts"],
       "ntcore-ts-client": ["packages/ntcore-ts-client/src/index.ts"]
     }
   },
