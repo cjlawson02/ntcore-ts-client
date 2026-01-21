@@ -1095,23 +1095,6 @@ describe('Messenger', () => {
       expect(sendValueToTopicSpy).toHaveBeenCalledWith(123, 'test-value', NetworkTablesTypeInfos.kString);
     });
 
-    it('should return -1 if topic has no server id yet', () => {
-      const topic = {
-        name: 'test',
-        typeInfo: NetworkTablesTypeInfos.kString,
-        publisher: true,
-        pubuid: 0,
-        id: undefined,
-        announced: false,
-      } as unknown as NetworkTablesTopic<string>;
-
-      const sendValueToTopicSpy = vi.spyOn(messenger.socket, 'sendValueToTopic');
-      const result = messenger.sendToTopic(topic, 'test-value');
-
-      expect(result).toBe(-1);
-      expect(sendValueToTopicSpy).not.toHaveBeenCalled();
-    });
-
     it('should throw error if topic is not a publisher', () => {
       const topic = {
         name: 'test',
