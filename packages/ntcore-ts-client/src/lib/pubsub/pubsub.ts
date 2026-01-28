@@ -21,6 +21,9 @@ export class PubSubClient {
   // topic id -> topic params
   private readonly knownTopicParams: Map<number, AnnounceMessageParams>;
   private static _instances = new Map<string, PubSubClient>();
+  // Unified in-flight operations tracking (schema registrations and topic publishes)
+  private readonly inFlightOperations = new Map<string, Promise<unknown>>();
+  private _isCleaningUp = false;
 
   get messenger() {
     return this._messenger;
@@ -392,13 +395,58 @@ export class PubSubClient {
   }
 
   /**
+   * Gets or creates an in-flight operation to prevent race conditions.
+   * If an operation with the same key is already in progress, returns the existing promise.
+   * Otherwise, creates a new operation and stores it.
+   * @param key - Unique key for the operation (e.g., "schema:/.schema/proto:filename" or "publish:/topic/name")
+   * @param operation - The async operation to execute
+   * @returns A promise that resolves to the operation result
+   * @throws Error if the client is cleaning up and no existing operation is found
+   */
+  getOrCreateInFlightOperation<T>(key: string, operation: () => Promise<T>): Promise<T> {
+    const existing = this.inFlightOperations.get(key);
+    if (existing) {
+      return existing as Promise<T>;
+    }
+
+    // Prevent new operations from starting during cleanup
+    if (this._isCleaningUp) {
+      return Promise.reject(new Error('Cannot start new operation: client is cleaning up'));
+    }
+
+    const promise = (async () => {
+      try {
+        return await operation();
+      } finally {
+        // Always cleanup, regardless of success or failure
+        // This allows retries if the operation failed
+        // Safe to delete even if map was cleared during cleanup (delete is a no-op on non-existent key)
+        this.inFlightOperations.delete(key);
+      }
+    })();
+
+    // Store the promise IMMEDIATELY so concurrent calls wait for the same operation
+    // This must happen synchronously before any await in the promise
+    this.inFlightOperations.set(key, promise);
+
+    return promise;
+  }
+
+  /**
    * Cleans up the client by unsubscribing from all topics and stopping publishing for all topics.
+   * Prevents new in-flight operations from starting, but allows existing ones to complete naturally.
+   * The socket is closed immediately, which will cause any in-flight operations to fail.
    */
   cleanup() {
     pubsubLogger.debug('Topic cleanup initiated', {
       topicCount: this.topics.size,
       prefixTopicCount: this.prefixTopics.size,
+      inFlightOperations: this.inFlightOperations.size,
     });
+
+    // Prevent new operations from starting
+    this._isCleaningUp = true;
+
     this.topics.forEach((topic) => {
       topic.unsubscribeAll();
       if (topic.publisher) topic.unpublish();
@@ -407,5 +455,10 @@ export class PubSubClient {
       prefixTopic.unsubscribeAll();
     });
     this._messenger.socket.close();
+
+    // Clear the in-flight operations map
+    // Existing operations will complete/fail naturally when the socket closes
+    // Their finally blocks will try to delete from the map, but that's safe (no-op if already cleared)
+    this.inFlightOperations.clear();
   }
 }

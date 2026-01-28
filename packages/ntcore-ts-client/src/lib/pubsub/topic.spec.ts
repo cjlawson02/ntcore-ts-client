@@ -314,6 +314,97 @@ describe('Topic', () => {
       expect(topic.publisher).toBe(true);
       expect(topic.pubuid).toBe(2000);
     });
+
+    it('should prevent race conditions when publish is called concurrently', async () => {
+      // This test verifies that concurrent calls to publish() share the same operation
+      let publishCallCount = 0;
+      const originalMessengerPublish = client.messenger.publish.bind(client.messenger);
+
+      // Track how many times messenger.publish is called
+      client.messenger.publish = vi.fn().mockImplementation(async (params) => {
+        publishCallCount++;
+        return originalMessengerPublish(params);
+      });
+
+      // Send announcement
+      setTimeout(() => {
+        const announceMessage: AnnounceMessage = {
+          method: 'announce',
+          params: {
+            name: 'test',
+            id: 1,
+            pubuid: 3000,
+            type: 'string',
+            properties: {},
+          },
+        };
+        server.send(JSON.stringify([announceMessage]));
+      }, 100);
+
+      // Call publish concurrently multiple times
+      const publishPromises = [topic.publish({}, 3000), topic.publish({}, 3000), topic.publish({}, 3000)];
+
+      // All promises should resolve
+      await Promise.all(publishPromises);
+
+      // messenger.publish should only be called once (not three times)
+      expect(publishCallCount).toBe(1);
+      expect(topic.publisher).toBe(true);
+      expect(topic.pubuid).toBe(3000);
+
+      // Restore original method
+      client.messenger.publish = originalMessengerPublish;
+    });
+
+    it('should allow separate publish operations for different topics', async () => {
+      const topic2 = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
+
+      let publishCallCount = 0;
+      const originalMessengerPublish = client.messenger.publish.bind(client.messenger);
+
+      client.messenger.publish = vi.fn().mockImplementation(async (params) => {
+        publishCallCount++;
+        return originalMessengerPublish(params);
+      });
+
+      // Send announcements for both topics
+      setTimeout(() => {
+        const announceMessages: AnnounceMessage[] = [
+          {
+            method: 'announce',
+            params: {
+              name: 'test',
+              id: 1,
+              pubuid: 4000,
+              type: 'string',
+              properties: {},
+            },
+          },
+          {
+            method: 'announce',
+            params: {
+              name: 'test2',
+              id: 2,
+              pubuid: 4001,
+              type: 'string',
+              properties: {},
+            },
+          },
+        ];
+        server.send(JSON.stringify(announceMessages));
+      }, 100);
+
+      // Publish both topics concurrently
+      await Promise.all([topic.publish({}, 4000), topic2.publish({}, 4001)]);
+
+      // messenger.publish should be called twice (once per topic)
+      expect(publishCallCount).toBe(2);
+      expect(topic.publisher).toBe(true);
+      expect(topic2.publisher).toBe(true);
+
+      // Restore original method
+      client.messenger.publish = originalMessengerPublish;
+    });
   });
 
   describe('unpublish', () => {
@@ -365,12 +456,12 @@ describe('Topic', () => {
         params: {
           name: 'test',
           id: 1,
-          pubuid: 3000,
+          pubuid: 5000,
           type: 'string',
           properties: {},
         },
       };
-      const publishPromise = topic.publish({}, 3000);
+      const publishPromise = topic.publish({}, 5000);
       server.send(JSON.stringify([announceMessage]));
       await publishPromise;
 
