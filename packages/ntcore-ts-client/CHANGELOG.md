@@ -2,6 +2,59 @@
 
 Note: there may be breaking changes between each beta version, but if a breaking change is introduced out of beta, it will be a major version change
 
+## 3.2.0
+
+### Breaking Changes
+
+- **BREAKING CHANGE: Removed `client` getter from `NetworkTables` class**
+  - The `client` property is now private and no longer accessible
+  - If you need access to the underlying PubSubClient, you'll need to refactor your code
+
+### New Features
+
+- Added comprehensive logging system with tslog integration
+  - Configurable log levels per module (socket, messenger, pubsub, default)
+  - New static methods: `NetworkTables.setLogLevel()`, `NetworkTables.setModuleLogLevel()`, `NetworkTables.getModuleLogLevel()`
+  - Exported `LogLevel` enum and `LoggerModule` type for programmatic control
+- Added optimistic resolution of publishers
+  - Workaround for WPILib server bug (wpilibsuite/allwpilib#7680) where announcements may not be received in certain scenarios
+  - Publishers now resolve optimistically before server confirmation when the bug scenario is detected, improving performance and reliability
+- Implemented in-flight operation management to prevent race conditions
+  - Prevents duplicate schema registrations and topic publishes
+  - Ensures operations complete in the correct order
+- Added support for protobufs and structs
+- Added type numbers for `float`, `json`, `rpc`, `msgpack`, `protobuf`, and `float[]`
+
+### Bug Fixes
+
+- Fixed type number for `raw` type (now correctly `5` instead of `3`)
+- Fixed properties message parsing to correctly handle spec-based message format
+- Enhanced reconnect behavior and error handling in PubSubClient and Socket
+- Fixed critical bug in `setProperties` where it filtered for 'announce' messages but checked for 'ack' field
+  - `setProperties` now correctly resolves and no longer times out unnecessarily
+- Fixed race condition in `publish` and `setProperties` where timeouts weren't cleared on success
+- Enhanced PubSubClient and NetworkTablesTypeInfos validation
+  - Added data type validation during topic updates
+  - Improved type handling for float and JSON types
+- Fixed publisher updates to be queued until topic announcement
+- Fixed issue where updates weren't sent to `pubuid` correctly
+- Improved cleanup and error handling across PubSubClient, Messenger, and Socket
+
+### Improvements
+
+- Improved type checking and data validation
+- Enhanced TypeScript types in PubSubClient and NetworkTablesTopic
+- Better test coverage with enhanced unit tests for logger utilities, socket, and messenger functionality
+
+### Non-library changes
+
+- Removed docs directory from repository
+- Improved example client code with enhanced logging and type safety
+- Added example robot code for WPILib 2026
+- Added renovate.json for automated dependency updates
+- Migrated from jest to vitest for testing
+- Migrated to new eslint.config.mjs format and rollup for bundling
+
 ## 3.1.3
 
 - Hotfix: Fix `raw` type number to be `5` instead of `3`
