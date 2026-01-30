@@ -113,6 +113,32 @@ describe('PubSubClient', () => {
     expect(topic.updateValue).toHaveBeenCalledWith(params, 'test value', expect.any(Number));
   });
 
+  it('delivers buffered value update to prefix topic when announcement arrives after value', () => {
+    const prefixTopic = {
+      name: '/testprefix/',
+      announce: vi.fn(),
+      updateValue: vi.fn(),
+      isRegular: () => false,
+      isPrefix: () => true,
+    };
+    client.registerTopic(prefixTopic as never);
+    // Value update arrives before announcement (unknown topic id)
+    client['onTopicUpdate']({
+      topicId: 1234,
+      value: 'early value',
+      typeNum: NetworkTablesTypeInfos.kString[0],
+      serverTime: 1000,
+    } as never);
+    expect(prefixTopic.updateValue).not.toHaveBeenCalled();
+    // Announcement arrives; should flush buffered value to prefix topic
+    client['onTopicAnnounce']({ id: 1234, name: '/testprefix/test', type: 'string', properties: {} } as never);
+    expect(prefixTopic.updateValue).toHaveBeenCalledWith(
+      { id: 1234, name: '/testprefix/test', type: 'string', properties: {} },
+      'early value',
+      1000
+    );
+  });
+
   it('handles announcements for a topic', () => {
     const topic = { name: 'test', announce: vi.fn(), isRegular: () => true, isPrefix: () => false };
     client.registerTopic(topic as never);
@@ -122,7 +148,13 @@ describe('PubSubClient', () => {
   });
 
   it('handles announcements for a prefix topic', () => {
-    const topic = { name: '/testprefix/', announce: vi.fn(), isRegular: () => false, isPrefix: () => true };
+    const topic = {
+      name: '/testprefix/',
+      announce: vi.fn(),
+      updateValue: vi.fn(),
+      isRegular: () => false,
+      isPrefix: () => true,
+    };
     client.registerTopic(topic as never);
     client['onTopicAnnounce']({ id: 1234, name: '/testprefix/test' } as never);
     expect(client.getKnownTopicParams(1234)).toEqual({ id: 1234, name: '/testprefix/test' });
