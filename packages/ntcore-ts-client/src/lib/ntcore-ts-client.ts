@@ -192,8 +192,8 @@ export class NetworkTables {
    * @returns The topic.
    * @remarks
    * If a topic with the same name already exists (from a previous call to `createProtobufTopic`),
-   * the existing topic instance is returned and the options from this call are ignored. Only the
-   * options from the first call to `createProtobufTopic` for a given topic name will be used.
+   * the existing topic instance is returned and the options from this call are applied to it,
+   * so the returned instance is always consistently initialized with the requested options.
    */
   createProtobufTopic<T extends object>(
     name: string,
@@ -203,6 +203,11 @@ export class NetworkTables {
       protoFilePath?: string;
     }
   ) {
+    const existingTopic = this._client.getTopicFromName(name);
+    if (existingTopic instanceof NetworkTablesProtobufTopic) {
+      (existingTopic as NetworkTablesProtobufTopic<T>).applyOptions(options);
+      return existingTopic as NetworkTablesProtobufTopic<T>;
+    }
     return new NetworkTablesProtobufTopic<T>(this._client, name, options);
   }
 

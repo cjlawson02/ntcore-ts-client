@@ -87,6 +87,18 @@ describe('NetworkTables', () => {
     expect(topic.getValue()).toEqual({ value: 42 });
   });
 
+  it('returns existing protobuf topic with options applied on subsequent createProtobufTopic calls', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic1 = networkTables.createProtobufTopic<{ value: number }>('/proto/reuse');
+    expect(topic1.getValue()).toBeNull();
+
+    const topic2 = networkTables.createProtobufTopic<{ value: number }>('/proto/reuse', {
+      defaultValue: { value: 99 },
+    });
+    expect(topic2).toBe(topic1);
+    expect(topic2.getValue()).toEqual({ value: 99 });
+  });
+
   it('throws when createTopic is called with kProtobuf type', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
     expect(() => networkTables.createTopic('/proto/bad', NetworkTablesTypeInfos.kProtobuf)).toThrow(

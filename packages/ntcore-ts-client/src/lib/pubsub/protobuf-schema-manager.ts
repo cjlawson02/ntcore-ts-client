@@ -243,7 +243,8 @@ export class ProtobufSchemaManager {
       // Publish the schema topic with type "proto:FileDescriptorProto" and retained property
       // We need to use the messenger directly to publish with a custom type string
       const pubuid = this.client.messenger.getNextPubUID();
-      // Set pubuid optimistically - the announcement will match it and set _publisher automatically
+      // Set pubuid so topic.announce() can match when messenger invokes _onAnnounce before resolving.
+      // Messenger guarantees publish() resolves only after _onAnnounce, so _publisher is set by then.
       schemaTopic['_pubuid'] = pubuid;
       await this.client.messenger.publish({
         name: schemaTopicName,

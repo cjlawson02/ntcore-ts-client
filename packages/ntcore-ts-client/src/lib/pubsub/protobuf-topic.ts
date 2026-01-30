@@ -25,6 +25,8 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
   private _protoFilePath?: string;
   private _messageTypeString?: string;
   private _schemaRegistered = false;
+  /** Stored error when constructor's fire-and-forget loadProtoSchema fails; re-thrown by ensureMessageType. */
+  private _schemaLoadError: Error | null = null;
 
   /**
    * Creates a new topic. This should only be done after the
@@ -58,8 +60,34 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
     // If proto file path is provided, load the schema asynchronously to enable encoding
     if (options?.protoFilePath) {
       this.loadProtoSchema(options.protoFilePath).catch((error) => {
+        this._schemaLoadError =
+          error instanceof Error ? error : new Error(`Failed to load proto schema: ${String(error)}`);
         console.error(`Failed to load proto schema from ${options.protoFilePath}:`, error);
       });
+    }
+  }
+
+  /**
+   * Applies options to an existing protobuf topic.
+   * Used when returning a cached topic from createProtobufTopic so the returned
+   * instance has the requested validator, protoFilePath, and defaultValue.
+   * @param options - The options to apply.
+   */
+  applyOptions(options?: { defaultValue?: T; validator?: z.ZodSchema<T>; protoFilePath?: string }): void {
+    if (options?.validator !== undefined) {
+      this._validator = options.validator;
+    }
+    if (options?.protoFilePath !== undefined) {
+      this._protoFilePath = options.protoFilePath;
+      this._schemaLoadError = null;
+      this.loadProtoSchema(options.protoFilePath).catch((error) => {
+        this._schemaLoadError =
+          error instanceof Error ? error : new Error(`Failed to load proto schema: ${String(error)}`);
+        console.error(`Failed to load proto schema from ${options.protoFilePath}:`, error);
+      });
+    }
+    if (options?.defaultValue !== undefined) {
+      this.decodedValue = options.defaultValue;
     }
   }
 
@@ -88,9 +116,13 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
   /**
    * Ensures the protobuf message type is available, fetching it if necessary.
    * @returns The protobuf message type.
+   * @throws {Error} If schema loading failed in the constructor (protoFilePath), re-throws that error.
    * @throws {Error} If the protobuf message type cannot be found in the schema cache.
    */
   private ensureMessageType(): Type {
+    if (this._schemaLoadError) {
+      throw this._schemaLoadError;
+    }
     if (!this._protobufMessageType) {
       // Try to fetch schema if not already fetched
       if (this._protobufMessageName) {

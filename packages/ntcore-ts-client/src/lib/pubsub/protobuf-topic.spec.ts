@@ -87,6 +87,21 @@ describe('NetworkTablesProtobufTopic', () => {
     });
   });
 
+  describe('applyOptions', () => {
+    it('applies defaultValue, validator, and protoFilePath to an existing topic', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/apply');
+      expect(topic.getValue()).toBeNull();
+
+      const schema = z.object({ value: z.number() });
+      topic.applyOptions({
+        defaultValue: { value: 7 },
+        validator: schema,
+        protoFilePath: SIMPLE_PROTO_PATH,
+      });
+      expect(topic.getValue()).toEqual({ value: 7 });
+    });
+  });
+
   describe('getValue', () => {
     it('returns decoded value after announce and updateValue', () => {
       const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/get');
@@ -197,6 +212,39 @@ describe('NetworkTablesProtobufTopic', () => {
         expect.objectContaining({ name: '/proto/sub', id: 1, type: 'proto:test.Simple' })
       );
     });
+
+    it('invokes callback with decoded value when updateValue is called (override is used)', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/update-flow');
+      topic.announce({ id: 1, name: '/proto/update-flow', type: 'proto:test.Simple', properties: {} });
+      const callback = vi.fn();
+      topic.subscribe(callback);
+
+      const encoded = messageType.encode({ value: 99 }).finish();
+      topic.updateValue(encoded, Date.now());
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(
+        { value: 99 },
+        expect.objectContaining({ name: '/proto/update-flow', id: 1, type: 'proto:test.Simple' })
+      );
+    });
+
+    it('invokes callback with decoded value when setValue is called (override is used)', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/set-flow');
+      topic.announce({ id: 1, name: '/proto/set-flow', type: 'proto:test.Simple', properties: {} });
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 1;
+      const callback = vi.fn();
+      topic.subscribe(callback);
+
+      topic.setValue({ value: 42 });
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(
+        { value: 42 },
+        expect.objectContaining({ name: '/proto/set-flow', id: 1, type: 'proto:test.Simple' })
+      );
+    });
   });
 
   describe('publish', () => {
@@ -273,6 +321,17 @@ describe('NetworkTablesProtobufTopic', () => {
         );
       });
       consoleSpy.mockRestore();
+    });
+
+    it('setValue throws stored schema load error when protoFilePath failed to load', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/from-file', {
+        protoFilePath: '/nonexistent/file.proto',
+      });
+      await vi.waitFor(() => {
+        expect(topic['_schemaLoadError']).not.toBeNull();
+      });
+      expect(() => topic.setValue({ value: 1 })).toThrow(/Failed to load proto schema/);
     });
   });
 
