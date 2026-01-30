@@ -18,12 +18,17 @@ export default defineConfig(() => ({
     globals: true,
     environment: 'jsdom',
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    exclude: ['**/*.{bench,benchmark}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     reporters: ['default'],
     coverage: {
       reportsDirectory: '../../coverage/packages/ntcore-ts-client',
       provider: 'v8' as const,
       include: ['src/**/*.{ts,tsx}'],
     },
+  },
+  benchmark: {
+    include: ['src/**/*.{bench,benchmark}.{ts,mts,cts}'],
+    exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
   },
   resolve: {
     alias: {
