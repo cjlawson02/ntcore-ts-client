@@ -173,11 +173,10 @@ export class NetworkTables {
    * If a topic with the same name but different type exists, an error is thrown.
    */
   createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
-    if (typeInfo == NetworkTablesTypeInfos.kProtobuf) {
-      defaultLogger.error(`Please use createProtobufTopic instead of createTopic for protobuf topics.`, {
-        topicName: name,
-        type: typeInfo[1],
-      });
+    if (typeInfo === NetworkTablesTypeInfos.kProtobuf) {
+      throw new Error(
+        `Protobuf types are not allowed in createTopic. Use createProtobufTopic('${name}', options) instead for proper encoding/decoding support.`
+      );
     }
     defaultLogger.debug('Topic created', { topicName: name, type: typeInfo[1] });
     return new NetworkTablesTopic<T>(this._client, name, typeInfo, defaultValue);

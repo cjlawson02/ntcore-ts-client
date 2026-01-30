@@ -70,4 +70,27 @@ describe('NetworkTables', () => {
     const topic = networkTables.createPrefixTopic('/');
     expect(topic).toBeDefined();
   });
+
+  it('creates a protobuf topic', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.createProtobufTopic<{ value: number }>('/proto/test');
+    expect(topic).toBeDefined();
+    expect(topic.getValue()).toBeNull();
+  });
+
+  it('creates a protobuf topic with options', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.createProtobufTopic<{ value: number }>('/proto/opts', {
+      defaultValue: { value: 42 },
+    });
+    expect(topic).toBeDefined();
+    expect(topic.getValue()).toEqual({ value: 42 });
+  });
+
+  it('throws when createTopic is called with kProtobuf type', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    expect(() => networkTables.createTopic('/proto/bad', NetworkTablesTypeInfos.kProtobuf)).toThrow(
+      "Protobuf types are not allowed in createTopic. Use createProtobufTopic('/proto/bad', options) instead for proper encoding/decoding support."
+    );
+  });
 });

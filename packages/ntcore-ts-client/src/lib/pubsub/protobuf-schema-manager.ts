@@ -46,7 +46,7 @@ export class ProtobufSchemaManager {
     // Subscribe to all schema topics and automatically decode and cache them
     this.schemaPrefixTopic.subscribe(
       (value, params) => {
-        this.handleSchemaUpdate(value as Uint8Array, params);
+        this.handleSchemaUpdate(value as Uint8Array | null, params);
       },
       {},
       undefined,
@@ -57,10 +57,13 @@ export class ProtobufSchemaManager {
   /**
    * Handles schema updates from the prefix topic subscription.
    * Automatically decodes and caches all schema files that arrive.
-   * @param value - The value of the schema update.
+   * @param value - The value of the schema update (null when a topic is unannounced).
    * @param params - The parameters of the announce message.
    */
-  private handleSchemaUpdate(value: Uint8Array, params: AnnounceMessageParams): void {
+  private handleSchemaUpdate(value: Uint8Array | null, params: AnnounceMessageParams): void {
+    if (value == null) return;
+    if (!ArrayBuffer.isView(value)) return;
+
     const protoFileName = params.name.substring('/.schema/proto:'.length);
     if (!protoFileName) return;
 
@@ -88,13 +91,13 @@ export class ProtobufSchemaManager {
   }
 
   /**
-   * Fetches a protobuf schema from NetworkTables.
+   * Fetches a protobuf message type from the cache.
    * Searches all loaded schemas in the cache to find one containing the requested message type.
+   * Returns null if the schema is not yet in cache (e.g. topic announced before schema topic arrived).
    * @param messageName - The name of the protobuf message type (e.g., "frc.Pose2d").
-   * @returns The protobufjs Root containing the schema.
-   * @throws {Error} If the schema is not found in the cache.
+   * @returns The protobufjs Type, or null if not found in cache.
    */
-  fetchMessageType(messageName: string): protobuf.Type {
+  fetchMessageType(messageName: string): protobuf.Type | null {
     // Search all cached schemas for the requested message type
     for (const schema of this.schemaCache.values()) {
       try {
@@ -105,7 +108,7 @@ export class ProtobufSchemaManager {
       }
     }
 
-    throw new Error(`Schema containing message type "${messageName}" not found in cache`);
+    return null;
   }
 
   /**
@@ -119,7 +122,7 @@ export class ProtobufSchemaManager {
    * Gets the message name from a protobuf root.
    * Auto-detects the first message type in the proto file.
    * @param root - The protobuf root containing the schema.
-   * @returns The message name in format "package.MessageName" or "MessageName" if no package.
+   * @returns The message name in format "package.MessageName" or "MessageName" if no package (no leading dot).
    */
   getMessageNameFromProto(root: protobuf.Namespace): string {
     // Get all nested types (messages) from the root
@@ -128,18 +131,20 @@ export class ProtobufSchemaManager {
       throw new Error('Proto file has no messages');
     }
 
+    // protobufjs fullName includes a leading dot (e.g. ".networktables.TestData");
+    // NetworkTables type strings must be "proto:package.MessageName" with no leading dot.
+    const normalize = (name: string) => (name.startsWith('.') ? name.slice(1) : name);
+
     // Find the first message type
     for (const nestedObj of Object.values(nested)) {
       if (nestedObj instanceof protobuf.Type) {
-        // Get the full name which includes package
-        const fullName = nestedObj.fullName;
-        return fullName;
+        return normalize(nestedObj.fullName);
       }
       // If it's a namespace (package), recurse into it
       if (nestedObj instanceof protobuf.Namespace) {
         const message = this.findFirstMessage(nestedObj);
         if (message) {
-          return message.fullName;
+          return normalize(message.fullName);
         }
       }
     }

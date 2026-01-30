@@ -1,0 +1,236 @@
+import * as protobuf from 'protobufjs';
+import WSMock from 'vitest-websocket-mock';
+import { z } from 'zod';
+
+import { PubSubClient } from './pubsub';
+import { NetworkTablesProtobufTopic } from './protobuf-topic';
+
+/** Minimal proto message for tests: message test.Simple { int32 value = 1; } */
+function createTestMessageType(): protobuf.Type {
+  const root = protobuf.Root.fromJSON({
+    nested: {
+      test: {
+        nested: {
+          Simple: {
+            fields: {
+              value: { type: 'int32', id: 1 },
+            },
+          },
+        },
+      },
+    },
+  });
+  return root.lookupType('test.Simple');
+}
+
+interface SimpleMessage {
+  value?: number;
+}
+
+describe('NetworkTablesProtobufTopic', () => {
+  let client: PubSubClient;
+  let server: WSMock;
+  const serverUrl = 'ws://localhost:5811/nt/1234';
+  const messageType = createTestMessageType();
+
+  beforeAll(async () => {
+    server = new WSMock(serverUrl);
+    client = PubSubClient.getInstance(serverUrl);
+    await server.connected;
+  });
+
+  beforeEach(() => {
+    client['topics'].clear();
+    client['prefixTopics'].clear();
+    client['knownTopicParams'].clear();
+    client['inFlightOperations'].clear();
+    // Seed schema cache so fetchMessageType('test.Simple') returns the type
+    const root = messageType.root;
+    if (root) {
+      client.protobufSchemaManager['schemaCache'].set('test.Simple', root);
+      client.protobufSchemaManager['schemaCache'].set('/.schema/proto:test.Simple', root);
+    }
+  });
+
+  afterEach(() => {
+    client.protobufSchemaManager.clearCache();
+  });
+
+  describe('constructor', () => {
+    it('creates a topic with no options', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/test');
+      expect(topic).toBeDefined();
+      expect(topic.getValue()).toBeNull();
+    });
+
+    it('creates a topic with defaultValue', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/test', {
+        defaultValue: { value: 42 },
+      });
+      expect(topic.getValue()).toEqual({ value: 42 });
+    });
+
+    it('creates a topic with validator', () => {
+      const schema = z.object({ value: z.number() });
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/validated', {
+        validator: schema,
+        defaultValue: { value: 1 },
+      });
+      expect(topic.getValue()).toEqual({ value: 1 });
+    });
+  });
+
+  describe('getValue', () => {
+    it('returns decoded value after announce and updateValue', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/get');
+      topic.announce({ id: 1, name: '/proto/get', type: 'proto:test.Simple', properties: {} });
+      const encoded = messageType.encode({ value: 99 }).finish();
+      topic.updateValue(encoded, Date.now());
+      expect(topic.getValue()).toEqual({ value: 99 });
+    });
+  });
+
+  describe('setValue', () => {
+    it('encodes and sets value when schema is available', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/set');
+      topic.announce({ id: 1, name: '/proto/set', type: 'proto:test.Simple', properties: {} });
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 1;
+      const updateSpy = vi.spyOn(topic, 'updateValue').mockImplementation(() => {});
+      topic.setValue({ value: 10 });
+      expect(topic.getValue()).toEqual({ value: 10 });
+      updateSpy.mockRestore();
+    });
+
+    it('validates with zod when validator is provided', () => {
+      const schema = z.object({ value: z.number().min(0) });
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/validated', {
+        validator: schema,
+      });
+      topic.announce({ id: 1, name: '/proto/validated', type: 'proto:test.Simple', properties: {} });
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 1;
+      topic.setValue({ value: 5 });
+      expect(topic.getValue()).toEqual({ value: 5 });
+    });
+  });
+
+  describe('updateValue', () => {
+    it('decodes protobuf bytes and stores decoded value', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/update');
+      topic.announce({ id: 1, name: '/proto/update', type: 'proto:test.Simple', properties: {} });
+      const encoded = messageType.encode({ value: 123 }).finish();
+      topic.updateValue(encoded, 1000);
+      expect(topic.getValue()).toEqual({ value: 123 });
+    });
+  });
+
+  describe('announce', () => {
+    it('extracts message name from type "proto:MessageName"', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/announce');
+      topic.announce({ id: 1, name: '/proto/announce', type: 'proto:test.Simple', properties: {} });
+      const encoded = messageType.encode({ value: 1 }).finish();
+      topic.updateValue(encoded, Date.now());
+      expect(topic.getValue()).toEqual({ value: 1 });
+    });
+
+    it('skips schema topics (/.schema/)', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/.schema/proto:foo');
+      topic.announce({ id: 1, name: '/.schema/proto:foo', type: 'proto:FileDescriptorProto', properties: {} });
+      // Should not throw; schema topics are not decoded
+      expect(topic.getValue()).toBeNull();
+    });
+
+    it('uses topic name segment when type is just "protobuf"', () => {
+      const segmentRoot = protobuf.Root.fromJSON({
+        nested: {
+          SegmentName: {
+            fields: { value: { type: 'int32', id: 1 } },
+          },
+        },
+      });
+      client.protobufSchemaManager['schemaCache'].set('SegmentName', segmentRoot);
+      client.protobufSchemaManager['schemaCache'].set('/.schema/proto:SegmentName', segmentRoot);
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/path/SegmentName');
+      topic.announce({ id: 1, name: '/path/SegmentName', type: 'protobuf', properties: {} });
+      const segmentType = segmentRoot.lookupType('SegmentName');
+      const encoded = segmentType.encode({ value: 7 }).finish();
+      topic.updateValue(encoded, Date.now());
+      expect(topic.getValue()).toEqual({ value: 7 });
+    });
+
+    it('does not throw when schema is not yet in cache (topic announced before schema topic)', () => {
+      client.protobufSchemaManager.clearCache();
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/late-schema');
+      expect(() =>
+        topic.announce({ id: 1, name: '/proto/late-schema', type: 'proto:test.Simple', properties: {} })
+      ).not.toThrow();
+      expect(topic.announced).toBe(true);
+    });
+  });
+
+  describe('subscribe and notifySubscribers', () => {
+    it('notifies subscribers with decoded value', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/sub');
+      topic.announce({ id: 1, name: '/proto/sub', type: 'proto:test.Simple', properties: {} });
+      const encoded = messageType.encode({ value: 88 }).finish();
+      topic.updateValue(encoded, Date.now());
+
+      const callback = vi.fn();
+      topic.subscribe(callback);
+      topic.notifySubscribers();
+      expect(callback).toHaveBeenCalledWith(
+        { value: 88 },
+        expect.objectContaining({ name: '/proto/sub', id: 1, type: 'proto:test.Simple' })
+      );
+    });
+  });
+
+  describe('publish', () => {
+    it('publishes and resolves when schema is known', async () => {
+      const topicName = '/proto/pub-unique-' + Math.random().toString(36).slice(2);
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, topicName);
+      topic.announce({ id: 1, name: topicName, type: 'proto:test.Simple', properties: {} });
+
+      const publishPromise = topic.publish({}, 5000);
+      server.send(
+        JSON.stringify([
+          {
+            method: 'announce',
+            params: { name: topicName, id: 1, pubuid: 5000, type: 'proto:test.Simple', properties: {} },
+          },
+        ])
+      );
+      await publishPromise;
+
+      expect(topic.publisher).toBe(true);
+    });
+
+    it('skips publish when already publisher', async () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/skip');
+      topic.announce({ id: 1, name: '/proto/skip', type: 'proto:test.Simple', properties: {} });
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 999;
+
+      const publishSpy = vi.spyOn(client.messenger, 'publish').mockResolvedValue(undefined);
+
+      await topic.publish({}, 999);
+      expect(publishSpy).not.toHaveBeenCalled();
+      publishSpy.mockRestore();
+    });
+  });
+
+  describe('ensureMessageType / encode error', () => {
+    it('setValue throws when message type is no longer in cache', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/no-schema');
+      topic.announce({ id: 1, name: '/proto/no-schema', type: 'proto:test.Simple', properties: {} });
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 1;
+      client.protobufSchemaManager.clearCache();
+      topic['_protobufMessageType'] = null;
+      expect(() => topic.setValue({ value: 1 })).toThrow(
+        /Protobuf message type not found|Schema containing message type/
+      );
+    });
+  });
+});
