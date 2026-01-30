@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package networktables;
+
+// This message represents an example sensor or application data that you might need to share.
+message TestData {
+  uint64 timestamp = 1; // A timestamp for data synchronization
+  double value = 2;     // The main sensor reading
+  string info = 3;      // Optional textual metadata or description
+}
+
+// This message represents a collection or array of sensor readings.
+message TestDataArray {
+  repeated TestData data = 1; // A list of sensor data readings
+}
