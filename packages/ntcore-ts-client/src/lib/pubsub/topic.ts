@@ -220,8 +220,10 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
 
   /**
    * Notifies all subscribers of the current value.
+   * Protected so derived classes (e.g. NetworkTablesProtobufTopic) can override
+   * and pass decoded/transformed values to callbacks.
    */
-  private notifySubscribers() {
+  protected notifySubscribers() {
     const subscriberCount = this.subscribers.size;
     pubsubLogger.debug('Subscribers notified', { topicName: this.name, count: subscriberCount });
     // If the topic has not been announced yet, synthesize params so callbacks always

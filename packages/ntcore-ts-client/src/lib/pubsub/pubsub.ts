@@ -9,6 +9,8 @@ import {
 } from '../types/types';
 import { pubsubLogger } from '../util/logger';
 
+import { ProtobufSchemaManager } from './protobuf-schema-manager';
+
 import type { NetworkTablesBaseTopic } from './base-topic';
 import type { NetworkTablesPrefixTopic } from './prefix-topic';
 import type { NetworkTablesTopic } from './topic';
@@ -20,6 +22,7 @@ export class PubSubClient {
   private readonly prefixTopics: Map<string, NetworkTablesPrefixTopic>;
   // topic id -> topic params
   private readonly knownTopicParams: Map<number, AnnounceMessageParams>;
+  private readonly _protobufSchemaManager: ProtobufSchemaManager;
   private static _instances = new Map<string, PubSubClient>();
   // Unified in-flight operations tracking (schema registrations and topic publishes)
   private readonly inFlightOperations = new Map<string, Promise<unknown>>();
@@ -27,6 +30,10 @@ export class PubSubClient {
 
   get messenger() {
     return this._messenger;
+  }
+
+  get protobufSchemaManager() {
+    return this._protobufSchemaManager;
   }
 
   private constructor(serverUrl: string) {
@@ -40,6 +47,7 @@ export class PubSubClient {
     this.topics = new Map();
     this.prefixTopics = new Map();
     this.knownTopicParams = new Map();
+    this._protobufSchemaManager = new ProtobufSchemaManager(this);
 
     // When the connection drops, local server-side announcement state is no longer reliable.
     // Clear known ids so outgoing updates can be safely queued until re-announced.

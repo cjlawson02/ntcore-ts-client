@@ -29,6 +29,24 @@ describe('PubSubClient', () => {
     expect(client.getTopicFromName('test')).toBe(topic);
   });
 
+  it('returns null from getTopicFromName when topic does not exist', () => {
+    expect(client.getTopicFromName('nonexistent')).toBeNull();
+  });
+
+  it('updateServer sends value to messenger', () => {
+    const topic = {
+      name: 'test',
+      id: 123,
+      typeInfo: NetworkTablesTypeInfos.kString,
+      isRegular: () => true,
+    };
+    client.registerTopic(topic as never);
+    const sendToTopicSpy = vi.spyOn(client.messenger, 'sendToTopic').mockReturnValue(undefined);
+    client.updateServer(topic as never, 'hello');
+    expect(sendToTopicSpy).toHaveBeenCalledWith(topic, 'hello');
+    sendToTopicSpy.mockRestore();
+  });
+
   it('throws an error when trying to register a topic with the same name', () => {
     const topic1 = { name: 'test', isRegular: () => true };
     const topic2 = { name: 'test', isRegular: () => true };

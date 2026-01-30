@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package fixture;
+
+message Simple {
+  int32 value = 1;
+}

@@ -1,6 +1,8 @@
 import { NetworkTablesPrefixTopic } from './pubsub/prefix-topic';
+import { NetworkTablesProtobufTopic } from './pubsub/protobuf-topic';
 import { PubSubClient } from './pubsub/pubsub';
 import { NetworkTablesTopic } from './pubsub/topic';
+import { NetworkTablesTypeInfos } from './types/types';
 import {
   defaultLogger,
   setLogLevel,
@@ -12,6 +14,8 @@ import {
 import { Util } from './util/util';
 
 import type { NetworkTablesTypeInfo, NetworkTablesTypes } from './types/types';
+
+import type { z } from 'zod';
 
 /** Properties for creating the NetworkTables class. */
 interface NT_PROPS {
@@ -159,7 +163,7 @@ export class NetworkTables {
   /**
    * Creates a new topic.
    * @param name - The name of the topic.
-   * @param typeInfo - The type information of the topic.
+   * @param typeInfo - The type information of the topic. Protobuf types are not allowed (use createProtobufTopic instead).
    * @param defaultValue - The default value of the topic.
    * @returns The topic.
    * @remarks
@@ -169,8 +173,42 @@ export class NetworkTables {
    * If a topic with the same name but different type exists, an error is thrown.
    */
   createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
+    if (typeInfo === NetworkTablesTypeInfos.kProtobuf) {
+      throw new Error(
+        `Protobuf types are not allowed in createTopic. Use createProtobufTopic('${name}', options) instead for proper encoding/decoding support.`
+      );
+    }
     defaultLogger.debug('Topic created', { topicName: name, type: typeInfo[1] });
     return new NetworkTablesTopic<T>(this._client, name, typeInfo, defaultValue);
+  }
+
+  /**
+   * Creates a new protobuf topic.
+   * @param name - The name of the topic.
+   * @param options - Optional configuration for the protobuf topic.
+   * @param options.defaultValue - The default value of the topic.
+   * @param options.validator - Optional Zod schema to validate decoded protobuf values at runtime.
+   * @param options.protoFilePath - Optional path to the .proto file. If provided, the schema will be registered automatically when publishing.
+   * @returns The topic.
+   * @remarks
+   * If a topic with the same name already exists (from a previous call to `createProtobufTopic`),
+   * the existing topic instance is returned and the options from this call are applied to it,
+   * so the returned instance is always consistently initialized with the requested options.
+   */
+  createProtobufTopic<T extends object>(
+    name: string,
+    options?: {
+      defaultValue?: T;
+      validator?: z.ZodSchema<T>;
+      protoFilePath?: string;
+    }
+  ) {
+    const existingTopic = this._client.getTopicFromName(name);
+    if (existingTopic instanceof NetworkTablesProtobufTopic) {
+      (existingTopic as NetworkTablesProtobufTopic<T>).applyOptions(options);
+      return existingTopic as NetworkTablesProtobufTopic<T>;
+    }
+    return new NetworkTablesProtobufTopic<T>(this._client, name, options);
   }
 
   /**

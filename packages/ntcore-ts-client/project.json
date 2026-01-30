@@ -13,6 +13,7 @@
         "main": "packages/ntcore-ts-client/src/index.ts",
         "tsConfig": "packages/ntcore-ts-client/tsconfig.lib.json",
         "format": ["esm", "cjs"],
+        "rollupConfig": "packages/ntcore-ts-client/rollup.config.mjs",
         "generateExportsField": true,
         "sourceMap": true
       }

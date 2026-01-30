@@ -11,3 +11,6 @@
 # Gradle (example-robot)
 apps/example-robot/build
 apps/example-robot/.gradle
+
+# Generated code (e.g. protoc output)
+**/src/generated
