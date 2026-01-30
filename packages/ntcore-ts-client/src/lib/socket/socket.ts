@@ -344,7 +344,10 @@ export class NetworkTablesSocket {
    * @param event - The message event.
    */
   private onMessage(event: MessageEvent | WS_MessageEvent) {
-    this.connectionListeners.forEach((f) => f(this.isConnected()));
+    if (this.connectionListeners.size > 0) {
+      const connected = this.isConnected();
+      this.connectionListeners.forEach((f) => f(connected));
+    }
 
     if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
       socketLogger.debug('Binary frame received', { size: event.data.byteLength });
@@ -380,15 +383,16 @@ export class NetworkTablesSocket {
 
   /**
    * Handle a binary frame from the websocket.
+   * Uses sync decodeMulti (not async streams): we receive one complete frame per
+   * WebSocket message, so decodeMultiStream would add async overhead without benefit.
    * @param frame - The frame.
    */
   private handleBinaryFrame(frame: ArrayBuffer | Uint8Array) {
-    // TODO: Use streams
-    const messages: BinaryMessageData[] = [];
-    for (const f of decodeMulti(frame)) {
-      const frameData = f as Uint8Array;
-      socketLogger.trace('Parsing message from multi-message frame', { frameSize: frameData.byteLength });
-      const message = msgPackSchema.parse(frameData);
+    let messageCount = 0;
+    let heartbeatCount = 0;
+    let topicUpdateCount = 0;
+    for (const decoded of decodeMulti(frame)) {
+      const message = msgPackSchema.parse(decoded);
       socketLogger.trace('Message schema validated', { topicId: message[0], typeNum: message[2] });
       const messageData: BinaryMessageData = {
         topicId: message[0],
@@ -396,19 +400,19 @@ export class NetworkTablesSocket {
         typeNum: message[2],
         value: message[3],
       };
-      messages.push(messageData);
-
-      // Heartbeat message
+      messageCount++;
       if (messageData.topicId === -1) {
+        heartbeatCount++;
         this.handleRTT(messageData.serverTime);
       } else {
+        topicUpdateCount++;
         this.onTopicUpdate(messageData);
       }
     }
     socketLogger.debug('Binary frame processed', {
-      messageCount: messages.length,
-      heartbeatCount: messages.filter((m) => m.topicId === -1).length,
-      topicUpdateCount: messages.filter((m) => m.topicId !== -1).length,
+      messageCount,
+      heartbeatCount,
+      topicUpdateCount,
     });
   }
 
@@ -417,14 +421,10 @@ export class NetworkTablesSocket {
    * @param frame - The frame.
    */
   private handleTextFrame(frame: string) {
-    // Parse the message from the server
     const messageData = JSON.parse(frame);
     const messages = messageSchema.parse(messageData);
 
-    const methodCounts: Record<string, number> = {};
-    messages.forEach((message) => {
-      methodCounts[message.method] = (methodCounts[message.method] || 0) + 1;
-      // Check the type of the message and handle it accordingly
+    for (const message of messages) {
       switch (message.method) {
         case 'announce':
           this.onAnnounce(message.params);
@@ -438,8 +438,8 @@ export class NetworkTablesSocket {
         default:
           socketLogger.warn('Client does not handle message method', { method: message.method });
       }
-    });
-    socketLogger.debug('Text frame processed', { messageCount: messages.length, methodCounts });
+    }
+    socketLogger.debug('Text frame processed', { messageCount: messages.length });
   }
 
   /**

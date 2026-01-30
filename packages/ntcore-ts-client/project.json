@@ -32,6 +32,13 @@
         "reportsDirectory": "../../coverage/packages/ntcore-ts-client"
       }
     },
+    "bench": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx vitest bench --run",
+        "cwd": "packages/ntcore-ts-client"
+      }
+    },
     "docs": {
       "executor": "nx:run-commands",
       "options": {

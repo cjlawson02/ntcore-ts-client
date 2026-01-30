@@ -4,7 +4,9 @@
   "license": "MIT",
   "scripts": {
     "prepare": "husky",
-    "test": "npx nx run ntcore-ts-client:test"
+    "test": "npx nx run ntcore-ts-client:test",
+    "bench": "nx run ntcore-ts-client:bench",
+    "e2e:local": "nx run example-client:e2e:local"
   },
   "private": true,
   "lint-staged": {
