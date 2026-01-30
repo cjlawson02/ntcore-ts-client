@@ -1,9 +1,16 @@
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
 import * as protobuf from 'protobufjs';
 import WSMock from 'vitest-websocket-mock';
 import { z } from 'zod';
 
+import type { AnnounceMessage } from '../types/types';
 import { PubSubClient } from './pubsub';
 import { NetworkTablesProtobufTopic } from './protobuf-topic';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SIMPLE_PROTO_PATH = path.join(__dirname, '__fixtures__', 'simple.proto');
 
 /** Minimal proto message for tests: message test.Simple { int32 value = 1; } */
 function createTestMessageType(): protobuf.Type {
@@ -167,6 +174,12 @@ describe('NetworkTablesProtobufTopic', () => {
       ).not.toThrow();
       expect(topic.announced).toBe(true);
     });
+
+    it('does not set message name when type is neither proto: nor protobuf', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/some/topic');
+      topic.announce({ id: 1, name: '/some/topic', type: 'string', properties: {} });
+      expect(topic['_protobufMessageName']).toBeUndefined();
+    });
   });
 
   describe('subscribe and notifySubscribers', () => {
@@ -212,7 +225,10 @@ describe('NetworkTablesProtobufTopic', () => {
       topic['_publisher'] = true;
       topic['_pubuid'] = 999;
 
-      const publishSpy = vi.spyOn(client.messenger, 'publish').mockResolvedValue(undefined);
+      const publishSpy = vi.spyOn(client.messenger, 'publish').mockResolvedValue({
+        method: 'announce',
+        params: { name: '/proto/skip', id: 1, type: 'proto:test.Simple', properties: {}, pubuid: 999 },
+      } as AnnounceMessage);
 
       await topic.publish({}, 999);
       expect(publishSpy).not.toHaveBeenCalled();
@@ -231,6 +247,94 @@ describe('NetworkTablesProtobufTopic', () => {
       expect(() => topic.setValue({ value: 1 })).toThrow(
         /Protobuf message type not found|Schema containing message type/
       );
+    });
+
+    it('updateValue throws when message type not in cache (decode path)', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/decode-fail');
+      topic.announce({ id: 1, name: '/proto/decode-fail', type: 'proto:test.Simple', properties: {} });
+      client.protobufSchemaManager.clearCache();
+      topic['_protobufMessageType'] = null;
+      const encoded = messageType.encode({ value: 1 }).finish();
+      expect(() => topic.updateValue(encoded, Date.now())).toThrow(/Protobuf message type not found/);
+    });
+  });
+
+  describe('constructor with protoFilePath', () => {
+    it('catches and logs when loadProtoSchema fails (invalid path)', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/from-file', {
+        protoFilePath: '/nonexistent/file.proto',
+      });
+      expect(topic).toBeDefined();
+      await vi.waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith(
+          'Failed to load proto schema from /nonexistent/file.proto:',
+          expect.any(Error)
+        );
+      });
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('decodeValue with validator', () => {
+    it('validates decoded value in updateValue when validator is provided', () => {
+      const schema = z.object({ value: z.number().int().min(0) });
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/validated-update', {
+        validator: schema,
+      });
+      topic.announce({ id: 1, name: '/proto/validated-update', type: 'proto:test.Simple', properties: {} });
+      const encoded = messageType.encode({ value: 3 }).finish();
+      topic.updateValue(encoded, Date.now());
+      expect(topic.getValue()).toEqual({ value: 3 });
+    });
+  });
+
+  describe('notifySubscribers', () => {
+    it('uses synthesized params when topic is not yet announced', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/unannounced');
+      topic['_pubuid'] = 42;
+      topic['_publishProperties'] = { retained: true };
+      const callback = vi.fn();
+      topic.subscribe(callback);
+      topic.notifySubscribers();
+      expect(callback).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({
+          name: '/proto/unannounced',
+          id: -1,
+          type: 'protobuf',
+          properties: { retained: true },
+          pubuid: 42,
+        })
+      );
+    });
+  });
+
+  describe('publish with protoFilePath', () => {
+    it('registers schema then publishes when protoFilePath is set', async () => {
+      const topicName = '/proto/from-proto-' + Math.random().toString(36).slice(2);
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, topicName, {
+        protoFilePath: SIMPLE_PROTO_PATH,
+      });
+      const publishPromise = topic.publish({}, 6000);
+      server.send(
+        JSON.stringify([
+          {
+            method: 'announce',
+            params: { name: topicName, id: 1, pubuid: 6000, type: 'proto:fixture.Simple', properties: {} },
+          },
+        ])
+      );
+      await publishPromise;
+      expect(topic.publisher).toBe(true);
+      expect(topic['_messageTypeString']).toBe('proto:fixture.Simple');
+    });
+
+    it('throws when loadProtoSchema fails during publish', async () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/bad-publish', {
+        protoFilePath: '/nonexistent/schema.proto',
+      });
+      await expect(topic.publish({})).rejects.toThrow(/Failed to register protobuf schema before publishing/);
     });
   });
 });

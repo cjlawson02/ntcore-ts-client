@@ -85,6 +85,21 @@ describe('ProtobufSchemaManager', () => {
       expect(typeB).toBeDefined();
       expect(typeB?.fullName).toMatch(/\.?b\.B/);
     });
+
+    it('continues to next schema when lookupType throws (message not in first root)', () => {
+      const rootA = protobuf.Root.fromJSON({
+        nested: { a: { nested: { A: { fields: { f: { type: 'int32', id: 1 } } } } } },
+      });
+      const rootB = protobuf.Root.fromJSON({
+        nested: { b: { nested: { B: { fields: { g: { type: 'int32', id: 1 } } } } } },
+      });
+      const manager = new ProtobufSchemaManager(client);
+      manager['schemaCache'].set('onlyA', rootA);
+      manager['schemaCache'].set('onlyB', rootB);
+      const type = manager.fetchMessageType('b.B');
+      expect(type).toBeDefined();
+      expect(type?.fullName).toMatch(/\.?b\.B/);
+    });
   });
 
   describe('clearCache', () => {
@@ -170,6 +185,25 @@ describe('ProtobufSchemaManager', () => {
       const manager = new ProtobufSchemaManager(client);
       expect(() => manager.getMessageNameFromProto(root)).toThrow('No message type found in proto file');
     });
+
+    it('finds first message when first nested is namespace with no message (continues loop)', () => {
+      const root = protobuf.Root.fromJSON({
+        nested: {
+          emptyNs: {
+            nested: {},
+          },
+          pkg: {
+            nested: {
+              FirstMessage: {
+                fields: { value: { type: 'int32', id: 1 } },
+              },
+            },
+          },
+        },
+      });
+      const manager = new ProtobufSchemaManager(client);
+      expect(manager.getMessageNameFromProto(root)).toBe('pkg.FirstMessage');
+    });
   });
 
   describe('registerSchema', () => {
@@ -201,6 +235,16 @@ describe('ProtobufSchemaManager', () => {
       await expect(manager.registerSchema('/nonexistent/path.proto')).rejects.toThrow(
         /Failed to (load proto file|extract\/encode FileDescriptorProto)/
       );
+    });
+
+    it('re-loads when schema was registered but cache was cleared', async () => {
+      const manager = new ProtobufSchemaManager(client);
+      const first = await manager.registerSchema(SIMPLE_PROTO_PATH);
+      manager['schemaCache'].delete('/.schema/proto:simple.proto');
+      const second = await manager.registerSchema(SIMPLE_PROTO_PATH);
+      expect(second.messageName).toBe(first.messageName);
+      expect(second.root).toBeDefined();
+      expect(manager['schemaCache'].has('/.schema/proto:simple.proto')).toBe(true);
     });
   });
 
@@ -258,6 +302,44 @@ describe('ProtobufSchemaManager', () => {
       const type = manager.fetchMessageType('fixture.Simple');
       expect(type).toBeDefined();
       expect(type?.fullName).toMatch(/\.?fixture\.Simple/);
+    });
+
+    it('skips update when value is not ArrayBuffer view', () => {
+      const manager = new ProtobufSchemaManager(client);
+      client['onTopicAnnounce']({
+        id: 102,
+        name: '/.schema/proto:fake.proto',
+        type: 'proto:FileDescriptorProto',
+        properties: {},
+      } as never);
+      expect(() => {
+        client['onTopicUpdate']({
+          topicId: 102,
+          value: [1, 2, 3] as unknown as Uint8Array,
+          typeNum: NetworkTablesTypeInfos.kUint8Array[0],
+          serverTime: Date.now(),
+        } as never);
+      }).not.toThrow();
+      expect(manager.fetchMessageType('any.Message')).toBeNull();
+    });
+
+    it('skips update when topic name has no proto file name after prefix', () => {
+      const manager = new ProtobufSchemaManager(client);
+      client['onTopicAnnounce']({
+        id: 103,
+        name: '/.schema/proto:',
+        type: 'proto:FileDescriptorProto',
+        properties: {},
+      } as never);
+      expect(() => {
+        client['onTopicUpdate']({
+          topicId: 103,
+          value: new Uint8Array(0),
+          typeNum: NetworkTablesTypeInfos.kUint8Array[0],
+          serverTime: Date.now(),
+        } as never);
+      }).not.toThrow();
+      expect(manager.fetchMessageType('any.Message')).toBeNull();
     });
   });
 });
