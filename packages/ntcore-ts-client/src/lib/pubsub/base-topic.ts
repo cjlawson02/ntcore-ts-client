@@ -89,9 +89,9 @@ export abstract class NetworkTablesBaseTopic<T extends NetworkTablesTypes> {
     this._subscribers = new Map();
   }
 
-  /** */
-  /* ANNOUNCEMENTS */
-  /** */
+  // ------------- //
+  // ANNOUNCEMENTS //
+  // ------------- //
 
   /**
    * Marks the topic as announced. This should only be called by the PubSubClient.
@@ -110,9 +110,9 @@ export abstract class NetworkTablesBaseTopic<T extends NetworkTablesTypes> {
     this._id = undefined;
   }
 
-  /** */
-  /* SUBSCRIBING */
-  /** */
+  // ----------- //
+  // SUBSCRIBING //
+  // ----------- //
 
   /**
    * Creates a new subscriber. This should only be called by the PubSubClient.
@@ -155,9 +155,9 @@ export abstract class NetworkTablesBaseTopic<T extends NetworkTablesTypes> {
     this.subscribers.forEach((_, subuid) => this.unsubscribe(subuid));
   }
 
-  /** */
-  /* PUBLISHING */
-  /** */
+  // ---------- //
+  // PUBLISHING //
+  // ---------- //
 
   /**
    * Sets the properties of the topic.

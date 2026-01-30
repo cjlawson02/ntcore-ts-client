@@ -379,6 +379,8 @@ export class Messenger {
               pubuid: message.params.pubuid,
               matched: true,
             });
+            // Notify topic before resolving so callers can assume "publish() resolved" => "topic announced"
+            this._onAnnounce(message.params);
             resolver(message);
             break;
           }

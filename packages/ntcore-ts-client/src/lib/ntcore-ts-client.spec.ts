@@ -70,4 +70,39 @@ describe('NetworkTables', () => {
     const topic = networkTables.createPrefixTopic('/');
     expect(topic).toBeDefined();
   });
+
+  it('creates a protobuf topic', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.createProtobufTopic<{ value: number }>('/proto/test');
+    expect(topic).toBeDefined();
+    expect(topic.getValue()).toBeNull();
+  });
+
+  it('creates a protobuf topic with options', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.createProtobufTopic<{ value: number }>('/proto/opts', {
+      defaultValue: { value: 42 },
+    });
+    expect(topic).toBeDefined();
+    expect(topic.getValue()).toEqual({ value: 42 });
+  });
+
+  it('returns existing protobuf topic with options applied on subsequent createProtobufTopic calls', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic1 = networkTables.createProtobufTopic<{ value: number }>('/proto/reuse');
+    expect(topic1.getValue()).toBeNull();
+
+    const topic2 = networkTables.createProtobufTopic<{ value: number }>('/proto/reuse', {
+      defaultValue: { value: 99 },
+    });
+    expect(topic2).toBe(topic1);
+    expect(topic2.getValue()).toEqual({ value: 99 });
+  });
+
+  it('throws when createTopic is called with kProtobuf type', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    expect(() => networkTables.createTopic('/proto/bad', NetworkTablesTypeInfos.kProtobuf)).toThrow(
+      "Protobuf types are not allowed in createTopic. Use createProtobufTopic('/proto/bad', options) instead for proper encoding/decoding support."
+    );
+  });
 });
