@@ -162,6 +162,11 @@ export class NetworkTables {
    * @param typeInfo - The type information of the topic.
    * @param defaultValue - The default value of the topic.
    * @returns The topic.
+   * @remarks
+   * If a topic with the same name and type already exists (from a previous call to `createTopic`),
+   * the existing topic instance is returned and the `defaultValue` from this call is ignored. Only the
+   * `defaultValue` from the first call to `createTopic` for a given topic name and type will be used.
+   * If a topic with the same name but different type exists, an error is thrown.
    */
   createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
     defaultLogger.debug('Topic created', { topicName: name, type: typeInfo[1] });

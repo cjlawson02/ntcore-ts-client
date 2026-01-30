@@ -7,3 +7,7 @@
 
 /.nx/cache
 /.nx/workspace-data
+
+# Gradle (example-robot)
+apps/example-robot/build
+apps/example-robot/.gradle
