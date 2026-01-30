@@ -22,6 +22,8 @@ export class PubSubClient {
   private readonly prefixTopics: Map<string, NetworkTablesPrefixTopic>;
   // topic id -> topic params
   private readonly knownTopicParams: Map<number, AnnounceMessageParams>;
+  /** Value updates that arrived before the topic announcement (topicId -> latest message). Flushed when announce arrives. */
+  private readonly pendingValueUpdates: Map<number, BinaryMessageData>;
   private readonly _protobufSchemaManager: ProtobufSchemaManager;
   private static _instances = new Map<string, PubSubClient>();
   // Unified in-flight operations tracking (schema registrations and topic publishes)
@@ -47,6 +49,7 @@ export class PubSubClient {
     this.topics = new Map();
     this.prefixTopics = new Map();
     this.knownTopicParams = new Map();
+    this.pendingValueUpdates = new Map();
     this._protobufSchemaManager = new ProtobufSchemaManager(this);
 
     // When the connection drops, local server-side announcement state is no longer reliable.
@@ -77,6 +80,7 @@ export class PubSubClient {
         knownTopicParams: this.knownTopicParams.size,
       });
       this.knownTopicParams.clear();
+      this.pendingValueUpdates.clear();
       // Ensure disconnect cleanup never throws.
       this.topics.forEach((topic) => {
         try {
@@ -135,6 +139,7 @@ export class PubSubClient {
 
     // Clear announcement state so ids are reacquired from the new connection.
     this.knownTopicParams.clear();
+    this.pendingValueUpdates.clear();
     // Ensure reinstantiation cleanup never throws (tests may register lightweight mocks).
     this.topics.forEach((topic) => {
       try {
@@ -253,7 +258,9 @@ export class PubSubClient {
     }
 
     if (!topic && !knownTopic) {
-      pubsubLogger.debug('Received update for unknown topic', { topicId: message.topicId });
+      // Buffer value update until announcement arrives (handles server sending value before announce).
+      this.pendingValueUpdates.set(message.topicId, message);
+      pubsubLogger.debug('Buffered value update for unknown topic', { topicId: message.topicId });
     }
   };
 
@@ -290,7 +297,46 @@ export class PubSubClient {
         matchedCount: matchedPrefixCount,
       });
     }
+
+    // Flush any value update that arrived before this announcement
+    const pendingMessage = this.pendingValueUpdates.get(params.id);
+    if (pendingMessage) {
+      this.pendingValueUpdates.delete(params.id);
+      this._deliverValueUpdate(params, pendingMessage);
+    }
   };
+
+  /**
+   * Delivers a value update to the regular topic (if any) and all matching prefix topics.
+   */
+  private _deliverValueUpdate(knownTopic: AnnounceMessageParams, message: BinaryMessageData): void {
+    const topic = this.topics.get(knownTopic.name);
+    if (topic) {
+      try {
+        const validatedData = NetworkTablesTypeInfos.validateData(topic.typeInfo, message.value);
+        topic.updateValue(validatedData, message.serverTime);
+        pubsubLogger.debug('Buffered value applied to topic', { topicName: knownTopic.name, topicId: message.topicId });
+      } catch (e) {
+        pubsubLogger.trace('Buffered value validation failed for topic', {
+          topicName: knownTopic.name,
+          error: String(e),
+        });
+      }
+    }
+    let matchedPrefixCount = 0;
+    this.prefixTopics.forEach((prefixTopic) => {
+      if (knownTopic.name.startsWith(prefixTopic.name)) {
+        matchedPrefixCount++;
+        prefixTopic.updateValue(knownTopic, message.value, message.serverTime);
+      }
+    });
+    if (matchedPrefixCount > 0) {
+      pubsubLogger.debug('Buffered value applied to prefix topics', {
+        topicName: knownTopic.name,
+        count: matchedPrefixCount,
+      });
+    }
+  }
 
   /**
    * Called by the messenger when a topic is unannounced.
@@ -298,6 +344,7 @@ export class PubSubClient {
    */
   private onTopicUnannounce = (params: UnannounceMessageParams) => {
     const topic = this.topics.get(params.name);
+    this.pendingValueUpdates.delete(params.id);
     if (!topic) {
       pubsubLogger.debug('Topic was unannounced but does not exist', { topicName: params.name });
       // Still clean up knownTopicParams even if topic doesn't exist locally
