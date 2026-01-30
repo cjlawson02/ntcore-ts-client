@@ -1,7 +1,6 @@
 import { z as zod } from 'zod';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
-import { NetworkTables, NetworkTablesTypeInfos } from '../../../packages/ntcore-ts-client/src';
+import { NetworkTables, NetworkTablesTypeInfos } from 'ntcore-ts-client';
 
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByURI('localhost');
@@ -15,12 +14,12 @@ const gyroTopic = ntcore.createTopic<number>('/MyTable/Gyro', NetworkTablesTypeI
 
 // Subscribe and immediately call the callback with the current value
 gyroTopic.subscribe((value) => {
-  console.log(`[Gryo Topic] Got Gyro Value: ${value}`);
+  console.log(`[Gyro Topic] Got Gyro Value: ${value}`);
 });
 
 // Or you can use the topic's announce parameters to get more info, like the topic ID
 gyroTopic.subscribe((value, params) => {
-  console.log(`[Gryo Topic] Got Gyro Value: ${value} at from topic id ${params.id}`);
+  console.log(`[Gyro Topic] Got Gyro Value: ${value} at from topic id ${params.id}`);
 });
 
 // ---------------------------------------------- //
@@ -33,7 +32,9 @@ gyroTopic.subscribe((value, params) => {
 
   // Make us the publisher
   console.log('[Auto Topic] Publishing Auto Mode Topic');
-  await autoModeTopic.publish();
+  await autoModeTopic.publish({
+    retained: true,
+  });
   console.log('[Auto Topic] Published Auto Mode Topic');
 
   // Set a new value, this will error if we aren't the publisher!
@@ -84,7 +85,7 @@ accelerometerTopic.subscribe((value, params) => {
 // Create a prefix for all topics
 const allTopics = ntcore.createPrefixTopic('');
 
-// Sub scribe to all topics
+// Subscribe to all topics
 allTopics.subscribe((value, params) => {
   console.log(`[All Topics] Got Value: ${value} from topic ${params.name}`);
 });

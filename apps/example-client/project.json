@@ -12,7 +12,7 @@
       "options": {
         "platform": "node",
         "outputPath": "dist/apps/example-client",
-        "bundle": false,
+        "bundle": true,
         "main": "apps/example-client/src/main.ts",
         "tsConfig": "apps/example-client/tsconfig.app.json",
         "assets": ["apps/example-client/src/assets"],
