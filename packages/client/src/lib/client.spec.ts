@@ -1,4 +1,4 @@
-import { NetworkTables } from './ntcore-ts-client';
+import { NetworkTables } from './client';
 import { NetworkTablesTypeInfos } from './types/types';
 
 describe('NetworkTables', () => {

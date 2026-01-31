@@ -7,7 +7,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig(() => ({
   root: __dirname,
-  cacheDir: '../../node_modules/.vite/packages/ntcore-ts-client',
+  cacheDir: '../../node_modules/.vite/packages/client',
   plugins: [nxViteTsPaths(), nxCopyAssetsPlugin(['*.md'])],
   // Uncomment this if you are using workers.
   // worker: {
@@ -21,7 +21,7 @@ export default defineConfig(() => ({
     exclude: ['**/*.{bench,benchmark}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     reporters: ['default'],
     coverage: {
-      reportsDirectory: '../../coverage/packages/ntcore-ts-client',
+      reportsDirectory: '../../coverage/packages/client',
       provider: 'v8' as const,
       include: ['src/**/*.{ts,tsx}'],
     },

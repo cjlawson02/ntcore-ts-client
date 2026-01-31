@@ -5,7 +5,7 @@
 /// <reference types="vitest/globals" />
 import { z as zod } from 'zod';
 
-import { NetworkTables, NetworkTablesTypeInfos } from 'ntcore-ts-client';
+import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore/client';
 
 const NT_SERVER_PORT = 5810;
 const CONNECTION_WAIT_MS = 10_000;

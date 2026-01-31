@@ -14,7 +14,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'ntcore-ts-client': path.resolve(__dirname, '../../packages/ntcore-ts-client/src/index.ts'),
+      '@ntcore/client': path.resolve(__dirname, '../../packages/client/src/index.ts'),
     },
   },
 });

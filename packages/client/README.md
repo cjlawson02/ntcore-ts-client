@@ -1,18 +1,18 @@
-# ntcore-ts-client
+# @ntcore/client
 
 A TypeScript library for communication over [WPILib's NetworkTables 4.1 protocol](https://github.com/wpilibsuite/allwpilib/blob/main/ntcore/doc/networktables4.adoc).
 
 ## Usage
 
-For a quick start guide on how to use the library, view this [README](https://github.com/cjlawson02/ntcore-ts-client/blob/main/README.md) and this [documentation website](https://ntcore.chrislawson.dev).
+For a quick start guide on how to use the library, view this [README](https://github.com/cjlawson02/ntcore-ts/blob/main/README.md) and this [documentation website](https://ntcore.chrislawson.dev).
 
 ## Building
 
-Run `nx build ntcore-ts-client` to build the library.
+Run `nx build client` to build the library.
 
 ## Running unit tests
 
-Run `nx run ntcore-ts-client:test` (or `npm test` from the repo root) to execute the unit tests via [Vitest](https://vitest.dev).
+Run `nx run client:test` (or `npm test` from the repo root) to execute the unit tests via [Vitest](https://vitest.dev).
 
 ## Benchmarks
 
@@ -20,8 +20,8 @@ Benchmarks measure how fast the client processes WebSocket messages. They are **
 
 **How to run**
 
-- From the repo root: `npm run bench` or `nx run ntcore-ts-client:bench`
-- From the package: `npx vitest bench --run` (in `packages/ntcore-ts-client`)
+- From the repo root: `npm run bench` or `nx run client:bench`
+- From the package: `npx vitest bench --run` (in `packages/client`)
 
 **What is measured**
 

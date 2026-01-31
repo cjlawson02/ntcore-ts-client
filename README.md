@@ -1,4 +1,4 @@
-# ntcore-ts-client
+# ntcore-ts
 
 A TypeScript library for communication over [WPILib's NetworkTables 4.1 protocol](https://github.com/wpilibsuite/allwpilib/blob/main/ntcore/doc/networktables4.adoc).
 
@@ -27,7 +27,7 @@ This section will help get you started with sending and receiving data over Netw
 
 ### Installation
 
-`npm install --save ntcore-ts-client`
+`npm install --save @ntcore/client`
 
 ### Connecting to the NetworkTables Server
 
@@ -38,7 +38,7 @@ The NetworkTables class is instance-based, but allows for connections to multipl
 Use this at the top of your file:
 
 ```typescript
-import { NetworkTables } from 'ntcore-ts-client';
+import { NetworkTables } from '@ntcore/client';
 ```
 
 ### With Team Number
@@ -109,7 +109,7 @@ await publish(properties: TopicProperties = {}, id?: number)
 For example, here's a subscription for a Gyro:
 
 ```typescript
-import { NetworkTables, NetworkTablesTypeInfos } from 'ntcore-ts-client';
+import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore/client';
 
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -131,7 +131,7 @@ gyroTopic.subscribe((value, params) => {
 Or a publisher for an auto mode:
 
 ```typescript
-import { NetworkTables, NetworkTablesTypeInfos } from 'ntcore-ts-client';
+import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore/client';
 
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -153,7 +153,7 @@ You can also subscribe to multiple topics by using a "wildcard" through creating
 For example, here's a subscription for an Accelerometer with topics `/MyTable/Accelerometer/X`, `/MyTable/Accelerometer/Y`, and `/MyTable/Accelerometer/Z`:
 
 ```typescript
-import { NetworkTables } from 'ntcore-ts-client';
+import { NetworkTables } from '@ntcore/client';
 
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -195,7 +195,7 @@ For custom message types using [Protocol Buffers](https://protobuf.dev/), use `c
 **Subscribing to a protobuf topic** (e.g. a topic announced by the robot with a known shape):
 
 ```typescript
-import { NetworkTables } from 'ntcore-ts-client';
+import { NetworkTables } from '@ntcore/client';
 import { z } from 'zod';
 
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -219,7 +219,7 @@ poseTopic.subscribe((value) => {
 
 ```typescript
 import * as path from 'path';
-import { NetworkTables } from 'ntcore-ts-client';
+import { NetworkTables } from '@ntcore/client';
 
 const ntcore = NetworkTables.getInstanceByURI('localhost');
 
@@ -239,7 +239,7 @@ You can also subscribe to all topics by doing the above, but with a prefix of `/
 For example, here's a subscription for all topics:
 
 ```typescript
-import { NetworkTables } from 'ntcore-ts-client';
+import { NetworkTables } from '@ntcore/client';
 
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -276,7 +276,7 @@ The library uses [tslog](https://github.com/fullstack-build/tslog) for structure
 Set the log level for all modules:
 
 ```typescript
-import { NetworkTables, LogLevel } from 'ntcore-ts-client';
+import { NetworkTables, LogLevel } from '@ntcore/client';
 
 // Set global log level to DEBUG
 NetworkTables.setLogLevel(LogLevel.DEBUG);
@@ -290,7 +290,7 @@ NetworkTables.setLogLevel(LogLevel.SILENT);
 Configure log levels for specific modules to focus debugging on particular areas:
 
 ```typescript
-import { NetworkTables, LogLevel } from 'ntcore-ts-client';
+import { NetworkTables, LogLevel } from '@ntcore/client';
 
 // Enable detailed debugging for socket connections only
 NetworkTables.setModuleLogLevel('socket', LogLevel.DEBUG);
@@ -314,7 +314,7 @@ Available modules:
 Check the current log level for a module:
 
 ```typescript
-import { NetworkTables, LogLevel } from 'ntcore-ts-client';
+import { NetworkTables, LogLevel } from '@ntcore/client';
 
 const currentLevel = NetworkTables.getModuleLogLevel('socket');
 console.log(`Socket log level: ${LogLevel[currentLevel]}`);
@@ -342,7 +342,7 @@ Example output:
 You can also import and use the logger utilities directly:
 
 ```typescript
-import { LogLevel, setLogLevel, setModuleLogLevel, LoggerModule } from 'ntcore-ts-client';
+import { LogLevel, setLogLevel, setModuleLogLevel, LoggerModule } from '@ntcore/client';
 
 // Set log levels programmatically
 setLogLevel(LogLevel.INFO);

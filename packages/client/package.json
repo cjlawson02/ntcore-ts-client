@@ -1,5 +1,5 @@
 {
-  "name": "ntcore-ts-client",
+  "name": "@ntcore/client",
   "version": "4.0.0",
   "license": "MIT",
   "keywords": [

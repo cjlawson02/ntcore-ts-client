@@ -18,7 +18,7 @@
       "executor": "@nx/esbuild:esbuild",
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
-      "dependsOn": ["generate-types", "ntcore-ts-client:build"],
+      "dependsOn": ["generate-types", "client:build"],
       "options": {
         "platform": "node",
         "outputPath": "dist/apps/example-client",

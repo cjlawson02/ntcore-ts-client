@@ -7,26 +7,26 @@ module.exports = {
     [
       '@semantic-release/changelog',
       {
-        changelogFile: 'packages/ntcore-ts-client/CHANGELOG.md',
+        changelogFile: 'packages/client/CHANGELOG.md',
       },
     ],
     [
       '@semantic-release/npm',
       {
-        pkgRoot: 'packages/ntcore-ts-client',
+        pkgRoot: 'packages/client',
         npmPublish: false,
       },
     ],
     [
       '@semantic-release/exec',
       {
-        prepareCmd: 'nx run ntcore-ts-client:build',
+        prepareCmd: 'nx run client:build',
       },
     ],
     [
       '@semantic-release/npm',
       {
-        pkgRoot: 'dist/packages/ntcore-ts-client',
+        pkgRoot: 'dist/packages/client',
         npmPublish: true,
       },
     ],
@@ -34,10 +34,7 @@ module.exports = {
     [
       '@semantic-release/git',
       {
-        assets: [
-          'packages/ntcore-ts-client/package.json',
-          'packages/ntcore-ts-client/CHANGELOG.md',
-        ],
+        assets: ['packages/client/package.json', 'packages/client/CHANGELOG.md'],
         message: 'chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}',
       },
     ],

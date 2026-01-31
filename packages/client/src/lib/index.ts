@@ -1,4 +1,4 @@
 export * from './pubsub';
 export * from './types';
-export * from './ntcore-ts-client';
+export * from './client';
 export { LogLevel, type LoggerModule, setLogLevel, setModuleLogLevel, getModuleLogLevel } from './util/logger';
