@@ -27,13 +27,6 @@
       },
       "dependsOn": ["typecheck"]
     },
-    "publish": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "node tools/scripts/publish.mjs ntcore-ts-client {args.ver} {args.tag}"
-      },
-      "dependsOn": ["build"]
-    },
     "test": {
       "executor": "@nx/vitest:test",
       "outputs": ["{options.reportsDirectory}"],
