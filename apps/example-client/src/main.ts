@@ -118,7 +118,7 @@ accelerometerTopic.subscribe((value, params) => {
 // ---------------------------------------------------------- //
 
 // Create a prefix for all topics
-const allTopics = ntcore.createPrefixTopic('');
+const allTopics = ntcore.createPrefixTopic('/');
 
 // Subscribe to all topics
 allTopics.subscribe((value, params) => {

@@ -9,6 +9,7 @@ A TypeScript library for communication over [WPILib's NetworkTables 4.1 protocol
 - Callbacks for new data on subscriptions
 - Callbacks for connection listeners
 - Wildcard prefix listeners for multiple topics
+- Protobuf support with optional type generation and Zod validation
 - Retrying for messages queued during a connection loss
 - On-the-fly server switching with resubscribing and republishing
 - Generic types for Topics
@@ -68,18 +69,24 @@ To use a Topic, it must be created through the NetworkTables client using the fu
 createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T)
 ```
 
-> The valid `NetworkTablesTypes` are `string | number | boolean | string[] | ArrayBuffer | boolean[] | number[]`
+> The valid `NetworkTablesTypes` are `string | number | boolean | string[] | Uint8Array | boolean[] | number[]` (plus `object` for JSON topics)
 >
 > The valid `NetworkTablesTypeInfo`s are:
 >
 > - `NetworkTablesTypeInfos.kBoolean`
 > - `NetworkTablesTypeInfos.kDouble`
 > - `NetworkTablesTypeInfos.kInteger`
+> - `NetworkTablesTypeInfos.kFloat`
 > - `NetworkTablesTypeInfos.kString`
-> - `NetworkTablesTypeInfos.kArrayBuffer`
+> - `NetworkTablesTypeInfos.kJson`
+> - `NetworkTablesTypeInfos.kUint8Array` (raw binary)
+> - `NetworkTablesTypeInfos.kRPC`
+> - `NetworkTablesTypeInfos.kMsgpack`
+> - `NetworkTablesTypeInfos.kProtobuf` (use `createProtobufTopic` instead of `createTopic`)
 > - `NetworkTablesTypeInfos.kBooleanArray`
 > - `NetworkTablesTypeInfos.kDoubleArray`
 > - `NetworkTablesTypeInfos.kIntegerArray`
+> - `NetworkTablesTypeInfos.kFloatArray`
 > - `NetworkTablesTypeInfos.kStringArray`
 
 Once a topic has been created, it can be used as a subscriber:
@@ -151,7 +158,7 @@ import { NetworkTables } from 'ntcore-ts-client';
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
 
-// Create the accelerator topic
+// Create the accelerometer prefix topic
 const accelerometerTopic = ntcore.createPrefixTopic('/MyTable/Accelerometer/');
 
 let x, y, z;
@@ -179,6 +186,50 @@ accelerometerTopic.subscribe((value, params) => {
 });
 
 // x, y, and z will be updated as new values come in
+```
+
+### Protobuf Topics
+
+For custom message types using [Protocol Buffers](https://protobuf.dev/), use `createProtobufTopic` instead of `createTopic`. The library fetches the schema from NetworkTables and can decode values in subscriber callbacks. For type-safe decoding, pass a [Zod](https://github.com/colinhacks/zod) schema as a runtime validator.
+
+**Subscribing to a protobuf topic** (e.g. a topic announced by the robot with a known shape):
+
+```typescript
+import { NetworkTables } from 'ntcore-ts-client';
+import { z } from 'zod';
+
+const ntcore = NetworkTables.getInstanceByTeam(973);
+
+// Define a validator for the decoded protobuf shape
+const poseSchema = z.object({
+  translation: z.object({ x: z.number(), y: z.number() }),
+  rotation: z.object({ value: z.number() }),
+});
+type Pose = z.infer<typeof poseSchema>;
+
+const poseTopic = ntcore.createProtobufTopic<Pose>('/MyTable/Pose', {
+  validator: poseSchema,
+});
+poseTopic.subscribe((value) => {
+  console.log(`Pose: x=${value?.translation.x}, y=${value?.translation.y}`);
+});
+```
+
+**Publishing to a protobuf topic** (with a local `.proto` file so the client can encode and register the schema):
+
+```typescript
+import * as path from 'path';
+import { NetworkTables } from 'ntcore-ts-client';
+
+const ntcore = NetworkTables.getInstanceByURI('localhost');
+
+// Type can be generated from the .proto file (e.g. with ts-proto)
+const sensorTopic = ntcore.createProtobufTopic<{ timestamp: number; value: number }>('/MyTable/Sensor', {
+  protoFilePath: path.join(__dirname, 'sensor.proto'),
+});
+
+await sensorTopic.publish();
+sensorTopic.setValue({ timestamp: Date.now(), value: 42.5 });
 ```
 
 ### Subscribing to All Topics
@@ -300,7 +351,7 @@ setModuleLogLevel('socket' as LoggerModule, LogLevel.DEBUG);
 
 ## Known Limitations
 
-- "Raw" type only supports ArrayBuffer
+- "Raw" and other binary types (RPC, msgpack, protobuf) use `Uint8Array`; the library does not use `ArrayBuffer` directly for topic values.
 
 ## Contributing
 

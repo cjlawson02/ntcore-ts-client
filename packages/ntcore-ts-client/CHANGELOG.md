@@ -2,16 +2,20 @@
 
 Note: there may be breaking changes between each beta version, but if a breaking change is introduced out of beta, it will be a major version change
 
-## 3.2.0
+## 4.0.0
 
 ### Breaking Changes
 
 - **BREAKING CHANGE: Removed `client` getter from `NetworkTables` class**
   - The `client` property is now private and no longer accessible
   - If you need access to the underlying PubSubClient, you'll need to refactor your code
+- **BREAKING CHANGE: Renamed `NetworkTablesTypeInfos.kArrayBuffer` to `kUint8Array`**
+  - The raw binary type is now named `kUint8Array` to match the actual value type (`Uint8Array`)
+  - Migration: replace `NetworkTablesTypeInfos.kArrayBuffer` with `NetworkTablesTypeInfos.kUint8Array`
 
 ### New Features
 
+- Added protobuf support and type generation for custom messages
 - Added comprehensive logging system with tslog integration
   - Configurable log levels per module (socket, messenger, pubsub, default)
   - New static methods: `NetworkTables.setLogLevel()`, `NetworkTables.setModuleLogLevel()`, `NetworkTables.getModuleLogLevel()`
@@ -22,7 +26,7 @@ Note: there may be breaking changes between each beta version, but if a breaking
 - Implemented in-flight operation management to prevent race conditions
   - Prevents duplicate schema registrations and topic publishes
   - Ensures operations complete in the correct order
-- Added support for protobufs and structs
+- Implemented buffered value updates for prefix topics in PubSubClient
 - Added type numbers for `float`, `json`, `rpc`, `msgpack`, `protobuf`, and `float[]`
 
 ### Bug Fixes
@@ -45,12 +49,14 @@ Note: there may be breaking changes between each beta version, but if a breaking
 - Improved type checking and data validation
 - Enhanced TypeScript types in PubSubClient and NetworkTablesTopic
 - Better test coverage with enhanced unit tests for logger utilities, socket, and messenger functionality
+- Minor improvements of docs and examples
 
 ### Non-library changes
 
+- Added end-to-end testing and benchmarks
+- Added example robot code for WPILib 2026
 - Removed docs directory from repository
 - Improved example client code with enhanced logging and type safety
-- Added example robot code for WPILib 2026
 - Added renovate.json for automated dependency updates
 - Migrated from jest to vitest for testing
 - Migrated to new eslint.config.mjs format and rollup for bundling
