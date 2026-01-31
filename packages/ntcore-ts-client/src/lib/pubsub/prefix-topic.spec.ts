@@ -5,7 +5,6 @@ import { PubSubClient } from './pubsub';
 
 import type { CallbackFn } from './base-topic';
 import type { AnnounceMessageParams, NetworkTablesTypes, SubscribeMessageParams } from '../types/types';
-import type { Mock } from 'vitest';
 
 describe('Prefix Topic', () => {
   let topic: NetworkTablesPrefixTopic;
@@ -65,7 +64,7 @@ describe('Prefix Topic', () => {
   });
 
   describe('subscribe', () => {
-    let callback: Mock;
+    let callback: ReturnType<typeof vi.fn>;
     beforeEach(() => {
       callback = vi.fn();
     });

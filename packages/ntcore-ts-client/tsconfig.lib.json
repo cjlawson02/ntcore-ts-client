@@ -9,6 +9,6 @@
     "declarationMap": true,
     "types": ["node"]
   },
-  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts", "src/**/*.bench.ts", "src/**/*.benchmark.ts"],
   "include": ["src/**/*.ts"]
 }

@@ -377,7 +377,7 @@ describe('NetworkTablesSocket', () => {
       });
 
       expect(setTimeoutSpy).toHaveBeenCalled();
-      const reconnectCall = setTimeoutSpy.mock.calls.find((c) => c[1] === 1000);
+      const reconnectCall = setTimeoutSpy.mock.calls.find((c: [unknown, number?, ...unknown[]]) => c[1] === 1000);
       expect(reconnectCall).toBeDefined();
     });
 
@@ -396,7 +396,7 @@ describe('NetworkTablesSocket', () => {
         type: 'close',
       });
 
-      const reconnectCall = setTimeoutSpy.mock.calls.find((c) => c[1] === 1000);
+      const reconnectCall = setTimeoutSpy.mock.calls.find((c: [unknown, number?, ...unknown[]]) => c[1] === 1000);
       expect(reconnectCall).toBeUndefined();
     });
   });

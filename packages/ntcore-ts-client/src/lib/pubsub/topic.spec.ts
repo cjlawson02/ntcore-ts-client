@@ -5,8 +5,7 @@ import { NetworkTablesTypeInfos } from '../types/types';
 import { PubSubClient } from './pubsub';
 import { NetworkTablesTopic } from './topic';
 
-import type { AnnounceMessage, PropertiesMessage, SubscribeMessageParams } from '../types/types';
-import type { Mock } from 'vitest';
+import type { AnnounceMessage, PublishMessageParams, PropertiesMessage, SubscribeMessageParams } from '../types/types';
 
 describe('Topic', () => {
   let topic: NetworkTablesTopic<string>;
@@ -140,7 +139,7 @@ describe('Topic', () => {
   });
 
   describe('subscribe', () => {
-    let callback: Mock;
+    let callback: ReturnType<typeof vi.fn>;
     beforeEach(() => {
       callback = vi.fn();
     });
@@ -321,7 +320,7 @@ describe('Topic', () => {
       const originalMessengerPublish = client.messenger.publish.bind(client.messenger);
 
       // Track how many times messenger.publish is called
-      client.messenger.publish = vi.fn().mockImplementation(async (params) => {
+      client.messenger.publish = vi.fn().mockImplementation(async (params: PublishMessageParams) => {
         publishCallCount++;
         return originalMessengerPublish(params);
       });
@@ -362,7 +361,7 @@ describe('Topic', () => {
       let publishCallCount = 0;
       const originalMessengerPublish = client.messenger.publish.bind(client.messenger);
 
-      client.messenger.publish = vi.fn().mockImplementation(async (params) => {
+      client.messenger.publish = vi.fn().mockImplementation(async (params: PublishMessageParams) => {
         publishCallCount++;
         return originalMessengerPublish(params);
       });

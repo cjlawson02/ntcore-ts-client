@@ -173,7 +173,7 @@ describe('Messenger', () => {
 
       // Should have sent publish message
       expect(sendTextFrameSpy).toHaveBeenCalled();
-      const callArgs = sendTextFrameSpy.mock.calls.find((call) => call[0].method === 'publish');
+      const callArgs = sendTextFrameSpy.mock.calls.find((call: [{ method: string }]) => call[0].method === 'publish');
       expect(callArgs).toBeDefined();
       expect(callArgs?.[0].params).toEqual(params);
     });
@@ -384,7 +384,9 @@ describe('Messenger', () => {
       const publishPromise = messenger.publish(params);
 
       // Check that subscribe was called
-      const subscribeCalls = sendTextFrameSpy.mock.calls.filter((call) => call[0].method === 'subscribe');
+      const subscribeCalls = sendTextFrameSpy.mock.calls.filter(
+        (call: [{ method: string }]) => call[0].method === 'subscribe'
+      );
       expect(subscribeCalls.length).toBeGreaterThan(0);
 
       const announceMessage: AnnounceMessage = {

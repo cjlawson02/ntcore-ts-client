@@ -5,6 +5,14 @@
   "projectType": "library",
   "tags": [],
   "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "outputs": [],
+      "options": {
+        "command": "tsc -p tsconfig.spec.json --noEmit",
+        "cwd": "packages/ntcore-ts-client"
+      }
+    },
     "build": {
       "executor": "@nx/rollup:rollup",
       "outputs": ["{options.outputPath}"],
@@ -16,7 +24,8 @@
         "rollupConfig": "packages/ntcore-ts-client/rollup.config.mjs",
         "generateExportsField": true,
         "sourceMap": true
-      }
+      },
+      "dependsOn": ["typecheck"]
     },
     "publish": {
       "executor": "nx:run-commands",

@@ -41,7 +41,7 @@ describe('PubSubClient', () => {
       isRegular: () => true,
     };
     client.registerTopic(topic as never);
-    const sendToTopicSpy = vi.spyOn(client.messenger, 'sendToTopic').mockReturnValue(undefined);
+    const sendToTopicSpy = vi.spyOn(client.messenger, 'sendToTopic').mockReturnValue(0);
     client.updateServer(topic as never, 'hello');
     expect(sendToTopicSpy).toHaveBeenCalledWith(topic, 'hello');
     sendToTopicSpy.mockRestore();
