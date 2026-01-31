@@ -245,12 +245,14 @@ export class PubSubClient {
     const knownTopic = this.getKnownTopicParams(message.topicId);
 
     if (knownTopic) {
+      // Use topic's value when we have one so protobuf topics pass decoded value to prefix subscribers
+      const valueForPrefix = topic != null ? (topic.getValue() ?? message.value) : message.value;
       let matchedPrefixCount = 0;
       this.prefixTopics.forEach((prefixTopic) => {
         if (knownTopic.name.startsWith(prefixTopic.name)) {
           matchedPrefixCount++;
           pubsubLogger.debug('Prefix topic matched', { topicName: knownTopic.name, prefix: prefixTopic.name });
-          prefixTopic.updateValue(knownTopic, message.value, message.serverTime);
+          prefixTopic.updateValue(knownTopic, valueForPrefix, message.serverTime);
         }
       });
       if (matchedPrefixCount > 0) {
@@ -327,11 +329,12 @@ export class PubSubClient {
         });
       }
     }
+    const valueForPrefix = (topic != null ? (topic.getValue() ?? message.value) : message.value) as NetworkTablesTypes;
     let matchedPrefixCount = 0;
     this.prefixTopics.forEach((prefixTopic) => {
       if (knownTopic.name.startsWith(prefixTopic.name)) {
         matchedPrefixCount++;
-        prefixTopic.updateValue(knownTopic, message.value, message.serverTime);
+        prefixTopic.updateValue(knownTopic, valueForPrefix, message.serverTime);
       }
     });
     if (matchedPrefixCount > 0) {
@@ -395,6 +398,27 @@ export class PubSubClient {
    */
   updateServer<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>, value: T) {
     this._messenger.sendToTopic(topic, value);
+  }
+
+  /**
+   * Notifies all prefix topics that match the given topic name of a local value update.
+   * Called when a regular/protobuf topic's setValue() runs so prefix subscribers (e.g. "all topics" table) see locally published values.
+   */
+  notifyPrefixTopicsForLocalUpdate(params: AnnounceMessageParams, value: NetworkTablesTypes): void {
+    let matchedPrefixCount = 0;
+    this.prefixTopics.forEach((prefixTopic) => {
+      if (params.name.startsWith(prefixTopic.name)) {
+        matchedPrefixCount++;
+        pubsubLogger.debug('Prefix topic notified (local update)', {
+          topicName: params.name,
+          prefix: prefixTopic.name,
+        });
+        prefixTopic.updateValue(params, value, 0);
+      }
+    });
+    if (matchedPrefixCount > 0) {
+      pubsubLogger.debug('Local value applied to prefix topics', { topicName: params.name, count: matchedPrefixCount });
+    }
   }
 
   /**

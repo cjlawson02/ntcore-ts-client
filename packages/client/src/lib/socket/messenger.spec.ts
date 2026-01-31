@@ -352,7 +352,7 @@ describe('Messenger', () => {
       };
 
       // Ensure this is NOT a "bug scenario" by creating an exact subscription match.
-      // If there is no matching subscription, publish() may optimistically resolve after 200ms.
+      // If there is no matching subscription, publish() may optimistically resolve after OPTIMISTIC_PUBLISH_DELAY_MS.
       messenger.subscribe({
         topics: [params.name],
         subuid: messenger.getNextSubUID(),
@@ -515,7 +515,7 @@ describe('Messenger', () => {
         try {
           const publishPromise = messenger.publish(publishParams);
           await Promise.resolve();
-          vi.advanceTimersByTime(250);
+          vi.advanceTimersByTime(650);
 
           const announcement = await publishPromise;
           expect(announcement).toBeDefined();
@@ -568,7 +568,7 @@ describe('Messenger', () => {
           vi.clearAllMocks();
 
           // Republish with force=true (simulating reconnection). In this scenario, publish()
-          // should resolve optimistically after ~200ms even without an announcement.
+          // should resolve optimistically after the delay even without an announcement.
           const republishParams: PublishMessageParams = {
             name: '/retained/topic',
             pubuid: messenger.getNextPubUID(),
@@ -578,7 +578,7 @@ describe('Messenger', () => {
 
           const republishPromise = messenger.publish(republishParams, true);
           await Promise.resolve();
-          vi.advanceTimersByTime(250);
+          vi.advanceTimersByTime(650);
 
           const announcement = await republishPromise;
           expect(announcement).toBeDefined();
@@ -602,7 +602,7 @@ describe('Messenger', () => {
         try {
           const publishPromise = messenger.publish(publishParams);
           await Promise.resolve();
-          vi.advanceTimersByTime(250);
+          vi.advanceTimersByTime(650);
 
           const announcement = await publishPromise;
           expect(announcement).toBeDefined();
@@ -635,7 +635,7 @@ describe('Messenger', () => {
 
           // Allow optimistic resolution to happen.
           await Promise.resolve();
-          vi.advanceTimersByTime(250);
+          vi.advanceTimersByTime(650);
 
           // Now send the actual announcement (late). This should not cause rejection.
           const announceMessage: AnnounceMessage = {
@@ -702,7 +702,7 @@ describe('Messenger', () => {
 
           // Give the optimistic timer window time to pass.
           await Promise.resolve();
-          vi.advanceTimersByTime(250);
+          vi.advanceTimersByTime(650);
           await Promise.resolve();
 
           expect(resolved).toBe(false);
@@ -748,7 +748,7 @@ describe('Messenger', () => {
         try {
           const publishPromise = messenger.publish(publishParams);
 
-          // Allow waitForConnection().then(...) to schedule the early 200ms timer.
+          // Allow waitForConnection().then(...) to schedule the optimistic-delay timer.
           await Promise.resolve();
 
           const announceMessage: AnnounceMessage = {
@@ -767,7 +767,7 @@ describe('Messenger', () => {
           expect(result).toEqual(announceMessage);
 
           // Advance past the optimistic window; should not change result or throw.
-          vi.advanceTimersByTime(250);
+          vi.advanceTimersByTime(650);
         } finally {
           vi.useRealTimers();
         }
@@ -786,7 +786,7 @@ describe('Messenger', () => {
 
           const publishPromise = messenger.publish(publishParams);
           await Promise.resolve();
-          vi.advanceTimersByTime(250);
+          vi.advanceTimersByTime(650);
 
           const announcement = await publishPromise;
           expect(announcement.method).toBe('announce');
@@ -833,7 +833,7 @@ describe('Messenger', () => {
           ];
 
           await Promise.resolve();
-          vi.advanceTimersByTime(250);
+          vi.advanceTimersByTime(650);
 
           const results = await Promise.all(promises);
           expect(results).toHaveLength(3);

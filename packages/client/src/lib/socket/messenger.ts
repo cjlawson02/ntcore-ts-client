@@ -23,6 +23,9 @@ import type {
 } from '../types/types';
 import type { MessageEvent as WS_MessageEvent } from 'ws';
 
+/** Delay (ms) before optimistically resolving publish() when in a known bug scenario. Gives the server time to process the publish and register pubuid before we send value updates. */
+const OPTIMISTIC_PUBLISH_DELAY_MS = 600;
+
 /** NetworkTables client. */
 export class Messenger {
   private readonly _socket: NetworkTablesSocket;
@@ -318,7 +321,7 @@ export class Messenger {
         }
 
         messengerLogger.warn(
-          'No announcement received within 200ms in bug scenario. Optimistically resolving. ' +
+          `No announcement received within ${OPTIMISTIC_PUBLISH_DELAY_MS}ms in bug scenario. Optimistically resolving. ` +
             'This may be due to server bug: https://github.com/wpilibsuite/allwpilib/issues/7680',
           {
             topicName: params.name,
@@ -401,11 +404,12 @@ export class Messenger {
             return;
           }
 
-          // If in bug scenario, set up early 200ms timeout for optimistic resolution
+          // If in bug scenario, set up delayed timeout for optimistic resolution so the server
+          // has time to process the publish and register pubuid before we send value updates.
           if (isBugScenario && !resolved) {
             earlyTimeoutId = setTimeout(() => {
               optimisticResolver();
-            }, 200);
+            }, OPTIMISTIC_PUBLISH_DELAY_MS);
           }
 
           // Main timeout: reject the promise if the topic is not announced within 3 seconds (3000ms)

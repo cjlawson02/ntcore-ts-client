@@ -96,6 +96,9 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
     this.value = value;
     this.notifySubscribers();
 
+    // Notify prefix subscribers (e.g. "all topics" table) so locally published values appear there.
+    this.client.notifyPrefixTopicsForLocalUpdate(this.getAnnounceParamsForNotify(), this.getValue() as T);
+
     // If we're disconnected, just keep our local retained value.
     // We will always resend the latest retained value after reconnect.
     if (!this.client.messenger.socket.isConnected()) {
@@ -104,6 +107,11 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
     }
 
     this.client.updateServer<T>(this, value);
+  }
+
+  /** Params for prefix notify; use real announce params when we have them, else minimal fallback. */
+  private getAnnounceParamsForNotify(): AnnounceMessageParams {
+    return this._announceParams ?? { name: this.name, id: -1, type: this._typeInfo[1], properties: {} };
   }
 
   /**

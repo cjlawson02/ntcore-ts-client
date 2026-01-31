@@ -102,6 +102,41 @@ describe('Topic', () => {
       sendToTopicSpy.mockRestore();
       isConnectedSpy.mockRestore();
     });
+
+    it('notifies prefix topic subscribers when setValue is called (local publish)', () => {
+      const prefixTopicMock = {
+        name: '/',
+        updateValue: vi.fn(),
+        isRegular: () => false,
+        isPrefix: () => true,
+      };
+      topic['client']['topics'].clear();
+      topic['client']['prefixTopics'].clear();
+      topic['client']['prefixTopics'].set('/', prefixTopicMock as never);
+
+      const localTopic = new NetworkTablesTopic<string>(
+        topic['client'],
+        '/MyTable/Test',
+        NetworkTablesTypeInfos.kString,
+        'default'
+      );
+      localTopic['_publisher'] = true;
+      localTopic['_announceParams'] = {
+        name: '/MyTable/Test',
+        id: 1,
+        type: 'string',
+        properties: {},
+      };
+      vi.spyOn(topic['client'].messenger.socket, 'isConnected').mockReturnValue(false);
+
+      localTopic.setValue('from publisher');
+
+      expect(prefixTopicMock.updateValue).toHaveBeenCalledWith(
+        expect.objectContaining({ name: '/MyTable/Test' }),
+        'from publisher',
+        0
+      );
+    });
   });
 
   describe('getValue', () => {

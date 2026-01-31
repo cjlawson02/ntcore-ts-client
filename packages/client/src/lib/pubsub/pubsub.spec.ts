@@ -112,6 +112,56 @@ describe('PubSubClient', () => {
     expect(topic.updateValue).toHaveBeenCalledWith(params, 'test value', expect.any(Number));
   });
 
+  it('notifies prefix topics when notifyPrefixTopicsForLocalUpdate is called', () => {
+    const prefixTopic = {
+      name: '/',
+      updateValue: vi.fn(),
+      isRegular: () => false,
+      isPrefix: () => true,
+    };
+    client.registerTopic(prefixTopic as never);
+    const params = { id: 1, name: '/MyTable/Gyro', type: 'double', properties: {} };
+    client.notifyPrefixTopicsForLocalUpdate(params, 1.234);
+    expect(prefixTopic.updateValue).toHaveBeenCalledWith(params, 1.234, 0);
+  });
+
+  it('passes topic.getValue() to prefix topics on server update so protobuf decoded value is used', () => {
+    const decodedValue = { x: 1, y: 2 };
+    const rawValue = new Uint8Array(5);
+    const topicMock = {
+      name: '/proto/Pose',
+      id: 42,
+      typeInfo: NetworkTablesTypeInfos.kProtobuf,
+      updateValue: vi.fn(),
+      getValue: vi.fn().mockReturnValue(decodedValue),
+      isRegular: () => true,
+      isPrefix: () => false,
+    };
+    const prefixTopicMock = {
+      name: '/',
+      updateValue: vi.fn(),
+      isRegular: () => false,
+      isPrefix: () => true,
+    };
+    client['topics'].set('/proto/Pose', topicMock as never);
+    client['knownTopicParams'].set(42, { id: 42, name: '/proto/Pose', type: 'protobuf', properties: {} });
+    client['prefixTopics'].set('/', prefixTopicMock as never);
+
+    client['onTopicUpdate']({
+      topicId: 42,
+      value: rawValue,
+      typeNum: NetworkTablesTypeInfos.kProtobuf[0],
+      serverTime: 1000,
+    } as never);
+
+    expect(topicMock.updateValue).toHaveBeenCalledWith(rawValue, 1000);
+    expect(prefixTopicMock.updateValue).toHaveBeenCalledWith(
+      expect.objectContaining({ name: '/proto/Pose' }),
+      decodedValue,
+      1000
+    );
+  });
+
   it('delivers buffered value update to prefix topic when announcement arrives after value', () => {
     const prefixTopic = {
       name: '/testprefix/',
