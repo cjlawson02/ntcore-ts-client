@@ -161,16 +161,16 @@ export class NetworkTablesSocket {
           }
         }
 
-        // Setup heartbeat or RTT
-        if (this._websocket.protocol !== 'v4.1.networktables.first.wpi.edu') {
-          // Start heartbeat
-          // Only send heartbeat at this rate if we are on NT 4.0
-          this.heartbeatInterval = setInterval(() => {
-            if (this.isConnected()) {
-              this.heartbeat();
-            }
-          }, NetworkTablesSocket.RTT_PERIOD_V4_0);
-        }
+        // Send initial RTT ping for both 4.0 and 4.1 (per spec: timestamp sync immediately after connect).
+        this.heartbeat();
+
+        // Periodic RTT pings for keepalive. Spec says 4.1 uses WebSocket PING, but Node/JS clients
+        // cannot send PING/PONG, so we use binary RTT for both 4.0 and 4.1.
+        this.heartbeatInterval = setInterval(() => {
+          if (this.isConnected()) {
+            this.heartbeat();
+          }
+        }, NetworkTablesSocket.RTT_PERIOD_V4_0);
 
         socketLogger.info('Robot Connected!');
         // Ensure protocol re-subscribe/re-publish happens before notifying connection listeners.
@@ -314,6 +314,15 @@ export class NetworkTablesSocket {
   removeConnectionListener(callback: (_: boolean) => void) {
     this.connectionListeners.delete(callback);
     socketLogger.debug('Connection listener removed', { totalListeners: this.connectionListeners.size });
+  }
+
+  /**
+   * Get the best round-trip time to the server in milliseconds.
+   * @returns RTT in ms, or -1 if not connected or not yet measured.
+   */
+  getBestRttMs(): number {
+    if (!this.isConnected() || this.bestRtt < 0) return -1;
+    return Math.round(this.bestRtt / 1000);
   }
 
   /**

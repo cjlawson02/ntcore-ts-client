@@ -153,6 +153,14 @@ export class NetworkTables {
   }
 
   /**
+   * Returns the best round-trip time to the robot in milliseconds.
+   * @returns RTT in ms, or -1 if not connected or not yet measured.
+   */
+  getRttMs(): number {
+    return this._client.messenger.socket.getBestRttMs();
+  }
+
+  /**
    * Adds a listener for robot connection status updates.
    * @param callback - The callback to call when the connection status changes.
    * @param immediateNotify - Whether to immediately notify the callback of the current connection status.

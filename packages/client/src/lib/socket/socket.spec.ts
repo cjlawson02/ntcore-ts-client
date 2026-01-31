@@ -170,6 +170,9 @@ describe('NetworkTablesSocket', () => {
 
   describe('sendQueuedMessages', () => {
     it('should send all queued messages through the WebSocket', async () => {
+      // Drain the initial RTT ping sent on connect (both 4.0 and 4.1)
+      await server.nextMessage;
+
       // Queue some messages
       const messages = ['Hello, world!', 'Foo', 'Bar'];
       socket['messageQueue'].push(...messages);
@@ -308,6 +311,26 @@ describe('NetworkTablesSocket', () => {
       // Trigger open handler again under our controlled protocol.
       socket.websocket.onopen?.(undefined as never);
 
+      expect(setIntervalSpy).toHaveBeenCalled();
+      expect(socket['heartbeatInterval']).toBeDefined();
+    });
+
+    it('should start periodic heartbeat when connected on NT 4.1 (Node/JS cannot send WS PING)', () => {
+      const setIntervalSpy = vi.spyOn(globalThis, 'setInterval').mockReturnValue({} as ReturnType<typeof setInterval>);
+      const sendSpy = vi.spyOn(socket.websocket, 'send');
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (socket.websocket as any).protocol = 'v4.1.networktables.first.wpi.edu';
+      } catch {
+        Object.defineProperty(socket.websocket, 'protocol', {
+          value: 'v4.1.networktables.first.wpi.edu',
+          configurable: true,
+        });
+      }
+
+      socket.websocket.onopen?.(undefined as never);
+
+      expect(sendSpy).toHaveBeenCalled();
       expect(setIntervalSpy).toHaveBeenCalled();
       expect(socket['heartbeatInterval']).toBeDefined();
     });
