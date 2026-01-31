@@ -444,6 +444,31 @@ describe('NetworkTablesSocket', () => {
       });
     });
 
+    it('should process remaining messages in frame when one message is malformed or invalid', () => {
+      onTopicUpdate.mockClear();
+
+      const valid1: BinaryMessage = [10, 1000, 2, 1.0];
+      const invalid = [0, 0, 99, 1.0] as unknown as BinaryMessage; // typeNum 99 fails schema
+      const valid2: BinaryMessage = [11, 1001, 4, 'hello'];
+
+      const frame = new Uint8Array([...encode(valid1), ...encode(invalid), ...encode(valid2)]);
+      socket['onMessage']({ data: frame } as unknown as MessageEvent);
+
+      expect(onTopicUpdate).toHaveBeenCalledTimes(2);
+      expect(onTopicUpdate).toHaveBeenNthCalledWith(1, {
+        topicId: 10,
+        serverTime: 1000,
+        typeNum: 2,
+        value: 1.0,
+      });
+      expect(onTopicUpdate).toHaveBeenNthCalledWith(2, {
+        topicId: 11,
+        serverTime: 1001,
+        typeNum: 4,
+        value: 'hello',
+      });
+    });
+
     it('should not throw on unhandled (but schema-valid) message methods', () => {
       // Silence logs; this path warns intentionally.
       setLogLevel(LogLevel.SILENT);

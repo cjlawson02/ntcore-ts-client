@@ -116,8 +116,11 @@ export class NetworkTables {
     const oldUri = this.uri;
     const oldPort = this.port;
     defaultLogger.info('URI changed', { oldUri, oldPort, newUri: uri, newPort: port });
+    // Update instance map so getInstanceByURI/getInstanceByTeam return this instance for the new target
+    NetworkTables._instances.delete(`${oldUri}:${oldPort}`);
     this.uri = uri;
     this.port = port;
+    NetworkTables._instances.set(`${this.uri}:${this.port}`, this);
     this._client.reinstantiate(Util.createServerUrl(uri, port));
   }
 

@@ -83,14 +83,13 @@ describe('PubSubClient', () => {
       isRegular: () => true,
     };
     client.registerTopic(topic as never);
-    expect(() =>
-      client['onTopicUpdate']({
-        topicId: 123,
-        value: 'test value',
-        typeNum: NetworkTablesTypeInfos.kString[0],
-        serverTime: Date.now(),
-      })
-    ).toThrow(/Invalid data for topic test/);
+    // Invalid value is skipped (logged) so remaining messages in the same frame can be processed
+    client['onTopicUpdate']({
+      topicId: 123,
+      value: 'test value',
+      typeNum: NetworkTablesTypeInfos.kString[0],
+      serverTime: Date.now(),
+    });
     expect(topic.updateValue).not.toHaveBeenCalled();
   });
 
@@ -171,8 +170,10 @@ describe('PubSubClient', () => {
     };
     client.registerTopic(topic as never);
     client['onTopicAnnounce']({ id: 123, name: 'test' } as never);
-    client['onTopicUnannounce']({ name: 'test' } as never);
+    client['onTopicUnannounce']({ id: 123, name: 'test' } as never);
     expect(topic.unannounce).toHaveBeenCalled();
+    // Verify cleanup: knownTopicParams and pendingValueUpdates are cleared by id
+    expect(client.getKnownTopicParams(123)).toBeUndefined();
   });
 
   it('reinstantates topics', () => {

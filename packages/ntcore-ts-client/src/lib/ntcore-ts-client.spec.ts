@@ -41,6 +41,14 @@ describe('NetworkTables', () => {
     expect(networkTables.getURI()).toBe('roborio-9973-frc.local');
   });
 
+  it('returns the same instance by new URI/port after changeURI', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    networkTables.changeURI('roborio-9973-frc.local');
+    const byNewUri = NetworkTables.getInstanceByURI('roborio-9973-frc.local');
+    expect(byNewUri).toBe(networkTables);
+    expect(byNewUri.getURI()).toBe('roborio-9973-frc.local');
+  });
+
   it('returns the correct value for isRobotConnected', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
     expect(networkTables.isRobotConnected()).toBe(false);

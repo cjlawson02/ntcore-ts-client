@@ -391,28 +391,38 @@ export class NetworkTablesSocket {
     let messageCount = 0;
     let heartbeatCount = 0;
     let topicUpdateCount = 0;
+    let skippedCount = 0;
     for (const decoded of decodeMulti(frame)) {
-      const message = msgPackSchema.parse(decoded);
-      socketLogger.trace('Message schema validated', { topicId: message[0], typeNum: message[2] });
-      const messageData: BinaryMessageData = {
-        topicId: message[0],
-        serverTime: message[1],
-        typeNum: message[2],
-        value: message[3],
-      };
-      messageCount++;
-      if (messageData.topicId === -1) {
-        heartbeatCount++;
-        this.handleRTT(messageData.serverTime);
-      } else {
-        topicUpdateCount++;
-        this.onTopicUpdate(messageData);
+      try {
+        const message = msgPackSchema.parse(decoded);
+        socketLogger.trace('Message schema validated', { topicId: message[0], typeNum: message[2] });
+        const messageData: BinaryMessageData = {
+          topicId: message[0],
+          serverTime: message[1],
+          typeNum: message[2],
+          value: message[3],
+        };
+        messageCount++;
+        if (messageData.topicId === -1) {
+          heartbeatCount++;
+          this.handleRTT(messageData.serverTime);
+        } else {
+          topicUpdateCount++;
+          this.onTopicUpdate(messageData);
+        }
+      } catch (e) {
+        skippedCount++;
+        socketLogger.warn('Skipping malformed or invalid message in binary frame', {
+          error: String(e),
+          skippedInFrame: skippedCount,
+        });
       }
     }
     socketLogger.debug('Binary frame processed', {
       messageCount,
       heartbeatCount,
       topicUpdateCount,
+      skippedCount,
     });
   }
 

@@ -215,9 +215,8 @@ export class PubSubClient {
         value: message.value,
         typeNum: message.typeNum,
       });
-      let validatedData: NetworkTablesTypes;
       try {
-        validatedData = NetworkTablesTypeInfos.validateData(topic.typeInfo, message.value);
+        const validatedData = NetworkTablesTypeInfos.validateData(topic.typeInfo, message.value);
         pubsubLogger.debug('Value validated successfully', { topicName: topic.name, topicId: message.topicId });
         pubsubLogger.trace('Type validation details', {
           topicName: topic.name,
@@ -225,6 +224,8 @@ export class PubSubClient {
           receivedTypeNum: message.typeNum,
           validated: true,
         });
+        pubsubLogger.debug('Value update applied to topic', { topicName: topic.name, topicId: message.topicId });
+        topic.updateValue(validatedData, message.serverTime);
       } catch (e) {
         pubsubLogger.trace('Type validation failed', {
           topicName: topic.name,
@@ -232,10 +233,13 @@ export class PubSubClient {
           receivedTypeNum: message.typeNum,
           error: String(e),
         });
-        throw new Error(`Invalid data for topic ${topic.name}: ${e}`);
+        pubsubLogger.warn('Skipping invalid value update for topic', {
+          topicName: topic.name,
+          topicId: message.topicId,
+          error: String(e),
+        });
+        // Do not throw: allow remaining messages in the same binary frame to be processed
       }
-      pubsubLogger.debug('Value update applied to topic', { topicName: topic.name, topicId: message.topicId });
-      topic.updateValue(validatedData, message.serverTime);
     }
 
     const knownTopic = this.getKnownTopicParams(message.topicId);
