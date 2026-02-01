@@ -303,15 +303,26 @@ describe('Topic', () => {
     });
 
     it('should throw an error if the topic is not announced', async () => {
-      topic = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
+      // Use isolated client so fake timers don't affect shared socket state
+      const isolatedUrl = 'ws://localhost:5821/nt/1234';
+      const isolatedServer = new WSMock(isolatedUrl);
+      const isolatedClient = PubSubClient.getInstance(isolatedUrl);
+      await isolatedServer.connected;
+
+      const isolatedTopic = new NetworkTablesTopic<string>(
+        isolatedClient,
+        'test2',
+        NetworkTablesTypeInfos.kString,
+        'default'
+      );
 
       // Ensure publish() does NOT use the optimistic resolution workaround by creating an
       // exact subscription match for this topic name.
-      topic.subscribe(() => {}, {}, undefined, false);
+      isolatedTopic.subscribe(() => {}, {}, undefined, false);
 
       vi.useFakeTimers();
       try {
-        const publishPromise = topic.publish({}, 1);
+        const publishPromise = isolatedTopic.publish({}, 1);
         await Promise.resolve();
         vi.advanceTimersByTime(3000);
         await expect(publishPromise).rejects.toThrow('was not announced within 3 seconds');
@@ -391,12 +402,24 @@ describe('Topic', () => {
     });
 
     it('should allow separate publish operations for different topics', async () => {
-      const topic2 = new NetworkTablesTopic<string>(client, 'test2', NetworkTablesTypeInfos.kString, 'default');
+      // Use isolated client so previous tests don't affect socket message delivery
+      const isolatedUrl = 'ws://localhost:5822/nt/1234';
+      const isolatedServer = new WSMock(isolatedUrl);
+      const isolatedClient = PubSubClient.getInstance(isolatedUrl);
+      await isolatedServer.connected;
+
+      const isolatedTopic = new NetworkTablesTopic<string>(
+        isolatedClient,
+        'test',
+        NetworkTablesTypeInfos.kString,
+        'default'
+      );
+      const topic2 = new NetworkTablesTopic<string>(isolatedClient, 'test2', NetworkTablesTypeInfos.kString, 'default');
 
       let publishCallCount = 0;
-      const originalMessengerPublish = client.messenger.publish.bind(client.messenger);
+      const originalMessengerPublish = isolatedClient.messenger.publish.bind(isolatedClient.messenger);
 
-      client.messenger.publish = vi.fn().mockImplementation(async (params: PublishMessageParams) => {
+      isolatedClient.messenger.publish = vi.fn().mockImplementation(async (params: PublishMessageParams) => {
         publishCallCount++;
         return originalMessengerPublish(params);
       });
@@ -425,19 +448,19 @@ describe('Topic', () => {
             },
           },
         ];
-        server.send(JSON.stringify(announceMessages));
+        isolatedServer.send(JSON.stringify(announceMessages));
       }, 100);
 
       // Publish both topics concurrently
-      await Promise.all([topic.publish({}, 4000), topic2.publish({}, 4001)]);
+      await Promise.all([isolatedTopic.publish({}, 4000), topic2.publish({}, 4001)]);
 
       // messenger.publish should be called twice (once per topic)
       expect(publishCallCount).toBe(2);
-      expect(topic.publisher).toBe(true);
+      expect(isolatedTopic.publisher).toBe(true);
       expect(topic2.publisher).toBe(true);
 
       // Restore original method
-      client.messenger.publish = originalMessengerPublish;
+      isolatedClient.messenger.publish = originalMessengerPublish;
     });
   });
 
