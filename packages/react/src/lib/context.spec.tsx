@@ -53,4 +53,15 @@ describe('NtcoreProvider and useNtcore', () => {
     const { result } = renderHook(() => useNtcore(), { wrapper });
     expect(result.current).toBe(mockNt);
   });
+
+  it('throws when port is invalid (e.g. NaN)', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <NtcoreProvider uri="localhost" port={Number.NaN}>
+        {children}
+      </NtcoreProvider>
+    );
+    expect(() => renderHook(() => useNtcore(), { wrapper })).toThrow(
+      'NtcoreProvider port must be a whole number between 1 and 65535 (e.g. 5810). Check your port value or environment variable.'
+    );
+  });
 });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { SubscribeOptions, TopicProperties } from '@ntcore/client';
 import { useNtcore } from './context';
-import z from 'zod';
+import { z } from 'zod';
 
 /**
  * Options for useProtobufTopic (defaultValue, validator, protoFilePath, subscribeOptions, publishOptions).

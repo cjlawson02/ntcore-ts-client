@@ -34,6 +34,14 @@
         ]
       },
       "dependsOn": ["typecheck", "client:build"]
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "../../coverage/packages/react",
+        "configFile": "packages/react/vite.config.mts"
+      }
     }
   }
 }

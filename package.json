@@ -7,7 +7,7 @@
     "release": "npm run release:client && npm run release:react",
     "release:client": "cd packages/client && npx -p semantic-release@25 -p semantic-release-monorepo@8 -p @semantic-release/changelog -p @semantic-release/exec -p @semantic-release/git -p @semantic-release/github -p @semantic-release/npm -- semantic-release -e semantic-release-monorepo -c ../../release.config.client.mts",
     "release:react": "cd packages/react && npx -p semantic-release@25 -p semantic-release-monorepo@8 -p @semantic-release/changelog -p @semantic-release/exec -p @semantic-release/git -p @semantic-release/github -p @semantic-release/npm -- semantic-release -e semantic-release-monorepo -c ../../release.config.react.mts",
-    "test": "npx nx run client:test",
+    "test": "npx nx run-many --target=test --projects=client,react",
     "bench": "nx run client:bench",
     "e2e:local": "nx run example-client:e2e:local"
   },
@@ -20,7 +20,8 @@
       "npx nx affected --target=build --uncommitted"
     ]
   },
-  "dependencies": {
+  "devDependencies": {
+    "@babel/core": "^7.28.6",
     "@msgpack/msgpack": "^3.1.2",
     "isomorphic-ws": "^5.0.0",
     "protobufjs": "^8.0.0",
@@ -29,10 +30,7 @@
     "tslib": "^2.8.1",
     "tslog": "^4.10.2",
     "ws": "^8.18.3",
-    "zod": "^4.2.1"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.28.6",
+    "zod": "^4.2.1",
     "@babel/preset-react": "^7.14.5",
     "@commitlint/cli": "^20.2.0",
     "@commitlint/config-conventional": "^20.2.0",
