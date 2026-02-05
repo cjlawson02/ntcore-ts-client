@@ -51,7 +51,7 @@ function Dashboard() {
 
 ### Publishing to a topic
 
-To publish (write) a topic, pass `publishOptions` (e.g. `{ retained: true }`). The hook returns `[value, setValue, canPublish]`. **Only call `setValue` when `canPublish` is true** (after the server has acknowledged the publish); otherwise the client will throw.
+To publish (write) a topic with custom options, pass `publishOptions` (e.g. `{ retained: true }`). The hook returns `[value, setValue, canPublish]`. **When using `publishOptions`, only call `setValue` when `canPublish` is true** (after the server has acknowledged the publish); otherwise the client will throw. If you omit `publishOptions`, `setValue` can be called immediately.
 
 ```tsx
 const [value, setValue, canPublish] = useTopic<string>(
@@ -71,7 +71,7 @@ const handleChange = (newValue: string) => {
 ### Prefix and Protobuf topics
 
 - **`usePrefixTopic(prefix, subscribeOptions?)`** – Subscribes to all topics under a prefix. Returns the latest `PrefixTopicUpdate | null` (subscribe-only).
-- **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Options: `defaultValue`, `validator` (Zod schema), `protoFilePath`, `subscribeOptions`, `publishOptions`. Returns `[value, setValue, canPublish]` like `useTopic`; only call `setValue` when `canPublish` is true.
+- **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Options: `defaultValue`, `validator` (Zod schema), `protoFilePath`, `subscribeOptions`, `publishOptions`. Returns `[value, setValue, canPublish]` like `useTopic`; when using `publishOptions`, only call `setValue` when `canPublish` is true.
 
 ### Advanced: raw client access
 
@@ -89,9 +89,9 @@ if (nt) {
 
 - **`NtcoreProvider`** – Props: `team?: number` | `uri: string`, and optional `port` (default `5810`). Provides a single NetworkTables instance to the tree.
 - **`useNtcore()`** – Returns the `NetworkTables` instance from context, or `null` when used outside a provider.
-- **`useTopic<T>(name, typeInfo, defaultValue?, subscribeOptions?, publishOptions?)`** – Subscribes to a topic. Returns `[value, setValue, canPublish]`. Unsubscribes on unmount. Only call `setValue` when `canPublish` is true (pass `publishOptions` to publish from this client).
+- **`useTopic<T>(name, typeInfo, defaultValue?, subscribeOptions?, publishOptions?)`** – Subscribes to a topic. Returns `[value, setValue, canPublish]`. Unsubscribes on unmount. When using `publishOptions`, only call `setValue` when `canPublish` is true; otherwise `setValue` can be called immediately.
 - **`usePrefixTopic(prefix, subscribeOptions?)`** – Subscribes to all topics under a prefix. Returns `PrefixTopicUpdate | null` (subscribe-only).
-- **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Returns `[value, setValue, canPublish]`; only call `setValue` when `canPublish` is true if using `publishOptions`.
+- **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Returns `[value, setValue, canPublish]`; when using `publishOptions`, only call `setValue` when `canPublish` is true.
 - **`useConnectionStatus()`** – Returns `{ connected: boolean, rtt: number }`. `rtt` is round-trip time in ms (-1 when not connected or not yet measured). The client auto-reconnects after disconnect.
 
 Re-exports from @ntcore/client: `NetworkTablesTypeInfos`, and types `NetworkTablesTypeInfo`, `NetworkTablesTypes`, `SubscribeOptions`, `TopicProperties`.
