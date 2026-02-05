@@ -44,7 +44,7 @@
       "outputs": ["{options.reportsDirectory}"],
       "options": {
         "reportsDirectory": "../../coverage/apps/example-react",
-        "configFile": "apps/example-react/vitest.config.ts"
+        "configFile": "apps/example-react/vite.config.ts"
       }
     }
   }
