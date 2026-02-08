@@ -28,6 +28,8 @@ Note: there may be breaking changes between each beta version, but if a breaking
   - Ensures operations complete in the correct order
 - Implemented buffered value updates for prefix topics in PubSubClient
 - Added type numbers for `float`, `json`, `rpc`, `msgpack`, `protobuf`, and `float[]`
+- **`NetworkTables.stopAutoConnect()`** — Stops automatic reconnection
+- **`NetworkTables.startAutoConnect()`** — Resumes automatic reconnection after a previous `stopAutoConnect()` call.
 
 ### Bug Fixes
 

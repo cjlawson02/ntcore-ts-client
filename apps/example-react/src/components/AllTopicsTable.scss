@@ -1,0 +1,154 @@
+.all-topics-table {
+  grid-column: 1 / -1;
+
+  &__empty {
+    margin: 0;
+    color: #888;
+    font-size: 0.875rem;
+  }
+
+  &__scroll {
+    overflow-x: auto;
+    margin-top: 0.5rem;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+
+    th,
+    td {
+      padding: 0.375rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #444;
+    }
+
+    th {
+      color: #aaa;
+      font-weight: 600;
+    }
+  }
+
+  &__name {
+    font-family: ui-monospace, monospace;
+    word-break: break-all;
+  }
+
+  &__name-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  &__indent {
+    flex-shrink: 0;
+  }
+
+  &__expander-placeholder,
+  &__json-expander-placeholder {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__expander,
+  &__expander-placeholder {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  &__json-expander,
+  &__json-expander-placeholder {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &__expander,
+  &__json-expander {
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    color: #aaa;
+    cursor: pointer;
+    border-radius: 2px;
+
+    &:hover {
+      color: #e0e0e0;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &:focus-visible {
+      outline: 2px solid #4a9eff;
+      outline-offset: 1px;
+    }
+  }
+
+  &__expander {
+    font-size: 0.5625rem;
+  }
+
+  &__expander-icon {
+    line-height: 1;
+  }
+
+  &__json-expander {
+    font-size: 0.5rem;
+  }
+
+  &__segment {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // JSON/proto value expander (inside value cell)
+  &__json-value {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    font-size: 0.75rem;
+  }
+
+  &__json-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.25rem;
+    min-height: 1.25rem;
+
+    &[data-depth='0'] {
+      margin-left: 0;
+    }
+  }
+
+  &__json-key {
+    flex-shrink: 0;
+    color: #9ab;
+    font-family: ui-monospace, monospace;
+  }
+
+  &__json-children {
+    margin-left: 0.75rem;
+    border-left: 1px solid #444;
+    padding-left: 0.375rem;
+  }
+
+  &__json-preview {
+    color: #888;
+    font-style: italic;
+  }
+
+  &__json-leaf {
+    word-break: break-all;
+  }
+
+  &__value {
+    font-variant-numeric: tabular-nums;
+    max-width: 20rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

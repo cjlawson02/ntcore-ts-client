@@ -36,11 +36,11 @@ describe('useTopic', () => {
 
   const kDouble = NetworkTablesTypeInfos.kDouble;
 
-  it('returns [null, undefined, false] outside provider', () => {
+  it('returns { value: null, setValue: undefined, isReadyToWrite: false } outside provider', () => {
     const { result } = renderHook(() => useTopic('/test', kDouble));
-    expect(result.current[0]).toBeNull();
-    expect(result.current[1]).toBeUndefined();
-    expect(result.current[2]).toBe(false);
+    expect(result.current.value).toBeNull();
+    expect(result.current.setValue).toBeUndefined();
+    expect(result.current.isReadyToWrite).toBe(false);
   });
 
   it('subscribes and unsubscribes when inside provider', async () => {
@@ -53,7 +53,8 @@ describe('useTopic', () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 10));
     });
-    expect(result.current[0]).toBe(1.234);
+    expect(result.current.value).toBe(1.234);
+    expect(result.current.setValue).toBeUndefined(); // subscribe-only, no publish
     unmount();
     expect(mockUnsubscribe).toHaveBeenCalledWith(99);
   });
@@ -62,27 +63,42 @@ describe('useTopic', () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
-    const { rerender } = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, undefined, { periodic: 0.02 }), {
-      wrapper,
-    });
+    const { rerender } = renderHook(
+      () => useTopic<number>('/MyTable/Gyro', kDouble, { subscribeOptions: { periodic: 0.02 } }),
+      { wrapper }
+    );
     expect(mockSubscribe).toHaveBeenCalledTimes(1);
     rerender();
     expect(mockSubscribe).toHaveBeenCalledTimes(1);
   });
 
-  it('publishes when publishOptions provided and canPublish becomes true after resolve', async () => {
+  it('publishes when publish: true and isReadyToWrite becomes true after resolve', async () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
-    const { result } = renderHook(
-      () => useTopic<number>('/MyTable/Gyro', kDouble, undefined, undefined, { retained: true }),
-      { wrapper }
-    );
-    expect(mockTopic.publish).toHaveBeenCalledWith({ retained: true });
-    expect(result.current[2]).toBe(false);
+    const { result } = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, { publish: true }), { wrapper });
+    expect(mockTopic.publish).toHaveBeenCalledWith({});
+    expect(result.current.isReadyToWrite).toBe(false);
     await act(async () => {
       await new Promise((r) => setTimeout(r, 10));
     });
-    expect(result.current[2]).toBe(true);
+    expect(result.current.isReadyToWrite).toBe(true);
+    expect(result.current.setValue).toBeDefined();
+  });
+
+  it('publishes when publish: { retained: true } and isReadyToWrite becomes true after resolve', async () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { result } = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, { publish: { retained: true } }), {
+      wrapper,
+    });
+    expect(mockTopic.publish).toHaveBeenCalledWith({ retained: true });
+    expect(result.current.isReadyToWrite).toBe(false);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    expect(result.current.isReadyToWrite).toBe(true);
+    expect(result.current.setValue).toBeDefined();
   });
 });

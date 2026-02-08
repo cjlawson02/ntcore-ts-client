@@ -1,7 +1,11 @@
-export { NtcoreContext, NtcoreProvider, useNtcore, type NtcoreProviderProps } from './lib/context';
+export { NtcoreContext, NtcoreProvider, useNtcore } from './lib/context';
+export type { NtcoreProviderProps } from './lib/context';
 export { useTopic } from './lib/use-topic';
-export { usePrefixTopic, type PrefixTopicUpdate } from './lib/use-prefix-topic';
-export { useProtobufTopic, type UseProtobufTopicOptions } from './lib/use-protobuf-topic';
+export type { UseTopicOptions, UseTopicResult } from './lib/use-topic';
+export { usePrefixTopic } from './lib/use-prefix-topic';
+export type { PrefixTopicUpdate } from './lib/use-prefix-topic';
+export { useProtobufTopic } from './lib/use-protobuf-topic';
+export type { UseProtobufTopicOptions, UseProtobufTopicResult } from './lib/use-protobuf-topic';
 export { useConnectionStatus } from './lib/use-connection-status';
 
 export type { NetworkTablesTypeInfo, NetworkTablesTypes, SubscribeOptions, TopicProperties } from '@ntcore/client';

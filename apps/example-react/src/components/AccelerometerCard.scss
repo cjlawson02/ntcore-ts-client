@@ -1,0 +1,70 @@
+.accelerometer-card .value {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.axis-row {
+  display: grid;
+  grid-template-columns: 12px 1fr 2.5rem;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.axis-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.axis-x {
+  color: #ff453a;
+}
+.axis-y {
+  color: #32d74b;
+}
+
+.axis-track {
+  position: relative;
+  height: 8px;
+  background: #1e1e1e;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.axis-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #444;
+  z-index: 0;
+}
+
+.axis-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  border-radius: 4px;
+  transition: width 0.1s ease-out;
+  z-index: 1;
+}
+
+.axis-fill.axis-x {
+  background: linear-gradient(90deg, #ff453a 0%, #ff6961 100%);
+}
+.axis-fill.axis-y {
+  background: linear-gradient(90deg, #32d74b 0%, #5dd879 100%);
+}
+
+.axis-value {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: #aaa;
+  text-align: right;
+}

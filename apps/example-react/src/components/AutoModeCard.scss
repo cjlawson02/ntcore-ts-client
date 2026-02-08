@@ -1,0 +1,25 @@
+.auto-mode {
+  select,
+  input[type='number'] {
+    margin-top: 0.25rem;
+    padding: 0.5rem;
+    width: 100%;
+    background: #333;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.875rem;
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+  }
+
+  .auto-mode-waiting {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #888;
+  }
+}

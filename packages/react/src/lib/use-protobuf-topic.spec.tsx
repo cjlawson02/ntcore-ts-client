@@ -33,11 +33,11 @@ describe('useProtobufTopic', () => {
     vi.clearAllMocks();
   });
 
-  it('returns [null, undefined, false] outside provider', () => {
+  it('returns { value: null, setValue: undefined, isReadyToWrite: false } outside provider', () => {
     const { result } = renderHook(() => useProtobufTopic<{ x: number }>('/proto/pose'));
-    expect(result.current[0]).toBeNull();
-    expect(result.current[1]).toBeUndefined();
-    expect(result.current[2]).toBe(false);
+    expect(result.current.value).toBeNull();
+    expect(result.current.setValue).toBeUndefined();
+    expect(result.current.isReadyToWrite).toBe(false);
   });
 
   it('subscribes and unsubscribes when inside provider', async () => {
@@ -50,9 +50,9 @@ describe('useProtobufTopic', () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 10));
     });
-    expect(result.current[0]).toBe(1.234);
-    expect(result.current[1]).toBeDefined();
-    expect(result.current[2]).toBe(false);
+    expect(result.current.value).toBe(1.234);
+    expect(result.current.setValue).toBeUndefined(); // subscribe-only, no publish
+    expect(result.current.isReadyToWrite).toBe(false);
     unmount();
     expect(mockUnsubscribe).toHaveBeenCalledWith(99);
   });
@@ -73,5 +73,19 @@ describe('useProtobufTopic', () => {
       defaultValue: { value: 0 },
       protoFilePath: '/path/to.proto',
     });
+  });
+
+  it('publishes when publish: true and isReadyToWrite becomes true after resolve', async () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { result } = renderHook(() => useProtobufTopic<{ x: number }>('/proto/pub', { publish: true }), { wrapper });
+    expect(mockProtobufTopic.publish).toHaveBeenCalledWith({});
+    expect(result.current.isReadyToWrite).toBe(false);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    expect(result.current.isReadyToWrite).toBe(true);
+    expect(result.current.setValue).toBeDefined();
   });
 });

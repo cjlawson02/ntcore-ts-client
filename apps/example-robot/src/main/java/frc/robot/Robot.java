@@ -18,10 +18,15 @@ public class Robot extends TimedRobot {
 
   private DoublePublisher m_xPub;
   private DoublePublisher m_yPub;
-  private DoublePublisher m_zPub;
   private DoublePublisher m_gyroPub;
   private StringSubscriber m_autoSub;
   private ProtobufPublisher<Pose2d> m_posePub;
+  private double m_demoTime = 0;
+  private static final double kDemoFigure8ScaleX = 1.8;
+  private static final double kDemoFigure8ScaleY = 1.2;
+  /** Y offset so path sits higher on pose grid (+Y = up on grid). */
+  private static final double kDemoPoseOffsetY = 1.5;
+  private static final double kDemoFigure8PeriodSec = 10.0;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -34,10 +39,9 @@ public class Robot extends TimedRobot {
     // Accelerometer values
     m_xPub = nt.getDoubleTopic("/MyTable/Accelerometer/X").publish();
     m_yPub = nt.getDoubleTopic("/MyTable/Accelerometer/Y").publish();
-    m_zPub = nt.getDoubleTopic("/MyTable/Accelerometer/Z").publish();
 
     m_posePub = nt.getProtobufTopic("/MyTable/Pose", Pose2d.proto).publish();
-    m_posePub.set(new Pose2d(1, 2, new Rotation2d(Math.PI)));
+    m_posePub.set(new Pose2d(0, 0, new Rotation2d(0)));
 
     m_gyroPub = nt.getDoubleTopic("/MyTable/Gyro").publish();
   }
@@ -51,13 +55,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    // Gyro value
-    m_gyroPub.set(1.234);
-
-    // Accelerometer values
-    m_xPub.set(1.4);
-    m_yPub.set(2.5);
-    m_zPub.set(3.6);
   }
 
   /**
@@ -103,6 +100,10 @@ public class Robot extends TimedRobot {
   /** This function is called once when the robot is disabled. */
   @Override
   public void disabledInit() {
+    m_gyroPub.set(0);
+    m_xPub.set(0);
+    m_yPub.set(0);
+    m_posePub.set(new Pose2d(0, 0, new Rotation2d(0)));
   }
 
   /** This function is called periodically when disabled. */
@@ -113,11 +114,37 @@ public class Robot extends TimedRobot {
   /** This function is called once when test mode is enabled. */
   @Override
   public void testInit() {
+    m_demoTime = 0;
   }
 
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {
+    m_demoTime += getPeriod();
+    double t = m_demoTime;
+    double omega = 2 * Math.PI / kDemoFigure8PeriodSec;
+
+    // Pose: figure-8 (Lissajous) with Y offset so path sits higher on pose grid
+    double x = kDemoFigure8ScaleX * Math.sin(omega * t);
+    double y = kDemoPoseOffsetY + kDemoFigure8ScaleY * Math.sin(2 * omega * t);
+    double vx = kDemoFigure8ScaleX * omega * Math.cos(omega * t);
+    double vy = kDemoFigure8ScaleY * 2 * omega * Math.cos(2 * omega * t);
+    double axWorld = -kDemoFigure8ScaleX * omega * omega * Math.sin(omega * t);
+    double ayWorld = -kDemoFigure8ScaleY * 4 * omega * omega * Math.sin(2 * omega * t);
+
+    double thetaRad = Math.atan2(vy, vx);
+    m_posePub.set(new Pose2d(x, y, new Rotation2d(thetaRad)));
+
+    // Gyro: match heading in degrees (CCW positive)
+    m_gyroPub.set(Math.toDegrees(thetaRad));
+
+    // Accelerometer values (X, Y in robot frame)
+    double cosT = Math.cos(thetaRad);
+    double sinT = Math.sin(thetaRad);
+    double axRobot = (axWorld * cosT + ayWorld * sinT) / 9.81;
+    double ayRobot = (-axWorld * sinT + ayWorld * cosT) / 9.81;
+    m_xPub.set(axRobot);
+    m_yPub.set(ayRobot);
   }
 
   /** This function is called once when the robot is first started up. */

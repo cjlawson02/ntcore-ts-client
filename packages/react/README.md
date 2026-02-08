@@ -37,7 +37,7 @@ function AppLocal() {
 
 function Dashboard() {
   const { connected, rtt } = useConnectionStatus();
-  const [gyro] = useTopic<number>('/MyTable/Gyro', NetworkTablesTypeInfos.kDouble);
+  const { value: gyro } = useTopic<number>('/MyTable/Gyro', NetworkTablesTypeInfos.kDouble);
 
   return (
     <div>
@@ -49,38 +49,72 @@ function Dashboard() {
 }
 ```
 
+### Reading vs writing
+
+- **Reading a topic** — Omit `publish` in options. You get `{ value, setValue: undefined, isReadyToWrite: false }`. Use `value` to display robot data.
+- **Writing a topic** — Pass `publish: true` or `publish: { retained: true }` (etc.) in options to **make this client the publisher**. You get `{ value, setValue, isReadyToWrite }`. Only call `setValue` when `isReadyToWrite` is true (after the server has acknowledged); otherwise the client can throw.
+
 ### Publishing to a topic
 
-To publish (write) a topic with custom options, pass `publishOptions` (e.g. `{ retained: true }`). The hook returns `[value, setValue, canPublish]`. **When using `publishOptions`, only call `setValue` when `canPublish` is true** (after the server has acknowledged the publish); otherwise the client will throw. If you omit `publishOptions`, `setValue` can be called immediately.
+To **make this client the publisher** so you can write to a topic:
+
+- **`publish: true`** — Become the publisher with default properties (not retained). Use when you just want to send values.
+- **`publish: { retained: true }`** — Become the publisher with `retained` (topic is not deleted when the last publisher stops).
+
+Always wait for `isReadyToWrite` before calling `setValue`.
 
 ```tsx
-const [value, setValue, canPublish] = useTopic<string>(
-  '/MyTable/AutoMode',
-  NetworkTablesTypeInfos.kString,
-  'Default',
-  undefined,
-  { retained: true }
-);
+const { value, setValue, isReadyToWrite } = useTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, {
+  defaultValue: 'Default',
+  publish: true, // make me the publisher (default properties)
+});
 
-// Guard writes until we can publish
+// Only call setValue once the server has acknowledged
 const handleChange = (newValue: string) => {
-  if (canPublish && setValue) setValue(newValue);
+  if (isReadyToWrite && setValue) setValue(newValue);
 };
+```
+
+With retained topic:
+
+```tsx
+const { value, setValue, isReadyToWrite } = useTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, {
+  defaultValue: 'Default',
+  publish: { retained: true },
+});
 ```
 
 ### Prefix and Protobuf topics
 
 - **`usePrefixTopic(prefix, subscribeOptions?)`** – Subscribes to all topics under a prefix. Returns the latest `PrefixTopicUpdate | null` (subscribe-only).
-- **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Options: `defaultValue`, `validator` (Zod schema), `protoFilePath`, `subscribeOptions`, `publishOptions`. Returns `[value, setValue, canPublish]` like `useTopic`; when using `publishOptions`, only call `setValue` when `canPublish` is true.
+- **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Options: `defaultValue`, `validator` (Zod schema), `protoFilePath`, `subscribeOptions`, `publish`. Returns `{ value, setValue, isReadyToWrite }` like `useTopic`; when using `publish`, only call `setValue` when `isReadyToWrite` is true.
+
+### Recommended connection UX
+
+For dashboards used at the field, a good pattern is:
+
+- **Connection overlay** — When disconnected, show a full-screen “Connect to the robot” overlay instead of a broken or empty UI.
+- **Manual connect** — Let the user enter server address and port (e.g. from `nt.getURI()` and `nt.getPort()`), then call `nt.changeURI(uri, port)` on submit so they can switch robot or fix the address without restarting.
+- **Escape to dismiss** — Call `nt.stopAutoConnect()` when the user presses Escape so the overlay closes and the client stops auto-reconnecting (e.g. to use the app offline). Use `useConnectionStatus()` so the overlay only re-opens when connected again unless the user explicitly dismissed it.
+- **Help** — Provide a “Need help?” link or button that opens a short connection guide (e.g. connect to robot network, set server address, default port 5810).
+
+See the **example-react** app in this repo for a full `ConnectionBackdrop` + `HelpDialog` implementation wired with `useConnectionStatus()` and `useNtcore()`.
 
 ### Advanced: raw client access
 
-For `changeURI`, log level, or other client APIs, use `useNtcore()`. Returns the `NetworkTables` instance or `null` outside a provider.
+For manual connection, log level, or other client APIs, use `useNtcore()`. Returns the `NetworkTables` instance or `null` when used outside a provider.
 
 ```tsx
 const nt = useNtcore();
 if (nt) {
-  nt.changeURI('roborio-973-frc.local');
+  // Manual connect form: pre-fill from nt.getURI(), nt.getPort(); on submit call nt.changeURI(uri, port)
+  nt.changeURI('roborio-973-frc.local', 5810);
+
+  // Dismiss connection overlay and stop auto-reconnect (e.g. on Escape)
+  nt.stopAutoConnect();
+  // Resume auto-reconnect later if needed
+  nt.startAutoConnect();
+
   NetworkTables.setLogLevel(LogLevel.debug);
 }
 ```
@@ -89,10 +123,12 @@ if (nt) {
 
 - **`NtcoreProvider`** – Props: `team?: number` | `uri: string`, and optional `port` (default `5810`). Provides a single NetworkTables instance to the tree.
 - **`useNtcore()`** – Returns the `NetworkTables` instance from context, or `null` when used outside a provider.
-- **`useTopic<T>(name, typeInfo, defaultValue?, subscribeOptions?, publishOptions?)`** – Subscribes to a topic. Returns `[value, setValue, canPublish]`. Unsubscribes on unmount. When using `publishOptions`, only call `setValue` when `canPublish` is true; otherwise `setValue` can be called immediately.
+- **`useTopic<T>(name, typeInfo, options?)`** – Subscribes to a topic. Returns `{ value, setValue, isReadyToWrite }`. Unsubscribes on unmount. Options: `defaultValue`, `subscribeOptions`, `publish` (`true` or `TopicProperties`). When you pass `publish`, only call `setValue` when `isReadyToWrite` is true.
 - **`usePrefixTopic(prefix, subscribeOptions?)`** – Subscribes to all topics under a prefix. Returns `PrefixTopicUpdate | null` (subscribe-only).
-- **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Returns `[value, setValue, canPublish]`; when using `publishOptions`, only call `setValue` when `canPublish` is true.
+- **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Returns `{ value, setValue, isReadyToWrite }`; when using `publish`, only call `setValue` when `isReadyToWrite` is true.
 - **`useConnectionStatus()`** – Returns `{ connected: boolean, rtt: number }`. `rtt` is round-trip time in ms (-1 when not connected or not yet measured). The client auto-reconnects after disconnect.
+
+When using `useNtcore()`, the client exposes `getURI()`, `getPort()`, `changeURI(uri, port)`, `stopAutoConnect()`, and `startAutoConnect()` for connection-overlay UX (see Recommended connection UX above).
 
 Re-exports from @ntcore/client: `NetworkTablesTypeInfos`, and types `NetworkTablesTypeInfo`, `NetworkTablesTypes`, `SubscribeOptions`, `TopicProperties`.
 

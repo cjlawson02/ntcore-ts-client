@@ -1,0 +1,83 @@
+.gyro-card {
+  .value {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+.gyro-indicator {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+}
+
+.gyro-compass {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.gyro-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.gyro-circle {
+  fill: #1e1e1e;
+  stroke: #444;
+  stroke-width: 2;
+}
+
+.gyro-tick-minor {
+  stroke: #555;
+  stroke-width: 1.5;
+}
+
+.gyro-tick-eighth {
+  stroke: #777;
+  stroke-width: 2;
+}
+
+.gyro-tick-quarter {
+  stroke: #888;
+  stroke-width: 2;
+}
+
+/* Needle: same ratio as pose triangle (16:20 = 4:5). 28px wide × 35px tall; centroid 2/3 down = 70/3 px */
+.gyro-needle {
+  position: absolute;
+  left: 30px;
+  top: calc(44px - 70px / 3);
+  width: 0;
+  height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-bottom: 35px solid #0a84ff;
+  transform-origin: 14px calc(70px / 3);
+  transition: transform 0.15s ease-out;
+  filter: drop-shadow(0 0 2px rgba(10, 132, 255, 0.6));
+  pointer-events: none;
+}
+
+.gyro-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.gyro-degrees {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.gyro-cardinal {
+  font-size: 0.8rem;
+  color: #888;
+}
