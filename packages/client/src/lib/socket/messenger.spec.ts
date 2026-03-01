@@ -420,7 +420,49 @@ describe('Messenger', () => {
       expect(Array.from(messenger['publications'].entries())).toHaveLength(0);
     });
 
-    it('should ignore announce messages that do not match name + pubuid', async () => {
+    it('should resolve when announce has matching name but different pubuid (fallback)', async () => {
+      const params: PublishMessageParams = {
+        name: '/fallback/topic',
+        pubuid: messenger.getNextPubUID(),
+        type: 'string',
+        properties: {},
+      };
+
+      messenger.subscribe({
+        topics: [params.name],
+        subuid: messenger.getNextSubUID(),
+        options: {},
+      });
+
+      const publishPromise = messenger.publish(params);
+
+      // Server announces with different pubuid (e.g. robot published first)
+      const serverAnnounce: AnnounceMessage = {
+        method: 'announce',
+        params: {
+          name: params.name,
+          id: 1,
+          pubuid: 9999,
+          type: 'string',
+          properties: {},
+        },
+      };
+      server.send(JSON.stringify([serverAnnounce]));
+
+      const result = await publishPromise;
+      expect(result.method).toBe('announce');
+      expect(result.params.name).toBe(params.name);
+      expect(result.params.pubuid).toBe(params.pubuid);
+      expect(messenger['publications'].has(params.pubuid)).toBe(true);
+      expect(onAnnounce).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: params.name,
+          pubuid: params.pubuid,
+        })
+      );
+    });
+
+    it('should ignore announce messages that do not match name', async () => {
       const params: PublishMessageParams = {
         name: '/match/topic',
         pubuid: messenger.getNextPubUID(),
@@ -428,7 +470,6 @@ describe('Messenger', () => {
         properties: {},
       };
 
-      // Ensure this is NOT a bug scenario so the publish does not resolve optimistically.
       messenger.subscribe({
         topics: [params.name],
         subuid: messenger.getNextSubUID(),
@@ -441,24 +482,6 @@ describe('Messenger', () => {
       void publishPromise.then(() => {
         resolved = true;
       });
-
-      // Wrong pubuid (same name)
-      server.send(
-        JSON.stringify([
-          {
-            method: 'announce',
-            params: {
-              name: params.name,
-              id: 1,
-              pubuid: 9999,
-              type: 'string',
-              properties: {},
-            },
-          },
-        ])
-      );
-      await Promise.resolve();
-      expect(resolved).toBe(false);
 
       // Wrong name (same pubuid)
       server.send(

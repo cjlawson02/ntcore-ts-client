@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { SubscribeOptions, TopicProperties } from '@ntcore/client';
 import { useNtcore } from './context';
-import { z } from 'zod';
+import type { ZodSchema } from 'zod';
 
 /**
  * Options for useProtobufTopic (defaultValue, validator, protoFilePath, subscribeOptions, publish).
- * validator is compatible with z.ZodSchema<T> from 'zod'.
+ * validator is compatible with ZodSchema<T> from 'zod'.
  */
 export type UseProtobufTopicOptions<T extends object> = {
   defaultValue?: T;
-  validator?: z.ZodSchema<T>;
+  validator?: ZodSchema<T>;
   protoFilePath?: string;
   subscribeOptions?: SubscribeOptions;
   /**

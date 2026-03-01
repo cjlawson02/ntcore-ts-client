@@ -99,7 +99,7 @@ export function usePrefixTopicMap(
     const next = pendingRef.current;
     if (Object.keys(next).length > 0) {
       pendingRef.current = {};
-      setByName((prev) => ({ ...prev, ...next }));
+      setByName((prev) => ({ ...(prev ?? {}), ...next }));
     }
   }).current;
 
