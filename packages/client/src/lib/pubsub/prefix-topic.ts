@@ -25,7 +25,7 @@ export class NetworkTablesPrefixTopic extends NetworkTablesBaseTopic<NetworkTabl
 
     const existingTopic = this.client.getPrefixTopicFromName(name);
     if (existingTopic) {
-      pubsubLogger.info('Existing prefix topic reused', { prefix: name });
+      pubsubLogger.debug('Existing prefix topic reused', { prefix: name });
       return existingTopic;
     }
 

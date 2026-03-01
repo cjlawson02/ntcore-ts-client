@@ -81,7 +81,7 @@ export class PubSubClient {
         });
         return;
       }
-      pubsubLogger.info('Socket disconnected; clearing announcement state', {
+      pubsubLogger.debug('Socket disconnected; clearing announcement state', {
         topicCount: this.topics.size,
         prefixTopicCount: this.prefixTopics.size,
         knownTopicParams: this.knownTopicParams.size,
