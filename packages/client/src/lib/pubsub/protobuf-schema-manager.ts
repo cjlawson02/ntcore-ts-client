@@ -231,7 +231,7 @@ export class ProtobufSchemaManager {
       const detectedMessageName = messageName || this.getMessageNameFromProto(root);
 
       // Create or get the schema topic (as raw/ArrayBuffer type for internal use)
-      let schemaTopic = this.client.getTopicFromName(schemaTopicName) as NetworkTablesTopic<Uint8Array> | null;
+      let schemaTopic = this.client.getTopicFromName<Uint8Array>(schemaTopicName);
       if (!schemaTopic) {
         schemaTopic = new NetworkTablesTopic<Uint8Array>(
           this.client,

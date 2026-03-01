@@ -67,6 +67,8 @@ export class NetworkTablesTypeInfos {
   static readonly kRPC: NetworkTablesTypeInfo = [5, 'rpc'];
   static readonly kMsgpack: NetworkTablesTypeInfo = [5, 'msgpack'];
   static readonly kProtobuf: NetworkTablesTypeInfo = [5, 'protobuf'];
+  /** Type info for struct schema topics (/.schema/struct:TypeName). Wire type 5 (raw bytes), type string 'structschema'. */
+  static readonly kStructSchema: NetworkTablesTypeInfo = [5, 'structschema'];
   static readonly kBooleanArray: NetworkTablesTypeInfo = [16, 'boolean[]'];
   static readonly kDoubleArray: NetworkTablesTypeInfo = [17, 'double[]'];
   static readonly kIntegerArray: NetworkTablesTypeInfo = [18, 'int[]'];
@@ -131,6 +133,12 @@ export class NetworkTablesTypeInfos {
         } else {
           throw new Error(`Invalid Protobuf value: ${value}`);
         }
+      case NetworkTablesTypeInfos.kStructSchema:
+        if (value instanceof Uint8Array) {
+          return value;
+        } else {
+          throw new Error(`Invalid struct schema value: ${value}`);
+        }
       // 16
       case NetworkTablesTypeInfos.kBooleanArray:
         return z.array(z.boolean()).parse(value);
@@ -148,13 +156,13 @@ export class NetworkTablesTypeInfos {
         return z.array(z.string()).parse(value);
 
       default: {
-        // Type num 5: struct topics (struct:TypeName) and schema topics (structschema) use raw bytes
+        // Type num 5: struct topics store full type in typeInfo (e.g. struct:Pose2d) for topic
+        // reuse/type identity, so we see struct: here. Protobuf topics use kProtobuf [5, 'protobuf']
+        // only; proto:MessageName is used in announce/decoding, not as topic typeInfo.
         const typeString = expectedTypeInfo[1];
-        if (typeof typeString === 'string') {
-          if (typeString === 'structschema' || typeString.startsWith('struct:')) {
-            if (value instanceof Uint8Array) return value;
-            throw new Error(`Invalid struct value: expected Uint8Array`);
-          }
+        if (typeString.startsWith('struct:')) {
+          if (value instanceof Uint8Array) return value;
+          throw new Error(`Invalid struct value: expected Uint8Array`);
         }
         throw new Error(`Invalid type info: ${expectedTypeInfo}`);
       }

@@ -20,6 +20,8 @@ export class StructSchemaManager {
   private readonly descriptorCache = new Map<string, StructDescriptor>();
   private readonly schemaStringCache = new Map<string, string>();
   private readonly pendingTypeNames = new Set<string>();
+  /** Type names for which we have already published a schema topic (avoids redundant republish). */
+  private readonly publishedSchemaTypes = new Set<string>();
   private readonly schemaPrefixTopic: NetworkTablesPrefixTopic;
   private readonly client: PubSubClient;
 
@@ -111,6 +113,7 @@ export class StructSchemaManager {
     this.descriptorCache.clear();
     this.schemaStringCache.clear();
     this.pendingTypeNames.clear();
+    this.publishedSchemaTypes.clear();
   }
 
   /**
@@ -149,30 +152,35 @@ export class StructSchemaManager {
   }
 
   private async publishSchemaTopic(typeName: string): Promise<void> {
+    if (this.publishedSchemaTypes.has(typeName)) return;
+
     const schemaTopicName = `${STRUCT_SCHEMA_PREFIX}${typeName}`;
     const schemaString = this.schemaStringCache.get(typeName) ?? getBuiltInSchemaString(typeName);
     if (!schemaString) return;
 
-    // Create or get the schema topic (as raw/ArrayBuffer type for internal use)
-    let topic = this.client.getTopicFromName(schemaTopicName) as NetworkTablesTopic<Uint8Array> | null;
+    const encodedSchema = new TextEncoder().encode(schemaString);
+
+    let topic = this.client.getTopicFromName<Uint8Array>(schemaTopicName);
     if (!topic) {
-      topic = new NetworkTablesTopic(this.client, schemaTopicName, NetworkTablesTypeInfos.kUint8Array);
+      topic = new NetworkTablesTopic(this.client, schemaTopicName, NetworkTablesTypeInfos.kStructSchema);
     }
 
-    // Publish the schema topic with type "structschema" and retained property
-    // We need to use the messenger directly to publish with a custom type string
-    const pubuid = this.client.messenger.getNextPubUID();
-    // Set pubuid so topic.announce() can match when messenger invokes _onAnnounce before resolving.
-    // Messenger guarantees publish() resolves only after _onAnnounce, so _publisher is set by then.
-    topic['_pubuid'] = pubuid;
-    await this.client.messenger.publish({
-      name: schemaTopicName,
-      pubuid,
-      type: 'structschema',
-      properties: { retained: true },
-    });
+    if (topic.typeInfo[1] === 'structschema') {
+      await topic.publish({ retained: true });
+      topic.setValue(encodedSchema);
+    } else {
+      // Existing topic created with older code (e.g. type 'raw'); publish with custom type via messenger
+      const pubuid = this.client.messenger.getNextPubUID();
+      topic['_pubuid'] = pubuid;
+      await this.client.messenger.publish({
+        name: schemaTopicName,
+        pubuid,
+        type: 'structschema',
+        properties: { retained: true },
+      });
+      this.client.updateServer(topic, encodedSchema);
+    }
 
-    // Set the schema value (UTF-8 encoded schema string) as the default value
-    this.client.updateServer(topic, new TextEncoder().encode(schemaString));
+    this.publishedSchemaTypes.add(typeName);
   }
 }

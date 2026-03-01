@@ -96,6 +96,20 @@ describe('NetworkTablesStructTopic', () => {
     ]);
   });
 
+  it('setValue on array struct topic throws clear error when given non-array', () => {
+    const topic = new NetworkTablesStructTopic<Array<{ x: number; y: number }>>(client, '/struct/arr', {
+      typeName: 'Translation2d[]',
+    });
+    topic['_pubuid'] = 1;
+    topic['_publisher'] = true;
+    expect(() => topic.setValue({ x: 1, y: 2 } as unknown as Array<{ x: number; y: number }>)).toThrow(
+      /Expected an array for array struct topic \/struct\/arr, got object/
+    );
+    expect(() => topic.setValue(null as unknown as Array<{ x: number; y: number }>)).toThrow(
+      /Expected an array for array struct topic \/struct\/arr, got object \(null\)/
+    );
+  });
+
   it('schema option builds descriptor and enables publish', () => {
     const topic = new NetworkTablesStructTopic<{ x: number; y: number }>(client, '/struct/custom', {
       typeName: 'Custom2d',

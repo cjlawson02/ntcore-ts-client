@@ -172,6 +172,11 @@ export class NetworkTablesStructTopic<
   private encodeValue(value: T): Uint8Array {
     const desc = this.ensureDescriptor();
     if (this._isArray) {
+      if (!Array.isArray(value)) {
+        throw new Error(
+          `Expected an array for array struct topic ${this.name}, got ${typeof value}${value === null ? ' (null)' : value === undefined ? ' (undefined)' : ''}`
+        );
+      }
       const arr = value as unknown as StructPlainObject[];
       const elemSize = desc.size;
       const buf = new Uint8Array(arr.length * elemSize);

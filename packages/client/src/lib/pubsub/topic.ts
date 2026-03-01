@@ -61,12 +61,12 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
     this.value = defaultValue ?? null;
     this._publisher = false;
 
-    const existingTopic = this.client.getTopicFromName(name);
+    const existingTopic = this.client.getTopicFromName<T>(name);
     if (existingTopic) {
       if (existingTopic.typeInfo[0] === typeInfo[0] && existingTopic.typeInfo[1] === typeInfo[1]) {
         pubsubLogger.debug('Existing topic reused', { topicName: name, type: typeInfo[1] });
         // This is a valid cast because we have checked via typeInfo that the topic is of type T
-        return existingTopic as unknown as NetworkTablesTopic<T>;
+        return existingTopic;
       } else {
         pubsubLogger.debug('Type mismatch detected', {
           topicName: name,

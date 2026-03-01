@@ -433,11 +433,11 @@ export class PubSubClient {
    * @param topicId - The ID of the topic to get.
    * @returns The topic with the given ID, or null if no topic with that ID exists.
    */
-  private getTopicFromId(topicId: number): NetworkTablesTopic<NetworkTablesTypes> | null {
+  private getTopicFromId<T extends NetworkTablesTypes>(topicId: number): NetworkTablesTopic<T> | null {
     for (const topic of this.topics.values()) {
       if (topic.id === topicId) {
         pubsubLogger.debug('Topic found by ID', { topicId, topicName: topic.name });
-        return topic;
+        return topic as unknown as NetworkTablesTopic<T>;
       }
     }
 
@@ -450,14 +450,14 @@ export class PubSubClient {
    * @param topicName - The name of the topic to get.
    * @returns The topic with the given name, or null if no topic with that name exists.
    */
-  getTopicFromName(topicName: string) {
-    const topic = this.topics.get(topicName) ?? null;
+  getTopicFromName<T extends NetworkTablesTypes>(topicName: string): NetworkTablesTopic<T> | null {
+    const topic = this.topics.get(topicName);
     if (topic) {
       pubsubLogger.debug('Topic found by name', { topicName });
-    } else {
-      pubsubLogger.debug('Topic not found by name', { topicName });
+      return topic as unknown as NetworkTablesTopic<T>;
     }
-    return topic;
+    pubsubLogger.debug('Topic not found by name', { topicName });
+    return null;
   }
 
   /**
