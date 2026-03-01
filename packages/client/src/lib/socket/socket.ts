@@ -382,8 +382,10 @@ export class NetworkTablesSocket {
 
     // Only log if it's been a while since the last connection log (close handler handles most logging)
     if (timeSinceLastLog >= NetworkTablesSocket.CONNECTION_LOG_INTERVAL) {
+      const errorMessage =
+        typeof ErrorEvent !== 'undefined' && event instanceof ErrorEvent ? event.message : 'Connection error';
       socketLogger.debug('WebSocket error occurred', {
-        error: event instanceof ErrorEvent ? event.message : 'Connection error',
+        error: errorMessage,
         note: 'Connection close details will follow',
       });
     }

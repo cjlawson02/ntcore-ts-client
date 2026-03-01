@@ -19,9 +19,9 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
   readonly type = 'regular';
   private value: T | null;
   private readonly _typeInfo: NetworkTablesTypeInfo;
-  private _publisher: boolean;
-  private _pubuid?: number;
-  private _publishProperties?: TopicProperties;
+  protected _publisher: boolean;
+  protected _pubuid?: number;
+  protected _publishProperties?: TopicProperties;
 
   /**
    * Gets the type info for the topic.

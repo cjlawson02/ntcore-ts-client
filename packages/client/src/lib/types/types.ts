@@ -147,8 +147,15 @@ export class NetworkTablesTypeInfos {
       case NetworkTablesTypeInfos.kStringArray:
         return z.array(z.string()).parse(value);
 
-      default:
+      default: {
+        // struct: type strings use type num 5 but have dynamic names (e.g. "struct:Pose2d")
+        const typeString = expectedTypeInfo[1];
+        if (typeof typeString === 'string' && typeString.startsWith('struct:')) {
+          if (value instanceof Uint8Array) return value;
+          throw new Error(`Invalid struct value: expected Uint8Array`);
+        }
         throw new Error(`Invalid type info: ${expectedTypeInfo}`);
+      }
     }
   }
 }

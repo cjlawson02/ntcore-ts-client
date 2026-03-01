@@ -10,6 +10,7 @@ import {
 import { pubsubLogger } from '../util/logger';
 
 import { ProtobufSchemaManager } from './protobuf-schema-manager';
+import { StructSchemaManager } from '../struct/struct-schema-manager';
 
 import type { NetworkTablesBaseTopic } from './base-topic';
 import type { NetworkTablesPrefixTopic } from './prefix-topic';
@@ -25,6 +26,7 @@ export class PubSubClient {
   /** Value updates that arrived before the topic announcement (topicId -> latest message). Flushed when announce arrives. */
   private readonly pendingValueUpdates: Map<number, BinaryMessageData>;
   private readonly _protobufSchemaManager: ProtobufSchemaManager;
+  private readonly _structSchemaManager: StructSchemaManager;
   private static _instances = new Map<string, PubSubClient>();
   // Unified in-flight operations tracking (schema registrations and topic publishes)
   private readonly inFlightOperations = new Map<string, Promise<unknown>>();
@@ -36,6 +38,10 @@ export class PubSubClient {
 
   get protobufSchemaManager() {
     return this._protobufSchemaManager;
+  }
+
+  get structSchemaManager() {
+    return this._structSchemaManager;
   }
 
   private constructor(serverUrl: string) {
@@ -51,6 +57,7 @@ export class PubSubClient {
     this.knownTopicParams = new Map();
     this.pendingValueUpdates = new Map();
     this._protobufSchemaManager = new ProtobufSchemaManager(this);
+    this._structSchemaManager = new StructSchemaManager(this);
 
     // When the connection drops, local server-side announcement state is no longer reliable.
     // Clear known ids so outgoing updates can be safely queued until re-announced.

@@ -21,6 +21,10 @@ public class Robot extends TimedRobot {
   private DoublePublisher m_gyroPub;
   private StringSubscriber m_autoSub;
   private ProtobufPublisher<Pose2d> m_posePub;
+  private StructPublisher<Pose2d> m_poseStructPub;
+  /** Subscribes to client-published struct, echoes to PoseStructEcho for E2E verification. */
+  private StructSubscriber<Pose2d> m_poseStructFromClientSub;
+  private StructPublisher<Pose2d> m_poseStructEchoPub;
   private double m_demoTime = 0;
   private static final double kDemoFigure8ScaleX = 1.8;
   private static final double kDemoFigure8ScaleY = 1.2;
@@ -43,6 +47,15 @@ public class Robot extends TimedRobot {
     m_posePub = nt.getProtobufTopic("/MyTable/Pose", Pose2d.proto).publish();
     m_posePub.set(new Pose2d(0, 0, new Rotation2d(0)));
 
+    m_poseStructPub = nt.getStructTopic("/MyTable/PoseStruct", Pose2d.struct).publish();
+    m_poseStructPub.set(new Pose2d(0, 0, new Rotation2d(0)));
+
+    // Subscribe to client-published struct topic and echo to PoseStructEcho for E2E verification
+    m_poseStructFromClientSub =
+        nt.getStructTopic("/MyTable/PoseStructFromClient", Pose2d.struct)
+            .subscribe(new Pose2d(0, 0, new Rotation2d(0)));
+    m_poseStructEchoPub = nt.getStructTopic("/MyTable/PoseStructEcho", Pose2d.struct).publish();
+
     m_gyroPub = nt.getDoubleTopic("/MyTable/Gyro").publish();
   }
 
@@ -55,6 +68,10 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
+    // Echo client-published struct values to PoseStructEcho for E2E verification
+    for (Pose2d received : m_poseStructFromClientSub.readQueueValues()) {
+      m_poseStructEchoPub.set(received);
+    }
   }
 
   /**
@@ -104,6 +121,7 @@ public class Robot extends TimedRobot {
     m_xPub.set(0);
     m_yPub.set(0);
     m_posePub.set(new Pose2d(0, 0, new Rotation2d(0)));
+    m_poseStructPub.set(new Pose2d(0, 0, new Rotation2d(0)));
   }
 
   /** This function is called periodically when disabled. */
@@ -133,7 +151,9 @@ public class Robot extends TimedRobot {
     double ayWorld = -kDemoFigure8ScaleY * 4 * omega * omega * Math.sin(2 * omega * t);
 
     double thetaRad = Math.atan2(vy, vx);
-    m_posePub.set(new Pose2d(x, y, new Rotation2d(thetaRad)));
+    Pose2d pose = new Pose2d(x, y, new Rotation2d(thetaRad));
+    m_posePub.set(pose);
+    m_poseStructPub.set(pose);
 
     // Gyro: match heading in degrees (CCW positive)
     m_gyroPub.set(Math.toDegrees(thetaRad));

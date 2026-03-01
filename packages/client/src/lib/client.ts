@@ -1,5 +1,6 @@
 import { NetworkTablesPrefixTopic } from './pubsub/prefix-topic';
 import { NetworkTablesProtobufTopic } from './pubsub/protobuf-topic';
+import { NetworkTablesStructTopic } from './pubsub/struct-topic';
 import { PubSubClient } from './pubsub/pubsub';
 import { NetworkTablesTopic } from './pubsub/topic';
 import { NetworkTablesTypeInfos } from './types/types';
@@ -204,6 +205,11 @@ export class NetworkTables {
         `Protobuf types are not allowed in createTopic. Use createProtobufTopic('${name}', options) instead for proper encoding/decoding support.`
       );
     }
+    if (typeof typeInfo[1] === 'string' && typeInfo[1].startsWith('struct:')) {
+      throw new Error(
+        `Struct types are not allowed in createTopic. Use createStructTopic('${name}', options) instead for proper encoding/decoding support.`
+      );
+    }
     defaultLogger.debug('Topic created', { topicName: name, type: typeInfo[1] });
     return new NetworkTablesTopic<T>(this._client, name, typeInfo, defaultValue);
   }
@@ -235,6 +241,46 @@ export class NetworkTables {
       return existingTopic as NetworkTablesProtobufTopic<T>;
     }
     return new NetworkTablesProtobufTopic<T>(this._client, name, options);
+  }
+
+  /**
+   * Creates a new struct topic.
+   * @param name - The name of the topic.
+   * @param options - Optional typeName, schema, defaultValue, validator.
+   * @returns The struct topic. If a topic with the same name already exists (from a previous createStructTopic),
+   * the existing topic is returned and options are applied.
+   * @remarks Struct fields using `int64` or `uint64` are returned as JavaScript `number`,
+   * which loses precision beyond ±2^53 (`Number.MAX_SAFE_INTEGER`). No built-in WPILib
+   * struct types are affected — they all use `double`.
+   */
+  createStructTopic<T extends Record<string, unknown>>(
+    name: string,
+    options?: {
+      typeName?: string;
+      schema?: string;
+      defaultValue?: T;
+      validator?: z.ZodSchema<T>;
+    }
+  ): NetworkTablesStructTopic<T> {
+    const existingTopic = this._client.getTopicFromName(name);
+    if (existingTopic instanceof NetworkTablesStructTopic) {
+      if (options?.typeName) {
+        const requestedBase = options.typeName.replace(/\[\]$/, '');
+        const existingType = (existingTopic as NetworkTablesStructTopic<T>).typeInfo[1];
+        const requestedPlain = `struct:${requestedBase}`;
+        const requestedArray = `struct:${requestedBase}[]`;
+        if (existingType !== requestedPlain && existingType !== requestedArray) {
+          defaultLogger.warn('createStructTopic: typeName mismatch on reuse', {
+            topicName: name,
+            existingType,
+            requestedTypeName: options.typeName,
+          });
+        }
+      }
+      (existingTopic as NetworkTablesStructTopic<T>).applyOptions(options);
+      return existingTopic as NetworkTablesStructTopic<T>;
+    }
+    return new NetworkTablesStructTopic<T>(this._client, name, options);
   }
 
   /**

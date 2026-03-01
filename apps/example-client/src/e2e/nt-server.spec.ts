@@ -98,6 +98,74 @@ describe('E2E: NT server (example-robot)', () => {
       },
       VALUE_WAIT_MS + 5000
     );
+
+    it(
+      'receives Pose (struct) from server via createStructTopic',
+      async () => {
+        const poseStructTopic = nt.createStructTopic<zod.infer<typeof pose2dSchema>>('/MyTable/PoseStruct', {
+          typeName: 'Pose2d',
+          validator: pose2dSchema,
+        });
+        const value = await new Promise<zod.infer<typeof pose2dSchema>>((resolve, reject) => {
+          const t = setTimeout(() => reject(new Error('PoseStruct value timeout')), VALUE_WAIT_MS);
+          poseStructTopic.subscribe((v) => {
+            if (v?.translation != null && v?.rotation != null) {
+              clearTimeout(t);
+              resolve(v);
+            }
+          });
+        });
+        expect(value.translation.x).toBeGreaterThanOrEqual(-2);
+        expect(value.translation.x).toBeLessThanOrEqual(2);
+        expect(value.translation.y).toBeGreaterThanOrEqual(0);
+        expect(value.translation.y).toBeLessThanOrEqual(3);
+        expect(value.rotation.value).toBeGreaterThanOrEqual(-Math.PI);
+        expect(value.rotation.value).toBeLessThanOrEqual(Math.PI);
+      },
+      VALUE_WAIT_MS + 5000
+    );
+  });
+
+  describe('client → robot', () => {
+    it(
+      'client publishes Pose2d struct; robot consumes and echoes to PoseStructEcho',
+      async () => {
+        const publishTopic = nt.createStructTopic<zod.infer<typeof pose2dSchema>>('/MyTable/PoseStructFromClient', {
+          typeName: 'Pose2d',
+          validator: pose2dSchema,
+        });
+        await publishTopic.publish({ retained: true });
+
+        const testPose = {
+          translation: { x: 0.5, y: 1.25 },
+          rotation: { value: Math.PI / 4 },
+        };
+        publishTopic.setValue(testPose);
+
+        const echoTopic = nt.createStructTopic<zod.infer<typeof pose2dSchema>>('/MyTable/PoseStructEcho', {
+          typeName: 'Pose2d',
+          validator: pose2dSchema,
+        });
+        const echoed = await new Promise<zod.infer<typeof pose2dSchema>>((resolve, reject) => {
+          const t = setTimeout(() => reject(new Error('PoseStructEcho value timeout')), VALUE_WAIT_MS);
+          echoTopic.subscribe((v) => {
+            if (
+              v?.translation != null &&
+              v?.rotation != null &&
+              Math.abs(v.translation.x - testPose.translation.x) < 1e-6 &&
+              Math.abs(v.translation.y - testPose.translation.y) < 1e-6
+            ) {
+              clearTimeout(t);
+              resolve(v);
+            }
+          });
+        });
+        expect(echoed.translation.x).toBeCloseTo(testPose.translation.x);
+        expect(echoed.translation.y).toBeCloseTo(testPose.translation.y);
+        expect(echoed.rotation.value).toBeCloseTo(testPose.rotation.value);
+      },
+      VALUE_WAIT_MS + 5000
+    );
   });
 
   describe('prefix topic (Accelerometer) + our AutoMode change', () => {
