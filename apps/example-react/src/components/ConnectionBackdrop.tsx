@@ -41,12 +41,14 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
       setMode('team');
       setTeam(match[1]);
     } else {
+      setMode('address');
       setUri(currentUri);
     }
     setPort(nt.getPort());
   }, [nt]);
 
   const handleClose = () => {
+    nt?.startAutoConnect();
     onClose();
   };
 
