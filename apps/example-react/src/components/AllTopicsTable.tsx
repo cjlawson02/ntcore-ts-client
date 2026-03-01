@@ -1,12 +1,12 @@
 import './AllTopicsTable.scss';
-import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { useNtcore, type NetworkTablesTypes } from '@ntcore/react';
+import React, { Fragment, useCallback, useMemo, useState } from 'react';
+import { usePrefixTopicMap, type NetworkTablesTypes } from '@ntcore/react';
 
 function formatValue(value: NetworkTablesTypes | null): string {
-  if (value == null) return '—';
+  if (value == null) return 'null';
   if (typeof value === 'boolean') return value ? 'true' : 'false';
   if (typeof value === 'number') return String(value);
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return JSON.stringify(value);
   if (value instanceof Uint8Array) return `<binary ${value.length}B>`;
   if (Array.isArray(value)) return JSON.stringify(value);
   if (typeof value === 'object') return JSON.stringify(value);
@@ -39,7 +39,7 @@ function formatJsonLeaf(val: unknown): string {
   if (val === null) return 'null';
   if (typeof val === 'boolean') return val ? 'true' : 'false';
   if (typeof val === 'number') return String(val);
-  if (typeof val === 'string') return `"${val}"`;
+  if (typeof val === 'string') return JSON.stringify(val);
   return String(val);
 }
 
@@ -99,7 +99,11 @@ function JsonExpander({ value, expansionKeyPrefix, expanded, onToggle, depth = 0
               <>
                 <span className="all-topics-table__json-expander-placeholder" aria-hidden />
                 <span className="all-topics-table__json-key">{key}:</span>
-                <span className="all-topics-table__json-leaf">{formatJsonLeaf(val)}</span>
+                <span
+                  className={`all-topics-table__json-leaf${val === null || val === undefined ? ' all-topics-table__json-leaf--keyword' : ''}`}
+                >
+                  {val === null ? 'null' : val === undefined ? 'undefined' : formatJsonLeaf(val)}
+                </span>
               </>
             )}
           </div>
@@ -114,15 +118,19 @@ interface ValueCellProps {
   rowKey: string;
   expanded: Set<string>;
   onToggleJsonKey: (key: string) => void;
+  /** When true (row has children), hide null in the value cell */
+  isExpandable?: boolean;
 }
 
-function ValueCell({ value, rowKey, expanded, onToggleJsonKey }: ValueCellProps) {
+function ValueCell({ value, rowKey, expanded, onToggleJsonKey, isExpandable }: ValueCellProps) {
   const json = parseJsonValue(value);
-  return json !== null ? (
-    <JsonExpander value={json} expansionKeyPrefix={rowKey} expanded={expanded} onToggle={onToggleJsonKey} />
-  ) : (
-    <>{formatValue(value)}</>
-  );
+  if (json !== null) {
+    return <JsonExpander value={json} expansionKeyPrefix={rowKey} expanded={expanded} onToggle={onToggleJsonKey} />;
+  }
+  const formatted = formatValue(value);
+  if (formatted === 'null' && isExpandable) return null;
+  const isMono = formatted === 'null' || (formatted.startsWith('<binary ') && formatted.endsWith('B>'));
+  return isMono ? <span className="all-topics-table__value-text">{formatted}</span> : <>{formatted}</>;
 }
 
 interface TopicNode {
@@ -164,25 +172,13 @@ function buildTree(rows: [string, NetworkTablesTypes | null][]): TopicNode {
 }
 
 /**
- * Subscribes to all NetworkTables topics under "/" and displays each topic name and
- * latest value in a table. Subscribes directly so every update is merged (usePrefixTopic
- * only exposes the single latest update, so we'd miss topics when updates arrive in quick succession).
- * Topics are shown in a nested tree with row expanders.
+ * Subscribes to all NetworkTables topics under "/" via usePrefixTopicMap and displays each
+ * topic name and latest value in a table. Topics are shown in a nested tree with row expanders.
  */
 export function AllTopicsTable() {
-  const nt = useNtcore();
-  const [byName, setByName] = useState<Record<string, NetworkTablesTypes | null>>({});
+  const byName = usePrefixTopicMap('/') ?? {};
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [jsonExpanded, setJsonExpanded] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!nt) return;
-    const topic = nt.createPrefixTopic('/');
-    const subuid = topic.subscribe((value, params) => {
-      setByName((prev) => ({ ...prev, [params.name]: value }));
-    });
-    return () => topic.unsubscribe(subuid);
-  }, [nt]);
 
   const rows = useMemo(() => Object.entries(byName).sort(([a], [b]) => a.localeCompare(b)), [byName]);
 
@@ -247,6 +243,7 @@ export function AllTopicsTable() {
                 rowKey={node.fullPath}
                 expanded={jsonExpanded}
                 onToggleJsonKey={toggleJsonKey}
+                isExpandable={hasChildren}
               />
             </td>
           </tr>

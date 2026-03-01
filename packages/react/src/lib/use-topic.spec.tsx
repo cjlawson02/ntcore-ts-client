@@ -84,6 +84,10 @@ describe('useTopic', () => {
     });
     expect(result.current.isReadyToWrite).toBe(true);
     expect(result.current.setValue).toBeDefined();
+    act(() => {
+      result.current.setValue!(42);
+    });
+    expect(mockTopic.setValue).toHaveBeenCalledWith(42);
   });
 
   it('publishes when publish: { retained: true } and isReadyToWrite becomes true after resolve', async () => {

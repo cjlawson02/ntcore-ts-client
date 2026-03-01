@@ -87,5 +87,9 @@ describe('useProtobufTopic', () => {
     });
     expect(result.current.isReadyToWrite).toBe(true);
     expect(result.current.setValue).toBeDefined();
+    act(() => {
+      result.current.setValue!({ x: 5 });
+    });
+    expect(mockProtobufTopic.setValue).toHaveBeenCalledWith({ x: 5 });
   });
 });

@@ -1,5 +1,5 @@
 import './App.scss';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useConnectionStatus } from '@ntcore/react';
 import { ConnectionBackdrop } from '../components/ConnectionBackdrop';
 import { ConnectionStatus } from '../components/ConnectionStatus';
@@ -13,21 +13,22 @@ export default function App() {
   const { connected } = useConnectionStatus();
   const [hasEverConnected, setHasEverConnected] = useState(false);
   const [backdropOpenByUser, setBackdropOpenByUser] = useState(false);
-  const [manuallyClosed, setManuallyClosed] = useState(false);
+  const [closedByUser, setClosedByUser] = useState(false);
 
   useEffect(() => {
     if (connected) {
       setHasEverConnected(true);
       setBackdropOpenByUser(false);
+      setClosedByUser(false);
     }
   }, [connected]);
 
-  const showBackdrop = (connected === false && !hasEverConnected && !manuallyClosed) || backdropOpenByUser;
+  const showBackdrop = (connected === false && !hasEverConnected && !closedByUser) || backdropOpenByUser;
 
-  const handleBackdropClose = (escape: boolean) => {
+  const handleBackdropClose = useCallback(() => {
     setBackdropOpenByUser(false);
-    if (escape) setManuallyClosed(true);
-  };
+    setClosedByUser(true);
+  }, []);
 
   return (
     <div className="dashboard">

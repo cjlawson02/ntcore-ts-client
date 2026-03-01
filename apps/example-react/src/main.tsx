@@ -4,7 +4,7 @@ import { NtcoreProvider } from '@ntcore/react';
 import App from './app/App';
 import './styles.scss';
 
-const NT_URI = import.meta.env.VITE_NT_URI ?? 'localhost';
+const NT_URI = import.meta.env.VITE_NT_URI || '127.0.0.1';
 const NT_PORT = parseInt(String(import.meta.env.VITE_NT_PORT ?? '5810'), 10) || 5810;
 
 const rootEl = document.getElementById('root');

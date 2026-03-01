@@ -16,10 +16,29 @@
     }
   }
 
+  .auto-mode-status {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+  }
+
   .auto-mode-waiting {
-    display: block;
-    margin-top: 0.25rem;
-    font-size: 0.75rem;
     color: #888;
+  }
+
+  .auto-mode-confirmed {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #7cb87c;
+
+    .auto-mode-confirmed-icon {
+      font-size: 1rem;
+      font-weight: bold;
+    }
+
+    strong {
+      color: inherit;
+      font-weight: 600;
+    }
   }
 }

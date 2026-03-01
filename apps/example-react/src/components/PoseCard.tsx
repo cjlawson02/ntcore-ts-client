@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { useProtobufTopic } from '@ntcore/react';
-import { normalizeDegrees, useShortestPathDisplay } from '../utils/angle';
+import { mathDegreesToDisplayDegrees, normalizeDegrees, useShortestPathDisplay } from '../utils/angle';
 import { ValueCard } from './ValueCard';
 import './PoseCard.scss';
 
@@ -25,7 +25,9 @@ export function PoseCard() {
   const y = pose?.translation.y ?? 0;
   const rotRad = pose?.rotation.value ?? 0;
   const rotDeg = radToDeg(rotRad);
-  const normalized = pose != null ? normalizeDegrees(rotDeg) : null;
+  // WPILib rotation is math angle (0 = +X, CCW); convert to display (0° = up, CW) for triangle
+  const displayAngleDeg = pose != null ? mathDegreesToDisplayDegrees(rotDeg) : null;
+  const normalized = displayAngleDeg != null ? normalizeDegrees(displayAngleDeg) : null;
   const displayRotation = useShortestPathDisplay(normalized);
 
   // Map -FIELD_HALF..FIELD_HALF to 0..100%

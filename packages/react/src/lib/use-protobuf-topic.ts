@@ -62,18 +62,35 @@ export function useProtobufTopic<T extends object>(
 
   useEffect(() => {
     if (!nt) return;
+    let cancelled = false;
     queueMicrotask(() => {
-      setState(optionsRef.current?.defaultValue ?? null);
-      setIsReadyToWrite(false);
+      if (!cancelled) {
+        setState(optionsRef.current?.defaultValue ?? null);
+        setIsReadyToWrite(false);
+      }
     });
     const topic = nt.createProtobufTopic<T>(name, optionsRef.current);
     const subuid = topic.subscribe((v) => setState(v ?? null), optionsRef.current?.subscribeOptions ?? undefined);
     const publish = optionsRef.current?.publish;
     if (publish !== undefined) {
       const properties = publish === true ? {} : publish;
-      void topic.publish(properties).then(() => setIsReadyToWrite(true));
+      topic
+        .publish(properties)
+        .then(() => {
+          if (!cancelled) setIsReadyToWrite(true);
+        })
+        .catch(() => {
+          /* publish failure: do not update state */
+        });
+      return () => {
+        cancelled = true;
+        topic.unsubscribe(subuid);
+      };
     }
-    return () => topic.unsubscribe(subuid);
+    return () => {
+      cancelled = true;
+      topic.unsubscribe(subuid);
+    };
   }, [nt, name]);
 
   const setValueCb = useCallback(

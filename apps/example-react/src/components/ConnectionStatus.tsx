@@ -2,22 +2,22 @@ import './ConnectionStatus.scss';
 import { useConnectionStatus } from '@ntcore/react';
 
 type ConnectionStatusProps = {
-  /** When set, clicking the indicator (when disconnected) opens the connection backdrop */
+  /** When set, clicking the indicator opens the connection backdrop (disconnected or connected) */
   onConnectionClick?: () => void;
 };
 
 export function ConnectionStatus({ onConnectionClick }: ConnectionStatusProps) {
   const { connected, rtt } = useConnectionStatus();
-  const openBackdropOnClick = !connected && Boolean(onConnectionClick);
+  const isClickable = Boolean(onConnectionClick);
 
   return (
     <span
-      className={`status ${connected ? 'connected' : 'disconnected'} ${openBackdropOnClick ? 'clickable' : ''}`}
-      role={openBackdropOnClick ? 'button' : undefined}
-      tabIndex={openBackdropOnClick ? 0 : undefined}
-      onClick={openBackdropOnClick ? onConnectionClick : undefined}
+      className={`status ${connected ? 'connected' : 'disconnected'} ${isClickable ? 'clickable' : ''}`}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onClick={isClickable ? onConnectionClick : undefined}
       onKeyDown={
-        openBackdropOnClick
+        isClickable
           ? (e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -26,7 +26,11 @@ export function ConnectionStatus({ onConnectionClick }: ConnectionStatusProps) {
             }
           : undefined
       }
-      aria-label={connected ? 'Connected to robot' : 'Not connected. Click to open connection settings.'}
+      aria-label={
+        connected
+          ? 'Connected to robot. Click to change connection settings.'
+          : 'Not connected. Click to open connection settings.'
+      }
     >
       {connected ? 'CONNECTED' : 'NOT CONNECTED'}
       {connected && rtt >= 0 && (

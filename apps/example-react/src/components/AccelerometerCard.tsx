@@ -2,7 +2,7 @@ import { useTopic, NetworkTablesTypeInfos } from '@ntcore/react';
 import { ValueCard } from './ValueCard';
 import './AccelerometerCard.scss';
 
-const AXIS_MAX = 2; // ±2g or equivalent; values beyond clamp to bar ends
+const AXIS_MAX = 0.5; // ±0.5g; smaller domain so small changes show greater on the bar
 
 function AxisBar({ label, value, color }: { label: string; value: number | null; color: 'x' | 'y' }) {
   const normalized = value == null ? 0 : Math.max(-1, Math.min(1, value / AXIS_MAX));

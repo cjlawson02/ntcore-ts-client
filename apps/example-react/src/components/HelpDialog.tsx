@@ -6,17 +6,12 @@ const DEFAULT_HELP_CONTENT = (
     <ol className="help-dialog__steps">
       <li>Connect to the robot&apos;s network or FMS.</li>
       <li>
-        If the dashboard doesn&apos;t automatically connect, set &quot;Server address&quot; to the robot&apos;s host
-        (e.g. <code>roborio-973-frc.local</code> or <code>localhost</code> for simulation).
+        If the dashboard doesn&apos;t automatically connect, choose &quot;Team number&quot; and enter your team (e.g.{' '}
+        <code>973</code>), or choose &quot;Address&quot; to enter a hostname (e.g. <code>localhost</code> or{' '}
+        <code>roborio-973-frc.local</code>) and optionally the port.
       </li>
-      <li>
-        Enter the port (default <code>5810</code>) and click Connect.
-      </li>
+      <li>Click Connect.</li>
     </ol>
-    <p className="help-dialog__hint">
-      Press <kbd>Escape</kbd> on the connection screen to dismiss it and stop auto-reconnect (e.g. to use the app
-      offline).
-    </p>
   </>
 );
 

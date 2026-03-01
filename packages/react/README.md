@@ -86,7 +86,13 @@ const { value, setValue, isReadyToWrite } = useTopic<string>('/MyTable/AutoMode'
 
 ### Prefix and Protobuf topics
 
-- **`usePrefixTopic(prefix, subscribeOptions?)`** – Subscribes to all topics under a prefix. Returns the latest `PrefixTopicUpdate | null` (subscribe-only).
+Subscribe to **all topics under a path** (prefix) with one of two hooks:
+
+- **`usePrefixTopic(prefix, subscribeOptions?)`** – Returns only the **latest** single update `{ name, value } | null`. Use when you need to react to “something under this prefix changed” (e.g. trigger a refetch, show “last activity”) without keeping a full list. Rapid updates overwrite; you only see the most recent.
+- **`usePrefixTopicMap(prefix, subscribeOptions?)`** – Returns a **map** of every topic name → value under the prefix, batched so rapid announcements all appear. Use when you need to list or iterate over all topics (e.g. an “all topics” table). Prefer this when in doubt.
+
+Prefix topics are subscribe-only (no publish).
+
 - **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Options: `defaultValue`, `validator` (Zod schema), `protoFilePath`, `subscribeOptions`, `publish`. Returns `{ value, setValue, isReadyToWrite }` like `useTopic`; when using `publish`, only call `setValue` when `isReadyToWrite` is true.
 
 ### Recommended connection UX
@@ -124,7 +130,8 @@ if (nt) {
 - **`NtcoreProvider`** – Props: `team?: number` | `uri: string`, and optional `port` (default `5810`). Provides a single NetworkTables instance to the tree.
 - **`useNtcore()`** – Returns the `NetworkTables` instance from context, or `null` when used outside a provider.
 - **`useTopic<T>(name, typeInfo, options?)`** – Subscribes to a topic. Returns `{ value, setValue, isReadyToWrite }`. Unsubscribes on unmount. Options: `defaultValue`, `subscribeOptions`, `publish` (`true` or `TopicProperties`). When you pass `publish`, only call `setValue` when `isReadyToWrite` is true.
-- **`usePrefixTopic(prefix, subscribeOptions?)`** – Subscribes to all topics under a prefix. Returns `PrefixTopicUpdate | null` (subscribe-only).
+- **`usePrefixTopic(prefix, subscribeOptions?)`** – Subscribes to all topics under a prefix. Returns only the **latest** update `PrefixTopicUpdate | null` (subscribe-only). For a map of all topics, use `usePrefixTopicMap`.
+- **`usePrefixTopicMap(prefix, subscribeOptions?)`** – Subscribes to all topics under a prefix. Returns a map of topic name → value, or `null` when outside provider (subscribe-only). Use for listing or iterating over all topics under a prefix.
 - **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Returns `{ value, setValue, isReadyToWrite }`; when using `publish`, only call `setValue` when `isReadyToWrite` is true.
 - **`useConnectionStatus()`** – Returns `{ connected: boolean, rtt: number }`. `rtt` is round-trip time in ms (-1 when not connected or not yet measured). The client auto-reconnects after disconnect.
 

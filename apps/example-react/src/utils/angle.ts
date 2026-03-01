@@ -6,6 +6,15 @@ export function normalizeDegrees(degrees: number): number {
 }
 
 /**
+ * Convert WPILib/math angle to display (compass) angle.
+ * Math: 0° = +X, CCW positive. Display: 0° = up (North), CW positive.
+ * Use for needle, cardinal, and pose triangle so they match robot orientation.
+ */
+export function mathDegreesToDisplayDegrees(mathDegrees: number): number {
+  return 90 - mathDegrees;
+}
+
+/**
  * Shortest-path angle from prev to the equivalent of normalized (mod 360).
  * Returns an angle equivalent to normalized that minimizes |result - prev|,
  * for smooth display (e.g. needle/pose rotation without spinning the long way).

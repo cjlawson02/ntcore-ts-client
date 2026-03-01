@@ -20,7 +20,7 @@ A minimal React dashboard that uses [@ntcore/react](../../packages/react) to dis
 
    Open the URL shown (e.g. http://localhost:4200).
 
-3. The dashboard shows connection status, Gyro, Accelerometer X/Y/Z, Pose (protobuf), and Auto Mode. You can change Auto Mode from the dropdown; the robot reads it in `autonomousInit()`.
+3. The dashboard shows connection status, Gyro, Accelerometer X/Y, Pose (protobuf), and Auto Mode. You can change Auto Mode from the dropdown; the robot reads it in `autonomousInit()`.
 
 ## Environment
 

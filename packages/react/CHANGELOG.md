@@ -4,4 +4,4 @@
 
 ### New Features
 
-- React bindings for @ntcore/client: `NtcoreProvider`, `useTopic`, `usePrefixTopic`, `useProtobufTopic`, `useConnectionStatus`
+- React bindings for @ntcore/client: `NtcoreProvider`, `useTopic`, `usePrefixTopic`, `usePrefixTopicMap`, `useProtobufTopic`, `useConnectionStatus`

@@ -9,14 +9,15 @@ export function AutoModeCard() {
     publish: { retained: true },
   });
 
+  const displayValue = value ?? 'Default';
+
   return (
     <div className="card auto-mode">
       <h2>Auto Mode</h2>
-      <div className="value">{value ?? 'Default'}</div>
-      {setValue && (
+      {setValue ? (
         <>
           <select
-            value={value ?? 'Default'}
+            value={displayValue}
             onChange={(e) => setValue(e.target.value)}
             disabled={!isReadyToWrite}
             aria-label="Auto mode"
@@ -28,12 +29,21 @@ export function AutoModeCard() {
               </option>
             ))}
           </select>
-          {!isReadyToWrite && (
-            <span className="auto-mode-waiting" aria-live="polite">
-              Waiting for robot…
-            </span>
-          )}
+          <div className="auto-mode-status" aria-live="polite">
+            {!isReadyToWrite ? (
+              <span className="auto-mode-waiting">Waiting for robot…</span>
+            ) : (
+              <span className="auto-mode-confirmed">
+                <span className="auto-mode-confirmed-icon" aria-hidden>
+                  ✓
+                </span>
+                Robot will use: <strong>{displayValue}</strong>
+              </span>
+            )}
+          </div>
         </>
+      ) : (
+        <div className="auto-mode-status">{displayValue}</div>
       )}
     </div>
   );

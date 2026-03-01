@@ -6,7 +6,8 @@
   "peerDependencies": {
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
-    "@ntcore/client": "*"
+    "@ntcore/client": "*",
+    "zod": ">=3.0.0"
   },
   "keywords": [
     "ntcore",

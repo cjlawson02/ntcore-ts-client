@@ -23,6 +23,15 @@
   &.connected {
     background: #1b5e20;
     color: #a5d6a7;
+
+    &.clickable {
+      cursor: pointer;
+      border-color: rgba(30, 94, 32, 0.5);
+
+      &:hover {
+        border-color: #2e7d32;
+      }
+    }
   }
 
   &.disconnected {

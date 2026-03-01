@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NtcoreProvider, useNtcore } from './context';
+import type { NtcoreProviderProps } from './context';
 
 const mockRemoveConnectionListener = vi.fn();
 const mockUnsubscribe = vi.fn();
@@ -52,6 +53,16 @@ describe('NtcoreProvider and useNtcore', () => {
     );
     const { result } = renderHook(() => useNtcore(), { wrapper });
     expect(result.current).toBe(mockNt);
+  });
+
+  it('throws when neither team nor uri is provided', () => {
+    expect(() =>
+      renderHook(() => useNtcore(), {
+        wrapper: ({ children }: { children: React.ReactNode }) => (
+          <NtcoreProvider {...({} as NtcoreProviderProps)}>{children}</NtcoreProvider>
+        ),
+      })
+    ).toThrow('NtcoreProvider requires either team or uri.');
   });
 
   it('throws when port is invalid (e.g. NaN)', () => {

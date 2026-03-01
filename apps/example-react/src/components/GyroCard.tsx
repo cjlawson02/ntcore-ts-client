@@ -1,5 +1,5 @@
 import { useTopic, NetworkTablesTypeInfos } from '@ntcore/react';
-import { normalizeDegrees, useShortestPathDisplay } from '../utils/angle';
+import { mathDegreesToDisplayDegrees, normalizeDegrees, useShortestPathDisplay } from '../utils/angle';
 import { ValueCard } from './ValueCard';
 import './GyroCard.scss';
 
@@ -42,9 +42,10 @@ function GyroTicks() {
 
 function GyroContent() {
   const { value } = useTopic<number>('/MyTable/Gyro', NetworkTablesTypeInfos.kDouble);
-  const normalized = value != null ? normalizeDegrees(value) : null;
+  // Robot sends math angle (0° = +X, CCW); convert to display (0° = up, CW) for needle/cardinal
+  const displayAngle = value != null ? mathDegreesToDisplayDegrees(value) : null;
+  const normalized = displayAngle != null ? normalizeDegrees(displayAngle) : null;
   const needleDegrees = useShortestPathDisplay(normalized);
-  const displayDegrees = value != null ? normalized : null;
 
   return (
     <>
@@ -58,8 +59,8 @@ function GyroContent() {
         <div className="gyro-needle" style={{ transform: `rotate(${needleDegrees}deg)` }} aria-hidden />
       </div>
       <div className="gyro-readout">
-        <span className="gyro-degrees">{displayDegrees != null ? displayDegrees.toFixed(1) : '—'}°</span>
-        {displayDegrees != null && <span className="gyro-cardinal">{headingToCardinal(displayDegrees)}</span>}
+        <span className="gyro-degrees">{normalized != null ? normalized.toFixed(1) : '—'}°</span>
+        {normalized != null && <span className="gyro-cardinal">{headingToCardinal(normalized)}</span>}
       </div>
     </>
   );

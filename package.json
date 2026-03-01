@@ -21,7 +21,7 @@
     ]
   },
   "devDependencies": {
-    "@babel/core": "^7.28.6",
+    "@babel/core": "^7.29.0",
     "@msgpack/msgpack": "^3.1.2",
     "isomorphic-ws": "^5.0.0",
     "protobufjs": "^8.0.0",
@@ -54,10 +54,10 @@
     "@testing-library/dom": "10.4.1",
     "@testing-library/react": "16.3.2",
     "@types/node": "^25.0.3",
-    "@types/react": "^19.0.0",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
     "@types/ws": "^8.18.1",
-    "@vitejs/plugin-react": "^5.1.2",
+    "@vitejs/plugin-react": "^5.1.4",
     "@vitest/coverage-v8": "4.0.18",
     "@vitest/eslint-plugin": "^1.6.6",
     "@vitest/ui": "4.0.18",

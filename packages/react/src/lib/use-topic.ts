@@ -56,7 +56,6 @@ export function useTopic<T extends NetworkTablesTypes>(
 ): UseTopicResult<T> {
   const nt = useNtcore();
   const defaultValue = options?.defaultValue;
-  const subscribeOptions = options?.subscribeOptions;
   const publishOpt = options?.publish;
 
   const [state, setState] = useState<T | null>(defaultValue ?? null);
@@ -69,18 +68,35 @@ export function useTopic<T extends NetworkTablesTypes>(
 
   useEffect(() => {
     if (!nt) return;
+    let cancelled = false;
     queueMicrotask(() => {
-      setState(optionsRef.current?.defaultValue ?? null);
-      setIsReadyToWrite(false);
+      if (!cancelled) {
+        setState(optionsRef.current?.defaultValue ?? null);
+        setIsReadyToWrite(false);
+      }
     });
     const topic = nt.createTopic<T>(name, typeInfo, optionsRef.current?.defaultValue);
     const subuid = topic.subscribe((v) => setState(v), optionsRef.current?.subscribeOptions ?? undefined);
     const publish = optionsRef.current?.publish;
     if (publish !== undefined) {
       const properties = publish === true ? {} : publish;
-      void topic.publish(properties).then(() => setIsReadyToWrite(true));
+      topic
+        .publish(properties)
+        .then(() => {
+          if (!cancelled) setIsReadyToWrite(true);
+        })
+        .catch(() => {
+          /* publish failure: do not update state */
+        });
+      return () => {
+        cancelled = true;
+        topic.unsubscribe(subuid);
+      };
     }
-    return () => topic.unsubscribe(subuid);
+    return () => {
+      cancelled = true;
+      topic.unsubscribe(subuid);
+    };
   }, [nt, name, typeInfo]);
 
   const setValueCb = useCallback(

@@ -14,6 +14,7 @@
 
   &__table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     font-size: 0.8125rem;
 
@@ -126,8 +127,14 @@
 
   &__json-key {
     flex-shrink: 0;
-    color: #9ab;
+  }
+
+  // Shared mono style for key-like and value text (key, value cell text, null/undefined in JSON)
+  &__json-key,
+  &__value-text,
+  &__json-leaf--keyword {
     font-family: ui-monospace, monospace;
+    color: #9ab;
   }
 
   &__json-children {
@@ -146,8 +153,8 @@
   }
 
   &__value {
+    width: 20rem;
     font-variant-numeric: tabular-nums;
-    max-width: 20rem;
     overflow: hidden;
     text-overflow: ellipsis;
   }
