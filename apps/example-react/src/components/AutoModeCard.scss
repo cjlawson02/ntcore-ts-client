@@ -1,0 +1,44 @@
+.auto-mode {
+  select,
+  input[type='number'] {
+    margin-top: 0.25rem;
+    padding: 0.5rem;
+    width: 100%;
+    background: #333;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.875rem;
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+  }
+
+  .auto-mode-status {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .auto-mode-waiting {
+    color: #888;
+  }
+
+  .auto-mode-confirmed {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #7cb87c;
+
+    .auto-mode-confirmed-icon {
+      font-size: 1rem;
+      font-weight: bold;
+    }
+
+    strong {
+      color: inherit;
+      font-weight: 600;
+    }
+  }
+}

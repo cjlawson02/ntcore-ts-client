@@ -1,0 +1,21 @@
+{
+  "name": "@ntcore/react",
+  "version": "0.0.1",
+  "description": "React bindings for @ntcore/client (NetworkTables for FRC)",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "@ntcore/client": "*",
+    "zod": ">=3.0.0"
+  },
+  "keywords": [
+    "ntcore",
+    "networktables",
+    "frc",
+    "robot",
+    "robotics",
+    "react",
+    "hooks"
+  ]
+}

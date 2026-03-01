@@ -1,0 +1,50 @@
+@keyframes flash-danger {
+  0%,
+  49% {
+    background: #b71c1c;
+    color: #fff;
+  }
+  50%,
+  100% {
+    background: transparent;
+    color: #b71c1c;
+  }
+}
+
+.status {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  border: 1px solid transparent;
+
+  &.connected {
+    background: #1b5e20;
+    color: #a5d6a7;
+
+    &.clickable {
+      cursor: pointer;
+      border-color: rgba(30, 94, 32, 0.5);
+
+      &:hover {
+        border-color: #2e7d32;
+      }
+    }
+  }
+
+  &.disconnected {
+    animation: flash-danger 0.5s infinite;
+    color: #b71c1c;
+
+    &.clickable {
+      cursor: pointer;
+      border-color: rgba(183, 28, 28, 0.5);
+
+      &:hover {
+        border-color: #b71c1c;
+      }
+    }
+  }
+}

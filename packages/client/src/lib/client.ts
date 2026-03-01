@@ -172,6 +172,21 @@ export class NetworkTables {
   }
 
   /**
+   * Stops automatic reconnection to the server. Use when the user dismisses the connection
+   * overlay (e.g. Escape) so the client does not keep trying to reconnect in the background.
+   */
+  stopAutoConnect(): void {
+    this._client.messenger.socket.stopAutoConnect();
+  }
+
+  /**
+   * Resumes automatic reconnection to the server after a previous call to stopAutoConnect.
+   */
+  startAutoConnect(): void {
+    this._client.messenger.socket.startAutoConnect();
+  }
+
+  /**
    * Creates a new topic.
    * @param name - The name of the topic.
    * @param typeInfo - The type information of the topic. Protobuf types are not allowed (use createProtobufTopic instead).

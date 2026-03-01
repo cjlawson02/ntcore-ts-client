@@ -1,0 +1,51 @@
+{
+  "name": "example-react",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/example-react/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "dependsOn": ["^build"],
+      "options": {
+        "outputPath": "dist/apps/example-react",
+        "configFile": "apps/example-react/vite.config.ts"
+      },
+      "configurations": {
+        "development": {
+          "mode": "development"
+        },
+        "production": {
+          "mode": "production"
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/vite:dev-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "example-react:build",
+        "configFile": "apps/example-react/vite.config.ts"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "example-react:build:development"
+        },
+        "production": {
+          "buildTarget": "example-react:build:production"
+        }
+      }
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "../../coverage/apps/example-react",
+        "configFile": "apps/example-react/vite.config.ts"
+      }
+    }
+  }
+}

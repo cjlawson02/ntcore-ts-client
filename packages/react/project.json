@@ -1,0 +1,47 @@
+{
+  "name": "react",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/react/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "outputs": [],
+      "options": {
+        "command": "tsc -p tsconfig.spec.json --noEmit",
+        "cwd": "packages/react"
+      }
+    },
+    "build": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/react",
+        "main": "packages/react/src/index.ts",
+        "tsConfig": "packages/react/tsconfig.lib.json",
+        "format": ["esm", "cjs"],
+        "generateExportsField": true,
+        "sourceMap": true,
+        "external": ["react", "react-dom", "react/jsx-runtime", "@ntcore/client"],
+        "compiler": "babel",
+        "assets": [
+          {
+            "input": "packages/react",
+            "output": ".",
+            "glob": "README.md"
+          }
+        ]
+      },
+      "dependsOn": ["typecheck", "client:build"]
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "../../coverage/packages/react",
+        "configFile": "packages/react/vite.config.mts"
+      }
+    }
+  }
+}

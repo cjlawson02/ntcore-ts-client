@@ -368,6 +368,11 @@ describe('NetworkTablesSocket', () => {
       expect(socket['bestRtt']).toBe(10);
       expect(socket['offset']).toBe(999);
     });
+
+    it('getBestRttMs returns -1 when not connected or RTT not yet measured', () => {
+      socket['bestRtt'] = -1;
+      expect(socket.getBestRttMs()).toBe(-1);
+    });
   });
 
   describe('init', () => {

@@ -1,0 +1,50 @@
+.pose-card .value {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pose-field {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: #1e1e1e;
+  border-radius: 8px;
+  border: 1px solid #444;
+  overflow: hidden;
+}
+
+.pose-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px);
+  background-size: 25% 25%;
+}
+
+.pose-robot {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 20px solid #0a84ff;
+  filter: drop-shadow(0 0 2px rgba(10, 132, 255, 0.5));
+  transition:
+    left 0.08s ease-out,
+    top 0.08s ease-out,
+    transform 0.08s ease-out;
+  pointer-events: none;
+}
+
+.pose-readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: #aaa;
+}
+
+.pose-readout span {
+  white-space: nowrap;
+}

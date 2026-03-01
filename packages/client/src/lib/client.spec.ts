@@ -1,5 +1,6 @@
 import { NetworkTables } from './client';
 import { NetworkTablesTypeInfos } from './types/types';
+import { LogLevel } from './util/logger';
 
 describe('NetworkTables', () => {
   beforeEach(() => {
@@ -112,5 +113,33 @@ describe('NetworkTables', () => {
     expect(() => networkTables.createTopic('/proto/bad', NetworkTablesTypeInfos.kProtobuf)).toThrow(
       "Protobuf types are not allowed in createTopic. Use createProtobufTopic('/proto/bad', options) instead for proper encoding/decoding support."
     );
+  });
+
+  it('setLogLevel sets global log level', () => {
+    NetworkTables.setLogLevel(LogLevel.DEBUG);
+    expect(NetworkTables.getModuleLogLevel('default')).toBe(LogLevel.DEBUG);
+    NetworkTables.setLogLevel(LogLevel.INFO);
+  });
+
+  it('setModuleLogLevel and getModuleLogLevel work per module', () => {
+    NetworkTables.setModuleLogLevel('socket', LogLevel.WARN);
+    expect(NetworkTables.getModuleLogLevel('socket')).toBe(LogLevel.WARN);
+    expect(NetworkTables.getModuleLogLevel()).toBe(LogLevel.INFO);
+    NetworkTables.setModuleLogLevel('socket', LogLevel.INFO);
+  });
+
+  it('stopAutoConnect and startAutoConnect delegate to socket', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const stopSpy = vi.spyOn(networkTables['_client'].messenger.socket, 'stopAutoConnect');
+    const startSpy = vi.spyOn(networkTables['_client'].messenger.socket, 'startAutoConnect');
+    networkTables.stopAutoConnect();
+    expect(stopSpy).toHaveBeenCalled();
+    networkTables.startAutoConnect();
+    expect(startSpy).toHaveBeenCalled();
+  });
+
+  it('getRttMs returns -1 when not connected', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    expect(networkTables.getRttMs()).toBe(-1);
   });
 });

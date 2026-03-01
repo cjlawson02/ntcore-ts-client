@@ -387,6 +387,20 @@ export class Messenger {
             resolver(message);
             break;
           }
+          // Fallback: topic announced by name but pubuid differs (e.g. robot published first).
+          // Server may have announced from another client before our publish was processed.
+          // Treat as success: merge our pubuid so the topic marks us as publisher, then resolve.
+          if (nameMatches && !resolved) {
+            messengerLogger.debug('Announcement received (name match, pubuid override)', {
+              topicName: message.params.name,
+              serverPubuid: message.params.pubuid,
+              ourPubuid: params.pubuid,
+            });
+            const mergedParams = { ...message.params, pubuid: params.pubuid };
+            this._onAnnounce(mergedParams);
+            resolver({ ...message, params: mergedParams });
+            break;
+          }
         }
       };
 
