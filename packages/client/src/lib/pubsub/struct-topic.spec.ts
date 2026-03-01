@@ -16,7 +16,7 @@ describe('NetworkTablesStructTopic', () => {
 
   beforeEach(() => {
     client['topics'].clear();
-    client['prefixTopics'].clear();
+    // Do not clear prefixTopics: StructSchemaManager's prefix (/.schema/struct:) is needed for deferred-schema test
     client['knownTopicParams'].clear();
     client['pendingValueUpdates'].clear();
     client.structSchemaManager.clearCache();
@@ -106,5 +106,61 @@ describe('NetworkTablesStructTopic', () => {
     topic.setValue({ x: 10, y: 20 });
     expect(topic.getValue()).toEqual({ x: 10, y: 20 });
     expect(topic.typeInfo[1]).toBe('struct:Custom2d');
+  });
+
+  describe('applyOptions', () => {
+    it('applies typeName and schema when reusing topic', () => {
+      const topic = new NetworkTablesStructTopic<{ x: number; y: number }>(client, '/struct/apply', {
+        typeName: 'Translation2d',
+      });
+      expect(topic.getValue()).toBeNull();
+      topic.applyOptions({
+        typeName: 'CustomPoint',
+        schema: 'double x;double y',
+        defaultValue: { x: 1, y: 2 },
+      });
+      expect(topic.getValue()).toEqual({ x: 1, y: 2 });
+      topic['_pubuid'] = 1;
+      topic['_publisher'] = true;
+      topic.setValue({ x: 5, y: 10 });
+      expect(topic.getValue()).toEqual({ x: 5, y: 10 });
+    });
+
+    it('applies schema only (keeps typeName), builds descriptor', () => {
+      const topic = new NetworkTablesStructTopic<{ a: number; b: number }>(client, '/struct/schemaOnly', {
+        typeName: 'AB',
+      });
+      topic.applyOptions({ schema: 'double a;double b' });
+      topic['_pubuid'] = 1;
+      topic['_publisher'] = true;
+      topic.setValue({ a: 3, b: 4 });
+      expect(topic.getValue()).toEqual({ a: 3, b: 4 });
+    });
+  });
+
+  describe('deferred schema (pending schema retry in ensureDescriptor)', () => {
+    it('stores schema when build fails (nested not available), retries on setValue after schema arrives', () => {
+      const topic = new NetworkTablesStructTopic<{ f: { x: number } }>(client, '/struct/deferred', {
+        typeName: 'Outer',
+        schema: 'NestedT f',
+      });
+      expect(topic['_descriptor']).toBeNull();
+      expect(topic['_pendingSchema']).toBe('NestedT f');
+
+      const prefixTopic = client.getPrefixTopicFromName('/.schema/struct:');
+      if (!prefixTopic) throw new Error('expected prefix topic');
+      prefixTopic.updateValue(
+        { name: '/.schema/struct:NestedT', id: 1, type: 'structschema', properties: {} },
+        new TextEncoder().encode('double x'),
+        0
+      );
+
+      topic['_pubuid'] = 1;
+      topic['_publisher'] = true;
+      topic.setValue({ f: { x: 42 } });
+      expect(topic['_descriptor']).not.toBeNull();
+      expect(topic['_pendingSchema']).toBeNull();
+      expect(topic.getValue()).toEqual({ f: { x: 42 } });
+    });
   });
 });

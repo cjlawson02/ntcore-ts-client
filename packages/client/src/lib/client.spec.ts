@@ -144,6 +144,24 @@ describe('NetworkTables', () => {
     expect(topic2.getValue()).toEqual({ x: 1, y: 2 });
   });
 
+  it('creates struct topic with array type (Translation2d[]) and getValue/setValue work', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.createStructTopic<Array<{ x: number; y: number }>>('/struct/arr', {
+      typeName: 'Translation2d[]',
+    });
+    expect(topic).toBeDefined();
+    expect(topic.getValue()).toBeNull();
+    expect(topic.typeInfo[1]).toBe('struct:Translation2d[]');
+    topic['_pubuid'] = 1;
+    topic['_publisher'] = true;
+    const arr = [
+      { x: 1.0, y: 2.0 },
+      { x: 3.0, y: 4.0 },
+    ];
+    topic.setValue(arr);
+    expect(topic.getValue()).toEqual(arr);
+  });
+
   it('setLogLevel sets global log level', () => {
     NetworkTables.setLogLevel(LogLevel.DEBUG);
     expect(NetworkTables.getModuleLogLevel('default')).toBe(LogLevel.DEBUG);

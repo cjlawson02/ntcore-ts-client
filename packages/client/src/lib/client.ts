@@ -253,7 +253,7 @@ export class NetworkTables {
    * which loses precision beyond ±2^53 (`Number.MAX_SAFE_INTEGER`). No built-in WPILib
    * struct types are affected — they all use `double`.
    */
-  createStructTopic<T extends Record<string, unknown>>(
+  createStructTopic<T extends Record<string, unknown> | Record<string, unknown>[]>(
     name: string,
     options?: {
       typeName?: string;

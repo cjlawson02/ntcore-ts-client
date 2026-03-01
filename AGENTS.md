@@ -11,3 +11,5 @@
 - If the user needs help with an Nx configuration or project graph error, use the `nx_workspace` tool to get any errors
 
 <!-- nx configuration end-->
+
+- E2E tests (against example-robot) are run with `nx run example-client:e2e:local` (starts the robot, then runs the e2e suite)

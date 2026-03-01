@@ -77,4 +77,17 @@ describe('useStructTopic', () => {
     });
     expect(mockStructTopic.setValue).toHaveBeenCalledWith({ x: 3, y: 4 });
   });
+
+  it('supports array-of-struct type (Translation2d[]) without cast', () => {
+    type Translation2d = { x: number; y: number };
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { result } = renderHook(
+      () => useStructTopic<Translation2d[]>('/struct/arr', { typeName: 'Translation2d[]' }),
+      { wrapper }
+    );
+    expect(result.current.value).toBeNull();
+    expect(mockNt.createStructTopic).toHaveBeenCalledWith('/struct/arr', { typeName: 'Translation2d[]' });
+  });
 });

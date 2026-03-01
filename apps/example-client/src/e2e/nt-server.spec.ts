@@ -166,6 +166,42 @@ describe('E2E: NT server (example-robot)', () => {
       },
       VALUE_WAIT_MS + 5000
     );
+
+    it(
+      'createStructTopic reuse applies options (schema + defaultValue) when same name called again',
+      async () => {
+        const name = '/MyTable/StructReuseE2E';
+        const topic1 = nt.createStructTopic<{ x: number; y: number }>(name, { typeName: 'Translation2d' });
+        const topic2 = nt.createStructTopic<{ x: number; y: number }>(name, {
+          typeName: 'Translation2d',
+          schema: 'double x;double y',
+          defaultValue: { x: 10, y: 20 },
+        });
+        expect(topic2).toBe(topic1);
+        expect(topic2.getValue()).toEqual({ x: 10, y: 20 });
+      },
+      VALUE_WAIT_MS + 2000
+    );
+
+    it(
+      'createStructTopic with array type (Translation2d[]): publish, setValue, getValue round-trip',
+      async () => {
+        type Translation2d = { x: number; y: number };
+        const topic = nt.createStructTopic<Translation2d[]>('/MyTable/Translation2dArray', {
+          typeName: 'Translation2d[]',
+        });
+        expect(topic.typeInfo[1]).toBe('struct:Translation2d[]');
+        await topic.publish({ retained: true });
+
+        const arr: Translation2d[] = [
+          { x: 1.5, y: 2.5 },
+          { x: 3.5, y: 4.5 },
+        ];
+        topic.setValue(arr);
+        expect(topic.getValue()).toEqual(arr);
+      },
+      VALUE_WAIT_MS + 5000
+    );
   });
 
   describe('prefix topic (Accelerometer) + our AutoMode change', () => {

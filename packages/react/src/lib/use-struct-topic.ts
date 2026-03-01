@@ -6,7 +6,7 @@ import type { ZodSchema } from 'zod';
 /**
  * Options for useStructTopic (defaultValue, validator, typeName, schema, subscribeOptions, publish).
  */
-export type UseStructTopicOptions<T extends Record<string, unknown>> = {
+export type UseStructTopicOptions<T extends Record<string, unknown> | Record<string, unknown>[]> = {
   defaultValue?: T;
   validator?: ZodSchema<T>;
   typeName?: string;
@@ -23,7 +23,7 @@ export type UseStructTopicOptions<T extends Record<string, unknown>> = {
  * Result of useStructTopic. When you pass `publish`, setValue is defined and you must
  * wait for isReadyToWrite before calling it.
  */
-export type UseStructTopicResult<T extends Record<string, unknown>> = {
+export type UseStructTopicResult<T extends Record<string, unknown> | Record<string, unknown>[]> = {
   value: T | null;
   setValue: ((value: T) => void) | undefined;
   /** True once the server has acknowledged our publish request. */
@@ -45,7 +45,7 @@ export type UseStructTopicResult<T extends Record<string, unknown>> = {
  * @param options - Optional typeName, schema, defaultValue, validator, subscribeOptions, publish.
  * @returns { value, setValue, isReadyToWrite }.
  */
-export function useStructTopic<T extends Record<string, unknown>>(
+export function useStructTopic<T extends Record<string, unknown> | Record<string, unknown>[]>(
   name: string,
   options?: UseStructTopicOptions<T>
 ): UseStructTopicResult<T> {

@@ -237,7 +237,8 @@ function readBitfield(view: DataView, offset: number, byteSize: number, bitWidth
     );
   }
   const raw = readStorageUnit(view, offset, byteSize);
-  const mask = (1 << bitWidth) - 1;
+  // Use unsigned mask so bitWidth=31 works: (1 << 31) would overflow to negative in JS.
+  const mask = (0xffffffff >>> (32 - bitWidth)) >>> 0;
   return (raw >>> bitShift) & mask;
 }
 
@@ -261,7 +262,8 @@ function writeBitfield(
       `Struct codec: bitfield write unsupported for byteSize=${byteSize} bitWidth=${bitWidth} (max ${MAX_BITFIELD_WIDTH} bits)`
     );
   }
-  const mask = (1 << bitWidth) - 1;
+  // Use unsigned mask so bitWidth=31 works: (1 << 31) would overflow to negative in JS.
+  const mask = (0xffffffff >>> (32 - bitWidth)) >>> 0;
   const v = ((value as number) & mask) >>> 0;
   const raw = readStorageUnit(view, offset, byteSize);
   const updated = (raw & ~(mask << bitShift)) | (v << bitShift);

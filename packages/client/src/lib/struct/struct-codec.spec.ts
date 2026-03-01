@@ -83,6 +83,15 @@ describe('struct-codec', () => {
       expect(desc.fields[1].bitShift).toBe(0);
       expect(desc.fields[1].offset).toBe(1);
     });
+
+    it('31-bit bitfield uses correct unsigned mask (no JS overflow)', () => {
+      const fields = parseSchema('uint32 wide:31');
+      const desc = buildStructDescriptor('Wide', fields, () => null);
+      const value = { wide: 0x7fffffff };
+      const buf = pack(value, desc);
+      expect(buf.length).toBe(4);
+      expect(unpack(buf, desc)).toEqual(value);
+    });
   });
 
   describe('errors', () => {

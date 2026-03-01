@@ -30,6 +30,8 @@ export class NetworkTablesStructTopic<
   private _isArray: boolean;
   private _validator?: z.ZodSchema<T>;
   private _descriptor: StructDescriptor | null = null;
+  /** When schema option build fails (e.g. nested not yet available), store and retry in ensureDescriptor. */
+  private _pendingSchema: string | null = null;
 
   constructor(
     client: PubSubClient,
@@ -58,6 +60,7 @@ export class NetworkTablesStructTopic<
         this._descriptor = buildStructDescriptor(this._typeName, fields, getNested);
       } catch (err) {
         pubsubLogger.debug('Deferred struct descriptor build from schema option', { topicName: name, error: err });
+        this._pendingSchema = options.schema;
       }
     }
     if (!this._descriptor && this._typeName) {
@@ -66,12 +69,60 @@ export class NetworkTablesStructTopic<
   }
 
   applyOptions(options?: { typeName?: string; schema?: string; defaultValue?: T; validator?: z.ZodSchema<T> }): void {
-    if (options?.validator !== undefined) this._validator = options.validator;
-    if (options?.defaultValue !== undefined) this.decodedValue = options.defaultValue;
+    if (!options) return;
+    if (options.typeName !== undefined) {
+      const typeName = options.typeName;
+      const isArray = typeName.endsWith('[]');
+      const baseTypeName = isArray ? typeName.slice(0, -2) : typeName;
+      this._typeName = baseTypeName || typeName;
+      this._isArray = isArray;
+      this._descriptor = null;
+      this._pendingSchema = null;
+    }
+    if (options.schema !== undefined) {
+      const schema = options.schema;
+      this._pendingSchema = schema || null;
+      if (schema) {
+        try {
+          const fields = parseSchema(schema);
+          const getNested = (n: string) => this.client.structSchemaManager.fetchDescriptor(n);
+          this._descriptor = buildStructDescriptor(this._typeName, fields, getNested);
+          this._pendingSchema = null;
+        } catch (err) {
+          pubsubLogger.debug('Deferred struct descriptor build from schema option (applyOptions)', {
+            topicName: this.name,
+            error: err,
+          });
+          this._descriptor = null;
+        }
+      } else {
+        this._descriptor = null;
+      }
+    }
+    if (!this._descriptor && this._typeName) {
+      this._descriptor = getBuiltInDescriptor(this._typeName) ?? null;
+    }
+    if (options.validator !== undefined) this._validator = options.validator;
+    if (options.defaultValue !== undefined) this.decodedValue = options.defaultValue;
   }
 
   private ensureDescriptor(): StructDescriptor {
     if (this._descriptor) return this._descriptor;
+    const schemaToTry = this._pendingSchema;
+    if (schemaToTry) {
+      try {
+        const fields = parseSchema(schemaToTry);
+        const getNested = (n: string) => this.client.structSchemaManager.fetchDescriptor(n);
+        this._descriptor = buildStructDescriptor(this._typeName, fields, getNested);
+        this._pendingSchema = null;
+        return this._descriptor;
+      } catch (err) {
+        pubsubLogger.debug('Retry struct descriptor from pending schema failed', {
+          topicName: this.name,
+          error: err,
+        });
+      }
+    }
     const d = this.client.structSchemaManager.fetchDescriptor(this._typeName);
     if (d) {
       this._descriptor = d;
