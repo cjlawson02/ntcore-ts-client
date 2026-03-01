@@ -4,9 +4,9 @@ import { NtcoreProvider } from './context';
 import { usePrefixTopic, usePrefixTopicMap } from './use-prefix-topic';
 
 const mockUnsubscribe = vi.fn();
-let subscribeCallback: ((v: unknown, params: { name: string }) => void) | null = null;
+let _subscribeCallback: ((v: unknown, params: { name: string }) => void) | null = null;
 const defaultPrefixSubscribeImpl = (cb: (v: unknown, params: { name: string }) => void) => {
-  subscribeCallback = cb;
+  _subscribeCallback = cb;
   setTimeout(() => cb(42, { name: '/foo/bar' }), 0);
   return 88;
 };
@@ -45,7 +45,7 @@ const waitForMapUpdates = () =>
 describe('usePrefixTopic', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    subscribeCallback = null;
+    _subscribeCallback = null;
     mockPrefixSubscribe.mockImplementation(defaultPrefixSubscribeImpl);
   });
 
@@ -61,6 +61,7 @@ describe('usePrefixTopic', () => {
     const { result, unmount } = renderHook(() => usePrefixTopic('/SmartDashboard'), { wrapper });
     expect(mockNt.createPrefixTopic).toHaveBeenCalledWith('/SmartDashboard');
     expect(mockPrefixSubscribe).toHaveBeenCalled();
+    expect(_subscribeCallback).toBeInstanceOf(Function);
     await waitForUpdates();
     expect(result.current).toEqual({
       name: '/foo/bar',
@@ -80,7 +81,7 @@ describe('usePrefixTopic', () => {
 
   it('handles null value in update (unannounce)', async () => {
     mockPrefixSubscribe.mockImplementation((cb: (v: unknown, params: { name: string }) => void) => {
-      subscribeCallback = cb;
+      _subscribeCallback = cb;
       setTimeout(() => cb(null, { name: '/foo/unannounced' }), 0);
       return 88;
     });
@@ -118,9 +119,9 @@ describe('usePrefixTopic', () => {
 describe('usePrefixTopicMap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    subscribeCallback = null;
+    _subscribeCallback = null;
     mockPrefixSubscribe.mockImplementation((cb: (v: unknown, params: { name: string }) => void) => {
-      subscribeCallback = cb;
+      _subscribeCallback = cb;
       setTimeout(() => cb(42, { name: '/foo/bar' }), 0);
       return 88;
     });
@@ -146,7 +147,7 @@ describe('usePrefixTopicMap', () => {
 
   it('batches multiple updates into map', async () => {
     mockPrefixSubscribe.mockImplementation((cb: (v: unknown, params: { name: string }) => void) => {
-      subscribeCallback = cb;
+      _subscribeCallback = cb;
       setTimeout(() => {
         cb(1, { name: '/a' });
         cb(2, { name: '/b' });
@@ -171,7 +172,7 @@ describe('usePrefixTopicMap', () => {
   });
 
   it('cancels pending rAF when prefix changes before flush', async () => {
-    const cancelSpy = vi.spyOn(global, 'cancelAnimationFrame').mockImplementation(() => {});
+    const cancelSpy = vi.spyOn(global, 'cancelAnimationFrame').mockImplementation(() => undefined);
     let rafId = 0;
     vi.stubGlobal('requestAnimationFrame', (cb: () => void) => {
       rafId += 1;

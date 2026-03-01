@@ -83,9 +83,10 @@ describe('useTopic', () => {
       await new Promise((r) => setTimeout(r, 10));
     });
     expect(result.current.isReadyToWrite).toBe(true);
-    expect(result.current.setValue).toBeDefined();
+    const setValue = result.current.setValue;
+    expect(setValue).toBeDefined();
     act(() => {
-      result.current.setValue!(42);
+      setValue?.(42);
     });
     expect(mockTopic.setValue).toHaveBeenCalledWith(42);
   });

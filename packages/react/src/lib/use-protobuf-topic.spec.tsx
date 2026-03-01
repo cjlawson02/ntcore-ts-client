@@ -86,9 +86,10 @@ describe('useProtobufTopic', () => {
       await new Promise((r) => setTimeout(r, 10));
     });
     expect(result.current.isReadyToWrite).toBe(true);
-    expect(result.current.setValue).toBeDefined();
+    const setValue = result.current.setValue;
+    expect(setValue).toBeDefined();
     act(() => {
-      result.current.setValue!({ x: 5 });
+      setValue?.({ x: 5 });
     });
     expect(mockProtobufTopic.setValue).toHaveBeenCalledWith({ x: 5 });
   });
