@@ -151,8 +151,9 @@ export function parseSchema(schema: string): ParsedField[] {
 function parseEnumEntries(lex: Lexer): Record<string, number> {
   const enumValues: Record<string, number> = {};
   for (;;) {
+    if (lex.peek() === '}') break;
     const id = lex.next();
-    if (!id || id === '}') break;
+    if (!id) break;
     if (PUNCT.test(id) || INT.test(id)) throw new Error('Struct schema: expected identifier in enum entry');
     const eq = lex.next();
     if (eq !== '=') throw new Error('Struct schema: expected "=" in enum entry');

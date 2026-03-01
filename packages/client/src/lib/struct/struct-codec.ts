@@ -220,14 +220,22 @@ function writeStorageUnit(view: DataView, offset: number, byteSize: number, valu
   }
 }
 
+const MAX_BITFIELD_WIDTH = 31;
+
 /**
  * Reads a bitfield value from a storage unit. Mirrors WPILib's unsigned read path:
  * `(rawVal >>> bitShift) & bitMask`. Signed sign-extension is not implemented since
  * WPILib only allows unsigned/bool bitfields in practice.
+ * JS bitwise ops are 32-bit; bitfields wider than 31 bits or 8-byte storage are unsupported.
  *
  * @see DynamicStruct.java — getFieldImpl()
  */
 function readBitfield(view: DataView, offset: number, byteSize: number, bitWidth: number, bitShift: number): number {
+  if (byteSize === 8 || bitWidth > MAX_BITFIELD_WIDTH) {
+    throw new Error(
+      `Struct codec: bitfield read unsupported for byteSize=${byteSize} bitWidth=${bitWidth} (max ${MAX_BITFIELD_WIDTH} bits)`
+    );
+  }
   const raw = readStorageUnit(view, offset, byteSize);
   const mask = (1 << bitWidth) - 1;
   return (raw >>> bitShift) & mask;
@@ -236,6 +244,7 @@ function readBitfield(view: DataView, offset: number, byteSize: number, bitWidth
 /**
  * Writes a bitfield value into a storage unit via read-modify-write. Clears the target
  * bits with `~(mask << shift)`, then sets with `(value & mask) << shift`.
+ * JS bitwise ops are 32-bit; bitfields wider than 31 bits or 8-byte storage are unsupported.
  *
  * @see DynamicStruct.java — setFieldImpl()
  */
@@ -247,6 +256,11 @@ function writeBitfield(
   bitShift: number,
   value: unknown
 ): void {
+  if (byteSize === 8 || bitWidth > MAX_BITFIELD_WIDTH) {
+    throw new Error(
+      `Struct codec: bitfield write unsupported for byteSize=${byteSize} bitWidth=${bitWidth} (max ${MAX_BITFIELD_WIDTH} bits)`
+    );
+  }
   const mask = (1 << bitWidth) - 1;
   const v = ((value as number) & mask) >>> 0;
   const raw = readStorageUnit(view, offset, byteSize);

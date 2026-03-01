@@ -25,7 +25,9 @@ export class StructSchemaManager {
 
   constructor(client: PubSubClient) {
     this.client = client;
+    // Create a prefix topic for all struct schema topics
     this.schemaPrefixTopic = new NetworkTablesPrefixTopic(client, STRUCT_SCHEMA_PREFIX);
+    // Subscribe to all schema topics and automatically decode and cache them
     this.schemaPrefixTopic.subscribe(
       (value, params) => {
         this.handleSchemaUpdate(value as Uint8Array | null, params);
@@ -39,6 +41,8 @@ export class StructSchemaManager {
   /**
    * Handles schema updates from the prefix topic subscription.
    * Decodes UTF-8 bytes to string, parses schema, and caches descriptor when dependencies are ready.
+   * @param value - The value of the schema update (null when a topic is unannounced).
+   * @param params - The parameters of the announce message.
    */
   private handleSchemaUpdate(value: Uint8Array | null, params: AnnounceMessageParams): void {
     if (value == null) return;
@@ -116,6 +120,8 @@ export class StructSchemaManager {
   async addSchema(descriptor: StructDescriptor): Promise<void> {
     const typeName = descriptor.typeName;
     const schemaTopicName = `${STRUCT_SCHEMA_PREFIX}${typeName}`;
+    // Use unified in-flight protection from PubSubClient
+    // Key format: "schema:" prefix to avoid conflicts with topic publishes
     const operationKey = `schema:${schemaTopicName}`;
     await this.client.getOrCreateInFlightOperation(operationKey, async () => {
       const nested = this.collectNestedTypeNames(descriptor);
@@ -146,19 +152,27 @@ export class StructSchemaManager {
     const schemaTopicName = `${STRUCT_SCHEMA_PREFIX}${typeName}`;
     const schemaString = this.schemaStringCache.get(typeName) ?? getBuiltInSchemaString(typeName);
     if (!schemaString) return;
+
+    // Create or get the schema topic (as raw/ArrayBuffer type for internal use)
     let topic = this.client.getTopicFromName(schemaTopicName) as NetworkTablesTopic<Uint8Array> | null;
     if (!topic) {
       topic = new NetworkTablesTopic(this.client, schemaTopicName, NetworkTablesTypeInfos.kUint8Array);
     }
+
+    // Publish the schema topic with type "structschema" and retained property
+    // We need to use the messenger directly to publish with a custom type string
     const pubuid = this.client.messenger.getNextPubUID();
+    // Set pubuid so topic.announce() can match when messenger invokes _onAnnounce before resolving.
+    // Messenger guarantees publish() resolves only after _onAnnounce, so _publisher is set by then.
     topic['_pubuid'] = pubuid;
-    topic['_publisher'] = true;
     await this.client.messenger.publish({
       name: schemaTopicName,
       pubuid,
       type: 'structschema',
       properties: { retained: true },
     });
+
+    // Set the schema value (UTF-8 encoded schema string) as the default value
     this.client.updateServer(topic, new TextEncoder().encode(schemaString));
   }
 }

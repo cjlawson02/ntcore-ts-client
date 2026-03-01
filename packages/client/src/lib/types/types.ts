@@ -148,11 +148,13 @@ export class NetworkTablesTypeInfos {
         return z.array(z.string()).parse(value);
 
       default: {
-        // struct: type strings use type num 5 but have dynamic names (e.g. "struct:Pose2d")
+        // Type num 5: struct topics (struct:TypeName) and schema topics (structschema) use raw bytes
         const typeString = expectedTypeInfo[1];
-        if (typeof typeString === 'string' && typeString.startsWith('struct:')) {
-          if (value instanceof Uint8Array) return value;
-          throw new Error(`Invalid struct value: expected Uint8Array`);
+        if (typeof typeString === 'string') {
+          if (typeString === 'structschema' || typeString.startsWith('struct:')) {
+            if (value instanceof Uint8Array) return value;
+            throw new Error(`Invalid struct value: expected Uint8Array`);
+          }
         }
         throw new Error(`Invalid type info: ${expectedTypeInfo}`);
       }

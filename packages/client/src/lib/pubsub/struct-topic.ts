@@ -92,9 +92,9 @@ export class NetworkTablesStructTopic<
   // @ts-expect-error - Base expects Uint8Array; we accept T and encode
   override setValue(value: T): void {
     const validated = this.maybeValidate(value);
-    this.decodedValue = validated;
     const encoded = this.encodeValue(validated);
     super.setValue(encoded);
+    this.decodedValue = validated;
   }
 
   private decodeValue(value: Uint8Array): T | null {
@@ -102,6 +102,7 @@ export class NetworkTablesStructTopic<
       const desc = this.ensureDescriptor();
       if (this._isArray) {
         const elemSize = desc.size;
+        if (value.length % elemSize !== 0) return null;
         const n = value.length / elemSize;
         const arr: StructPlainObject[] = [];
         for (let i = 0; i < n; i++) {
