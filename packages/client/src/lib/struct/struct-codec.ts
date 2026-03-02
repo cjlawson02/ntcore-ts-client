@@ -68,7 +68,8 @@ function unpackField(view: DataView, field: StructFieldDescriptor): unknown {
     return arr;
   }
   if (field.bitWidth > 0 && field.bitWidth < field.size * 8) {
-    return readBitfield(view, offset, field.size, field.bitWidth, field.bitShift);
+    const bitfieldValue = readBitfield(view, offset, field.size, field.bitWidth, field.bitShift);
+    return prim === 'bool' ? bitfieldValue !== 0 : bitfieldValue;
   }
   return readPrimitive(view, offset, prim);
 }
@@ -172,12 +173,36 @@ function writePrimitive(view: DataView, offset: number, prim: string, value: unk
     case 'uint32':
       view.setUint32(offset, value as number, true);
       break;
-    case 'int64':
-      view.setBigInt64(offset, BigInt(value as number), true);
+    case 'int64': {
+      const v =
+        typeof value === 'bigint'
+          ? value
+          : typeof value === 'number' && Number.isSafeInteger(value)
+            ? BigInt(value)
+            : (() => {
+                throw new Error(
+                  `Struct pack int64: value ${String(value)} is not a safe integer. ` +
+                    `Pass a BigInt for values outside ±2^53.`
+                );
+              })();
+      view.setBigInt64(offset, v, true);
       break;
-    case 'uint64':
-      view.setBigUint64(offset, BigInt(value as number), true);
+    }
+    case 'uint64': {
+      const v =
+        typeof value === 'bigint'
+          ? value
+          : typeof value === 'number' && Number.isSafeInteger(value)
+            ? BigInt(value)
+            : (() => {
+                throw new Error(
+                  `Struct pack uint64: value ${String(value)} is not a safe integer. ` +
+                    `Pass a BigInt for values outside ±2^53.`
+                );
+              })();
+      view.setBigUint64(offset, v, true);
       break;
+    }
     case 'float':
     case 'float32':
       view.setFloat32(offset, value as number, true);

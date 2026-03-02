@@ -270,11 +270,11 @@ export class NetworkTables {
         const requestedPlain = `struct:${requestedBase}`;
         const requestedArray = `struct:${requestedBase}[]`;
         if (existingType !== requestedPlain && existingType !== requestedArray) {
-          defaultLogger.warn('createStructTopic: typeName mismatch on reuse', {
-            topicName: name,
-            existingType,
-            requestedTypeName: options.typeName,
-          });
+          throw new Error(
+            `createStructTopic: type mismatch for topic "${name}". ` +
+              `Existing type "${existingType}" does not match requested typeName "${options.typeName}". ` +
+              `A struct topic's type is immutable once created.`
+          );
         }
       }
       (existingTopic as NetworkTablesStructTopic<T>).applyOptions(options);

@@ -162,7 +162,7 @@ export class StructSchemaManager {
 
     let topic = this.client.getTopicFromName<Uint8Array>(schemaTopicName);
     if (!topic) {
-      topic = new NetworkTablesTopic(this.client, schemaTopicName, NetworkTablesTypeInfos.kStructSchema);
+      topic = new NetworkTablesTopic<Uint8Array>(this.client, schemaTopicName, NetworkTablesTypeInfos.kStructSchema);
     }
 
     if (topic.typeInfo[1] === 'structschema') {
