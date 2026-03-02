@@ -2,7 +2,6 @@ import {
   type AnnounceMessage,
   type AnnounceMessageParams,
   type PublishMessageParams,
-  type SubscribeOptions,
   type TopicProperties,
 } from '../types/types';
 
@@ -10,7 +9,6 @@ import { pubsubLogger } from '../util/logger';
 
 import { NetworkTablesTopic } from './topic';
 
-import type { CallbackFn } from './base-topic';
 import type { PubSubClient } from './pubsub';
 import type { z } from 'zod';
 import type { StructDescriptor } from '../struct/struct-descriptor';
@@ -22,9 +20,10 @@ function structTypeInfo(typeName: string, isArray: boolean): [5, string] {
   return [5, isArray ? `struct:${typeName}[]` : `struct:${typeName}`];
 }
 
-export class NetworkTablesStructTopic<
-  T extends StructPlainObject | StructPlainObject[],
-> extends NetworkTablesTopic<Uint8Array> {
+export class NetworkTablesStructTopic<T extends StructPlainObject | StructPlainObject[]> extends NetworkTablesTopic<
+  Uint8Array,
+  T
+> {
   private decodedValue: T | null = null;
   private _typeName: string;
   private _isArray: boolean;
@@ -135,17 +134,20 @@ export class NetworkTablesStructTopic<
     return (this._validator ? this._validator.parse(value) : value) as T;
   }
 
-  // @ts-expect-error - Base returns Uint8Array; we return decoded T
   override getValue(): T | null {
     return this.decodedValue;
   }
 
-  // @ts-expect-error - Base expects Uint8Array; we accept T and encode
   override setValue(value: T): void {
+    if (!this.publisher) {
+      pubsubLogger.debug('Publisher check failed before setValue', { topicName: this.name });
+      throw new Error('Cannot set value on topic without being the publisher');
+    }
     const validated = this.maybeValidate(value);
     const encoded = this.encodeValue(validated);
     this.decodedValue = validated;
-    super.setValue(encoded);
+    this.setWireValue(encoded);
+    this.afterSetWireValue();
   }
 
   private decodeValue(value: Uint8Array): T | null {
@@ -202,32 +204,6 @@ export class NetworkTablesStructTopic<
       this._typeName = this._isArray ? suffix.slice(0, -2) : suffix;
       this._descriptor = this.client.structSchemaManager.fetchDescriptor(this._typeName) ?? this._descriptor;
     }
-  }
-
-  // Override to accept callback with decoded T; we pass decoded value in notifySubscribers
-  // @ts-expect-error - Base expects CallbackFn<Uint8Array>; we accept (T | null, params) => void
-  override subscribe(
-    callback: (value: T | null, params: AnnounceMessageParams) => void,
-    options: Omit<SubscribeOptions, 'prefix'> = {},
-    id?: number,
-    save = true
-  ): number {
-    return super.subscribe(callback as CallbackFn<Uint8Array>, options, id, save);
-  }
-
-  override notifySubscribers(): void {
-    const params =
-      this._announceParams ??
-      ({
-        name: this.name,
-        id: -1,
-        type: this.typeInfo[1],
-        properties: this._publishProperties ?? {},
-        ...(this._pubuid != null ? { pubuid: this._pubuid } : {}),
-      } as AnnounceMessageParams);
-    this.subscribers.forEach((info) =>
-      (info.callback as (value: T | null, params: AnnounceMessageParams) => void)(this.decodedValue, params)
-    );
   }
 
   override async publish(properties: TopicProperties = {}, id?: number): Promise<AnnounceMessage | void> {

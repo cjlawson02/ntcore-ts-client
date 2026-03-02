@@ -15,9 +15,12 @@ import type {
   TopicProperties,
 } from '../types/types';
 
-export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTablesBaseTopic<T> {
+export class NetworkTablesTopic<
+  TWire extends NetworkTablesTypes,
+  TPublic = TWire,
+> extends NetworkTablesBaseTopic<TPublic> {
   readonly type = 'regular';
-  private value: T | null;
+  private _wireValue: TWire | null;
   private readonly _typeInfo: NetworkTablesTypeInfo;
   protected _publisher: boolean;
   protected _pubuid?: number;
@@ -55,18 +58,18 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * @param typeInfo - The type info for the topic.
    * @param defaultValue - The default value for the topic.
    */
-  constructor(client: PubSubClient, name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
+  constructor(client: PubSubClient, name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: TPublic) {
     super(client, name);
     this._typeInfo = typeInfo;
-    this.value = defaultValue ?? null;
+    this._wireValue = (defaultValue ?? null) as TWire | null;
     this._publisher = false;
 
-    const existingTopic = this.client.getTopicFromName<T>(name);
+    const existingTopic = this.client.getTopicFromName(name);
     if (existingTopic) {
       if (existingTopic.typeInfo[0] === typeInfo[0] && existingTopic.typeInfo[1] === typeInfo[1]) {
         pubsubLogger.debug('Existing topic reused', { topicName: name, type: typeInfo[1] });
-        // This is a valid cast because we have checked via typeInfo that the topic is of type T
-        return existingTopic;
+        // Valid cast: we verified typeInfo matches; map stores base topic type.
+        return existingTopic as unknown as this;
       } else {
         pubsubLogger.debug('Type mismatch detected', {
           topicName: name,
@@ -86,18 +89,28 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * The client must be the publisher of the topic to set the value.
    * @param value - The value to set.
    */
-  setValue(value: T) {
+  setValue(value: TPublic) {
     if (!this.publisher) {
       pubsubLogger.debug('Publisher check failed before setValue', { topicName: this.name });
       throw new Error('Cannot set value on topic without being the publisher');
     }
-    const oldValue = this.value;
+    const oldValue = this.getValue();
     pubsubLogger.debug('Value set', { topicName: this.name, oldValue, newValue: value, type: this._typeInfo[1] });
-    this.value = value;
-    this.notifySubscribers();
+    this.setWireValue(value as unknown as TWire);
+    this.afterSetWireValue();
+  }
 
+  /** Internal: set wire-format value and notify subscribers. Subclasses may call this when encoding decoded values. */
+  protected setWireValue(value: TWire): void {
+    this._wireValue = value;
+    this.notifySubscribers();
+  }
+
+  /** Called after setWireValue from subclasses that encode before setting. Runs prefix notify and updateServer. */
+  protected afterSetWireValue(): void {
+    if (this._wireValue == null) return;
     // Notify prefix subscribers (e.g. "all topics" table) so locally published values appear there.
-    this.client.notifyPrefixTopicsForLocalUpdate(this.getAnnounceParamsForNotify(), this.getValue() as T);
+    this.client.notifyPrefixTopicsForLocalUpdate(this.getAnnounceParamsForNotify(), this._wireValue);
 
     // If we're disconnected, just keep our local retained value.
     // We will always resend the latest retained value after reconnect.
@@ -106,7 +119,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
       return;
     }
 
-    this.client.updateServer<T>(this, value);
+    this.client.updateServer(this, this._wireValue);
   }
 
   /** Params for prefix notify; use real announce params when we have them, else minimal fallback. */
@@ -121,7 +134,12 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * This ensures that if the server/robot restarted, it receives the current state.
    */
   resendLatestValue() {
-    if (!this._publisher || this._pubuid == null || !this.client.messenger.socket.isConnected() || this.value == null) {
+    if (
+      !this._publisher ||
+      this._pubuid == null ||
+      !this.client.messenger.socket.isConnected() ||
+      this._wireValue == null
+    ) {
       return;
     }
 
@@ -129,26 +147,26 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
       topicName: this.name,
       pubuid: this._pubuid,
     });
-    this.client.updateServer<T>(this, this.value);
+    this.client.updateServer(this, this._wireValue);
   }
 
   /**
    * Gets the value of the topic.
    * @returns The value of the topic.
    */
-  getValue() {
-    pubsubLogger.debug('Value retrieved', { topicName: this.name, value: this.value });
-    return this.value;
+  getValue(): TPublic | null {
+    pubsubLogger.debug('Value retrieved', { topicName: this.name, value: this._wireValue });
+    return this._wireValue as TPublic | null;
   }
 
   /**
    * Updates the value of the topic.
    * This should only be called by the PubSubClient.
-   * @param value - The value to update.
+   * @param value - The value to update (wire format).
    * @param lastChangedTime - The server time of the last value change.
    */
-  updateValue(value: T, lastChangedTime: number) {
-    const oldValue = this.value;
+  updateValue(value: TWire, lastChangedTime: number) {
+    const oldValue = this._wireValue;
     pubsubLogger.debug('Value updated', {
       topicName: this.name,
       oldValue,
@@ -156,9 +174,8 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
       lastChangedTime,
       type: this._typeInfo[1],
     });
-    this.value = value;
+    this.setWireValue(value);
     this._lastChangedTime = lastChangedTime;
-    this.notifySubscribers();
   }
 
   /** */
@@ -196,7 +213,7 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
    * @param save - Whether to save the subscriber.
    * @returns The UID of the subscriber.
    */
-  subscribe(callback: CallbackFn<T>, options: Omit<SubscribeOptions, 'prefix'> = {}, id?: number, save = true) {
+  subscribe(callback: CallbackFn<TPublic>, options: Omit<SubscribeOptions, 'prefix'> = {}, id?: number, save = true) {
     const subuid = id || this.client.messenger.getNextSubUID();
 
     const subscribeParams: SubscribeMessageParams = {
@@ -250,10 +267,10 @@ export class NetworkTablesTopic<T extends NetworkTablesTypes> extends NetworkTab
       pubsubLogger.trace('Callback invoked', {
         topicName: this.name,
         subuid,
-        value: this.value,
+        value: this.getValue(),
         params,
       });
-      info.callback(this.value, params);
+      info.callback(this.getValue(), params);
     });
   }
 

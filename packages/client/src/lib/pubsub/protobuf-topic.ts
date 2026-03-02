@@ -3,7 +3,6 @@ import {
   type AnnounceMessage,
   type AnnounceMessageParams,
   type PublishMessageParams,
-  type SubscribeOptions,
   type TopicProperties,
 } from '../types/types';
 
@@ -11,12 +10,11 @@ import { pubsubLogger } from '../util/logger';
 
 import { NetworkTablesTopic } from './topic';
 
-import type { CallbackFn } from './base-topic';
 import type { PubSubClient } from './pubsub';
 import type { Type } from 'protobufjs';
 import type { z } from 'zod';
 
-export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesTopic<Uint8Array<ArrayBufferLike>> {
+export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesTopic<Uint8Array<ArrayBufferLike>, T> {
   // Protobuf support
   private decodedValue: T | null = null;
   private _protobufMessageName?: string;
@@ -95,22 +93,21 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
    * Gets the value of the topic.
    * @returns The value of the topic.
    */
-  // TypeScript limitation: We override to return T instead of Uint8Array
-  // This is safe because we decode protobuf values internally
-  // @ts-expect-error - Base class returns Uint8Array, but we return decoded T. This is intentional.
   override getValue(): T | null {
     return this.decodedValue;
   }
 
-  // TypeScript limitation: We override to accept T instead of Uint8Array
-  // This is safe because we encode T to Uint8Array before passing to base class
-  // @ts-expect-error - Base class expects Uint8Array, but we accept T and encode it. This is intentional.
   override setValue(value: T): void {
-    // Validate the value if a validator is provided
     const validatedValue = this._validator ? this._validator.parse(value) : value;
-    // Store the decoded value so getValue() returns it
+    // Encode first so schema load errors (e.g. bad protoFilePath) are thrown before publisher check
+    const encoded = this.encodeValue(validatedValue);
+    if (!this.publisher) {
+      pubsubLogger.debug('Publisher check failed before setValue', { topicName: this.name });
+      throw new Error('Cannot set value on topic without being the publisher');
+    }
     this.decodedValue = validatedValue;
-    super.setValue(this.encodeValue(validatedValue));
+    this.setWireValue(encoded);
+    this.afterSetWireValue();
   }
 
   /**
@@ -253,49 +250,6 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
   // ----------- //
   // SUBSCRIBING //
   // ----------- //
-
-  /**
-   * Creates a new subscriber.
-   * @param callback - The callback to call when the topic value changes.
-   * @param options - The options for the subscriber.
-   * @param id - The UID of the subscriber. You must verify that the ID is not already in use.
-   * @param save - Whether to save the subscriber.
-   * @returns The UID of the subscriber.
-   */
-  // TypeScript limitation: We override to accept CallbackFn<T> instead of CallbackFn<Uint8Array>
-  // This is safe because we decode protobuf values and pass T to callbacks
-  // @ts-expect-error - Base class expects CallbackFn<Uint8Array>, but we accept CallbackFn<T>. This is intentional.
-  override subscribe(
-    // @ts-expect-error - Base class expects CallbackFn<Uint8Array>, but we accept CallbackFn<T>. This is intentional.
-    callback: CallbackFn<T>,
-    options: Omit<SubscribeOptions, 'prefix'> = {},
-    id?: number,
-    save = true
-  ): number {
-    // Call super with type assertion - we store CallbackFn<T> but base class expects CallbackFn<Uint8Array>
-    // This is safe because we decode values in notifySubscribers() before calling callbacks
-    // @ts-expect-error - Type mismatch is intentional: we decode Uint8Array to T before calling callbacks
-    return super.subscribe(callback, options, id, save);
-  }
-
-  /**
-   * Notifies all subscribers of the current value.
-   */
-  override notifySubscribers() {
-    // Synthesize params if not announced yet (matching base class pattern)
-    const params =
-      this._announceParams ??
-      ({
-        name: this.name,
-        id: -1,
-        type: this.typeInfo[1],
-        properties: this._publishProperties ?? {},
-        ...(this._pubuid != null ? { pubuid: this._pubuid } : {}),
-      } as AnnounceMessageParams);
-    // Type assertion needed because base class expects Uint8Array but we provide T
-    // @ts-expect-error - Type mismatch is intentional: we decode Uint8Array to T before calling callbacks
-    this.subscribers.forEach((info) => info.callback(this.decodedValue, params));
-  }
 
   // ---------- //
   // PUBLISHING //

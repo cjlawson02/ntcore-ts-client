@@ -11,9 +11,9 @@ import type {
   SubscribeOptions,
 } from '../types/types';
 
-export type CallbackFn<T extends NetworkTablesTypes> = (value: T | null, params: AnnounceMessageParams) => void;
+export type CallbackFn<T> = (value: T | null, params: AnnounceMessageParams) => void;
 
-export abstract class NetworkTablesBaseTopic<T extends NetworkTablesTypes> {
+export abstract class NetworkTablesBaseTopic<T> {
   protected abstract readonly type: 'regular' | 'prefix';
   protected client: PubSubClient;
   private _id?: number;

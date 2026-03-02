@@ -619,7 +619,10 @@ export class Messenger {
    * @param value - The value to update the topic to.
    * @returns The timestamp of the update, or -1 if the socket is not connected.
    */
-  sendToTopic<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>, value: T) {
+  sendToTopic<TWire extends NetworkTablesTypes, TPublic = TWire>(
+    topic: NetworkTablesTopic<TWire, TPublic>,
+    value: TWire
+  ) {
     const typeInfo = topic.typeInfo;
 
     if (!topic.publisher || topic.pubuid == null) {

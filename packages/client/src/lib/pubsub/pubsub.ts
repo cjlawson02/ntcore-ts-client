@@ -185,14 +185,14 @@ export class PubSubClient {
    * Registers a topic with this PubSubClient.
    * @param topic - The topic to register
    */
-  registerTopic<T extends NetworkTablesTypes>(topic: NetworkTablesBaseTopic<T>) {
+  registerTopic<T>(topic: NetworkTablesBaseTopic<T>) {
     if (topic.isRegular()) {
       if (this.topics.has(topic.name)) {
         pubsubLogger.debug('Topic already exists check', { topicName: topic.name, exists: true });
         throw new Error(`Topic ${topic.name} already exists. Cannot register a topic with the same name.`);
       }
       pubsubLogger.debug('Topic already exists check', { topicName: topic.name, exists: false });
-      this.topics.set(topic.name, topic);
+      this.topics.set(topic.name, topic as NetworkTablesTopic<NetworkTablesTypes>);
       pubsubLogger.debug('Topic registered', { topicName: topic.name, type: 'regular' });
     } else if (topic.isPrefix()) {
       if (this.prefixTopics.has(topic.name)) {
@@ -401,9 +401,12 @@ export class PubSubClient {
   /**
    * Updates the value of a topic on the server.
    * @param topic - The topic to update.
-   * @param value - The new value of the topic.
+   * @param value - The new value (wire format) to send.
    */
-  updateServer<T extends NetworkTablesTypes>(topic: NetworkTablesTopic<T>, value: T) {
+  updateServer<TWire extends NetworkTablesTypes, TPublic = TWire>(
+    topic: NetworkTablesTopic<TWire, TPublic>,
+    value: TWire
+  ): void {
     this._messenger.sendToTopic(topic, value);
   }
 

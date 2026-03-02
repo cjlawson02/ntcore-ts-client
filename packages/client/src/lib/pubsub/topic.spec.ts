@@ -249,7 +249,7 @@ describe('Topic', () => {
     it('calls the callback with the value', () => {
       const callback = vi.fn();
       topic.subscribe(callback);
-      topic['value'] = 'foo';
+      topic['setWireValue']('foo');
       topic['notifySubscribers']();
       expect(callback).toHaveBeenCalledWith(
         'foo',

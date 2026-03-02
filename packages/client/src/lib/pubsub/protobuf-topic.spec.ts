@@ -206,7 +206,7 @@ describe('NetworkTablesProtobufTopic', () => {
 
       const callback = vi.fn();
       topic.subscribe(callback);
-      topic.notifySubscribers();
+      topic['notifySubscribers']();
       expect(callback).toHaveBeenCalledWith(
         { value: 88 },
         expect.objectContaining({ name: '/proto/sub', id: 1, type: 'proto:test.Simple' })
@@ -355,7 +355,7 @@ describe('NetworkTablesProtobufTopic', () => {
       topic['_publishProperties'] = { retained: true };
       const callback = vi.fn();
       topic.subscribe(callback);
-      topic.notifySubscribers();
+      topic['notifySubscribers']();
       expect(callback).toHaveBeenCalledWith(
         null,
         expect.objectContaining({
