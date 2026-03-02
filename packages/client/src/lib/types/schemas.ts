@@ -4,28 +4,6 @@ import { z } from 'zod';
 export const finiteNumSchema = z.number().finite();
 export const integerSchema = finiteNumSchema.int();
 
-/** Schema for type strings in the NT protocol. */
-export const typeStringSchema = z.union([
-  z.literal('boolean'),
-  z.literal('double'),
-  z.literal('int'),
-  z.literal('float'),
-  z.literal('string'),
-  z.literal('json'),
-  z.literal('raw'),
-  z.literal('rpc'),
-  z.literal('msgpack'),
-  z.literal('protobuf'),
-  z.literal('boolean[]'),
-  z.literal('double[]'),
-  z.literal('int[]'),
-  z.literal('float[]'),
-  z.literal('string[]'),
-  z.string().startsWith('proto:'),
-  z.string().startsWith('struct:'),
-  z.string().startsWith('photonstruct:'),
-]);
-
 /** Schema for type numbers in the NT protocol. */
 export const typeNumSchema = z.union([
   z.literal(0),
@@ -39,6 +17,29 @@ export const typeNumSchema = z.union([
   z.literal(18),
   z.literal(19),
   z.literal(20),
+]);
+
+/** Schema for type strings in the NT protocol (JSON text frames always use strings per NT 4.1 spec). */
+export const typeStringSchema = z.union([
+  z.literal('boolean'),
+  z.literal('double'),
+  z.literal('int'),
+  z.literal('float'),
+  z.literal('string'),
+  z.literal('json'),
+  z.literal('raw'),
+  z.literal('rpc'),
+  z.literal('msgpack'),
+  z.literal('structschema'),
+  z.literal('protobuf'),
+  z.literal('boolean[]'),
+  z.literal('double[]'),
+  z.literal('int[]'),
+  z.literal('float[]'),
+  z.literal('string[]'),
+  z.string().startsWith('proto:'),
+  z.string().startsWith('struct:'),
+  z.string().startsWith('photonstruct:'),
 ]);
 
 /** Schema for topic properties in the NT protocol. */

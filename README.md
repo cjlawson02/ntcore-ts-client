@@ -10,6 +10,7 @@ A TypeScript library for communication over [WPILib's NetworkTables 4.1 protocol
 - Callbacks for connection listeners
 - Wildcard prefix listeners for multiple topics
 - Protobuf support with optional type generation and Zod validation
+- Struct support for WPILib types (Pose2d, Translation2d, etc.) with `createStructTopic` and `useStructTopic`
 - Retrying for messages queued during a connection loss
 - On-the-fly server switching with resubscribing and republishing
 - Generic types for Topics
@@ -231,6 +232,53 @@ const sensorTopic = ntcore.createProtobufTopic<{ timestamp: number; value: numbe
 await sensorTopic.publish();
 sensorTopic.setValue({ timestamp: Date.now(), value: 42.5 });
 ```
+
+### Struct Topics
+
+For WPILib struct types (e.g., `Pose2d`, `Translation2d`) over NetworkTables, use `createStructTopic` instead of `createTopic`. Structs use fixed-size binary serialization and interoperate with WPILib Java and C++ clients.
+
+**Built-in struct types:** Translation2d, Rotation2d, Pose2d, Transform2d, Twist2d, Translation3d, Quaternion, Rotation3d, Pose3d, Transform3d, Twist3d.
+
+**Subscribing to a struct topic** (e.g., a topic announced by the robot):
+
+```typescript
+import { NetworkTables } from '@ntcore/client';
+import { z } from 'zod';
+
+const ntcore = NetworkTables.getInstanceByTeam(973);
+
+const pose2dSchema = z.object({
+  translation: z.object({ x: z.number(), y: z.number() }),
+  rotation: z.object({ value: z.number() }),
+});
+type Pose2d = z.infer<typeof pose2dSchema>;
+
+const poseTopic = ntcore.createStructTopic<Pose2d>('/MyTable/PoseStruct', {
+  typeName: 'Pose2d',
+  validator: pose2dSchema,
+});
+poseTopic.subscribe((value) => {
+  console.log(`Pose: x=${value?.translation.x}, y=${value?.translation.y}`);
+});
+```
+
+**Publishing to a struct topic** (with custom schema for types not built-in):
+
+```typescript
+const customTopic = ntcore.createStructTopic<{ x: number; y: number }>('/MyTable/Custom2d', {
+  typeName: 'Custom2d',
+  schema: 'double x;double y',
+});
+
+await customTopic.publish();
+customTopic.setValue({ x: 1.5, y: -2.0 });
+```
+
+**Array of structs:** Use `typeName: 'Translation2d[]'` (or `Pose2d[]`, etc.) for topics that publish arrays of structs.
+
+**React:** Use `useStructTopic` from `@ntcore/react` for subscribing and optionally publishing struct topics in React components.
+
+> **Note:** Struct fields using `int64` or `uint64` are returned as JavaScript `number`, which has a precision limit of ±2^53. Values beyond `Number.MAX_SAFE_INTEGER` will lose precision. No built-in WPILib struct types are affected (they all use `double`).
 
 ### Subscribing to All Topics
 

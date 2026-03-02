@@ -6,6 +6,7 @@ import { ConnectionStatus } from '../components/ConnectionStatus';
 import { GyroCard } from '../components/GyroCard';
 import { AccelerometerCard } from '../components/AccelerometerCard';
 import { PoseCard } from '../components/PoseCard';
+import { PoseStructCard } from '../components/PoseStructCard';
 import { AutoModeCard } from '../components/AutoModeCard';
 import { AllTopicsTable } from '../components/AllTopicsTable';
 
@@ -50,6 +51,7 @@ export default function App() {
           </div>
         </div>
         <PoseCard />
+        <PoseStructCard />
         <AutoModeCard />
         <AllTopicsTable />
       </div>

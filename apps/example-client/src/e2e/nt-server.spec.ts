@@ -98,6 +98,110 @@ describe('E2E: NT server (example-robot)', () => {
       },
       VALUE_WAIT_MS + 5000
     );
+
+    it(
+      'receives Pose (struct) from server via createStructTopic',
+      async () => {
+        const poseStructTopic = nt.createStructTopic<zod.infer<typeof pose2dSchema>>('/MyTable/PoseStruct', {
+          typeName: 'Pose2d',
+          validator: pose2dSchema,
+        });
+        const value = await new Promise<zod.infer<typeof pose2dSchema>>((resolve, reject) => {
+          const t = setTimeout(() => reject(new Error('PoseStruct value timeout')), VALUE_WAIT_MS);
+          poseStructTopic.subscribe((v) => {
+            if (v?.translation != null && v?.rotation != null) {
+              clearTimeout(t);
+              resolve(v);
+            }
+          });
+        });
+        expect(value.translation.x).toBeGreaterThanOrEqual(-2);
+        expect(value.translation.x).toBeLessThanOrEqual(2);
+        expect(value.translation.y).toBeGreaterThanOrEqual(0);
+        expect(value.translation.y).toBeLessThanOrEqual(3);
+        expect(value.rotation.value).toBeGreaterThanOrEqual(-Math.PI);
+        expect(value.rotation.value).toBeLessThanOrEqual(Math.PI);
+      },
+      VALUE_WAIT_MS + 5000
+    );
+  });
+
+  describe('client → robot', () => {
+    it(
+      'client publishes Pose2d struct; robot consumes and echoes to PoseStructEcho',
+      async () => {
+        const publishTopic = nt.createStructTopic<zod.infer<typeof pose2dSchema>>('/MyTable/PoseStructFromClient', {
+          typeName: 'Pose2d',
+          validator: pose2dSchema,
+        });
+        await publishTopic.publish({ retained: true });
+
+        const testPose = {
+          translation: { x: 0.5, y: 1.25 },
+          rotation: { value: Math.PI / 4 },
+        };
+        publishTopic.setValue(testPose);
+
+        const echoTopic = nt.createStructTopic<zod.infer<typeof pose2dSchema>>('/MyTable/PoseStructEcho', {
+          typeName: 'Pose2d',
+          validator: pose2dSchema,
+        });
+        const echoed = await new Promise<zod.infer<typeof pose2dSchema>>((resolve, reject) => {
+          const t = setTimeout(() => reject(new Error('PoseStructEcho value timeout')), VALUE_WAIT_MS);
+          echoTopic.subscribe((v) => {
+            if (
+              v?.translation != null &&
+              v?.rotation != null &&
+              Math.abs(v.translation.x - testPose.translation.x) < 1e-6 &&
+              Math.abs(v.translation.y - testPose.translation.y) < 1e-6
+            ) {
+              clearTimeout(t);
+              resolve(v);
+            }
+          });
+        });
+        expect(echoed.translation.x).toBeCloseTo(testPose.translation.x);
+        expect(echoed.translation.y).toBeCloseTo(testPose.translation.y);
+        expect(echoed.rotation.value).toBeCloseTo(testPose.rotation.value);
+      },
+      VALUE_WAIT_MS + 5000
+    );
+
+    it(
+      'createStructTopic reuse applies options (schema + defaultValue) when same name called again',
+      async () => {
+        const name = '/MyTable/StructReuseE2E';
+        const topic1 = nt.createStructTopic<{ x: number; y: number }>(name, { typeName: 'Translation2d' });
+        const topic2 = nt.createStructTopic<{ x: number; y: number }>(name, {
+          typeName: 'Translation2d',
+          schema: 'double x;double y',
+          defaultValue: { x: 10, y: 20 },
+        });
+        expect(topic2).toBe(topic1);
+        expect(topic2.getValue()).toEqual({ x: 10, y: 20 });
+      },
+      VALUE_WAIT_MS + 2000
+    );
+
+    it(
+      'createStructTopic with array type (Translation2d[]): publish, setValue, getValue round-trip',
+      async () => {
+        type Translation2d = { x: number; y: number };
+        const topic = nt.createStructTopic<Translation2d[]>('/MyTable/Translation2dArray', {
+          typeName: 'Translation2d[]',
+        });
+        expect(topic.typeInfo[1]).toBe('struct:Translation2d[]');
+        await topic.publish({ retained: true });
+
+        const arr: Translation2d[] = [
+          { x: 1.5, y: 2.5 },
+          { x: 3.5, y: 4.5 },
+        ];
+        topic.setValue(arr);
+        expect(topic.getValue()).toEqual(arr);
+      },
+      VALUE_WAIT_MS + 5000
+    );
   });
 
   describe('prefix topic (Accelerometer) + our AutoMode change', () => {

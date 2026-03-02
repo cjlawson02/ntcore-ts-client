@@ -289,8 +289,8 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
         name: this.name,
         id: -1,
         type: this.typeInfo[1],
-        properties: this['_publishProperties'] ?? {},
-        ...(this['_pubuid'] != null ? { pubuid: this['_pubuid'] } : {}),
+        properties: this._publishProperties ?? {},
+        ...(this._pubuid != null ? { pubuid: this._pubuid } : {}),
       } as AnnounceMessageParams);
     // Type assertion needed because base class expects Uint8Array but we provide T
     // @ts-expect-error - Type mismatch is intentional: we decode Uint8Array to T before calling callbacks
@@ -339,8 +339,8 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
       // Get or generate pubuid
       const pubuid = id ?? this.client.messenger.getNextPubUID();
 
-      this['_pubuid'] = pubuid;
-      this['_publishProperties'] = properties;
+      this._pubuid = pubuid;
+      this._publishProperties = properties;
       pubsubLogger.debug('Topic published', { topicName: this.name, pubuid, properties, type: typeString });
 
       // Publish with the correct type string using messenger directly

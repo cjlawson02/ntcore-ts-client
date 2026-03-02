@@ -11,3 +11,7 @@
 - If the user needs help with an Nx configuration or project graph error, use the `nx_workspace` tool to get any errors
 
 <!-- nx configuration end-->
+
+- E2E tests (against example-robot) are run with `nx run example-client:e2e:local` (starts the robot, then runs the e2e suite)
+- Unit tests: run `nx test <project>` (e.g. `nx test client`, `nx test react`). To run a single test file, use `nx test <project> --testFile=<name>` where `<name>` is a substring of the filename (e.g. `nx test client --testFile=struct-parser`). Do **not** invoke `vitest` directly — the Nx executor provides the required globals (describe, it, expect) and project-level config.
+- To run multiple project tests in one command: `nx run-many -t test --projects=client,react`

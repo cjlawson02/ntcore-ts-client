@@ -27,6 +27,11 @@ describe('schema', () => {
       expect(typeStringSchema.safeParse('boolean').success).toBe(true);
       expect(typeStringSchema.safeParse('string').success).toBe(true);
     });
+
+    it('rejects non-string values (NT 4.1 JSON text frames always use string types)', () => {
+      expect(typeStringSchema.safeParse(0).success).toBe(false);
+      expect(typeStringSchema.safeParse(5).success).toBe(false);
+    });
   });
 
   describe('typeNumSchema', () => {

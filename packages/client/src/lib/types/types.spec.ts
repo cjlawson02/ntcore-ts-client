@@ -114,6 +114,25 @@ describe('NetworkTablesTypeInfos', () => {
       );
     });
 
+    it('should accept Uint8Array for struct type string', () => {
+      const array = new Uint8Array([1, 2, 3]);
+      expect(NetworkTablesTypeInfos.validateData([5, 'struct:Pose2d'], array)).toEqual(array);
+    });
+
+    it('should accept Uint8Array for structschema type string', () => {
+      const array = new Uint8Array([100, 111, 117, 98, 108, 101]); // "double" in UTF-8
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kStructSchema, array)).toEqual(array);
+    });
+
+    it('should throw for non-Uint8Array when struct or structschema type expected', () => {
+      expect(() => NetworkTablesTypeInfos.validateData([5, 'struct:Pose2d'], 'not bytes')).toThrow(
+        /Invalid struct value: expected Uint8Array/
+      );
+      expect(() => NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kStructSchema, 'not bytes')).toThrow(
+        /Invalid struct schema value/
+      );
+    });
+
     it('should return the correct NT type for a boolean array value', () => {
       expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kBooleanArray, [true, false])).toEqual([
         true,

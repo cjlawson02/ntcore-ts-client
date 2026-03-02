@@ -115,6 +115,53 @@ describe('NetworkTables', () => {
     );
   });
 
+  it('throws when createTopic is called with struct type', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    expect(() => networkTables.createTopic('/struct/bad', [5, 'struct:Pose2d'])).toThrow(
+      "Struct types are not allowed in createTopic. Use createStructTopic('/struct/bad', options) instead for proper encoding/decoding support."
+    );
+  });
+
+  it('creates a struct topic', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.createStructTopic<{ x: number; y: number }>('/struct/pose', {
+      typeName: 'Translation2d',
+    });
+    expect(topic).toBeDefined();
+    expect(topic.getValue()).toBeNull();
+  });
+
+  it('returns existing struct topic with options applied on subsequent createStructTopic calls', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic1 = networkTables.createStructTopic<{ x: number; y: number }>('/struct/reuse', {
+      typeName: 'Translation2d',
+    });
+    const topic2 = networkTables.createStructTopic<{ x: number; y: number }>('/struct/reuse', {
+      typeName: 'Translation2d',
+      defaultValue: { x: 1, y: 2 },
+    });
+    expect(topic2).toBe(topic1);
+    expect(topic2.getValue()).toEqual({ x: 1, y: 2 });
+  });
+
+  it('creates struct topic with array type (Translation2d[]) and getValue/setValue work', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.createStructTopic<Array<{ x: number; y: number }>>('/struct/arr', {
+      typeName: 'Translation2d[]',
+    });
+    expect(topic).toBeDefined();
+    expect(topic.getValue()).toBeNull();
+    expect(topic.typeInfo[1]).toBe('struct:Translation2d[]');
+    topic['_pubuid'] = 1;
+    topic['_publisher'] = true;
+    const arr = [
+      { x: 1.0, y: 2.0 },
+      { x: 3.0, y: 4.0 },
+    ];
+    topic.setValue(arr);
+    expect(topic.getValue()).toEqual(arr);
+  });
+
   it('setLogLevel sets global log level', () => {
     NetworkTables.setLogLevel(LogLevel.DEBUG);
     expect(NetworkTables.getModuleLogLevel('default')).toBe(LogLevel.DEBUG);

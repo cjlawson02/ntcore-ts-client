@@ -74,7 +74,7 @@ export class NetworkTablesSocket {
   ) {
     // Connect to the server using the provided URL
     this._websocket = new WebSocket(serverUrl, [NetworkTablesSocket.PROTOCOL_V4_1, NetworkTablesSocket.PROTOCOL_V4_0]);
-    socketLogger.info('Connection attempt started', {
+    socketLogger.debug('Connection attempt started', {
       serverUrl,
       protocols: [NetworkTablesSocket.PROTOCOL_V4_1, NetworkTablesSocket.PROTOCOL_V4_0],
       autoConnect,
@@ -382,8 +382,10 @@ export class NetworkTablesSocket {
 
     // Only log if it's been a while since the last connection log (close handler handles most logging)
     if (timeSinceLastLog >= NetworkTablesSocket.CONNECTION_LOG_INTERVAL) {
+      const errorMessage =
+        typeof ErrorEvent !== 'undefined' && event instanceof ErrorEvent ? event.message : 'Connection error';
       socketLogger.debug('WebSocket error occurred', {
-        error: event instanceof ErrorEvent ? event.message : 'Connection error',
+        error: errorMessage,
         note: 'Connection close details will follow',
       });
     }
@@ -487,7 +489,7 @@ export class NetworkTablesSocket {
     if (this.isConnected()) {
       const queuedCount = this.messageQueue.length;
       if (queuedCount > 0) {
-        socketLogger.info('Sending queued messages', { count: queuedCount });
+        socketLogger.debug('Sending queued messages', { count: queuedCount });
       }
       while (this.messageQueue.length > 0) {
         const message = this.messageQueue.shift();

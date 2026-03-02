@@ -76,6 +76,20 @@ poseTopic.subscribe((value) => {
   );
 });
 
+// --------------------------------------------------------- //
+// Example of using a struct topic to subscribe to a value    //
+// --------------------------------------------------------- //
+
+const poseStructTopic = ntcore.createStructTopic<zod.infer<typeof pose2dSchema>>('/MyTable/PoseStruct', {
+  typeName: 'Pose2d',
+  validator: pose2dSchema,
+});
+poseStructTopic.subscribe((value) => {
+  console.log(
+    `[Pose Struct Topic] Got Pose Value: x: ${value?.translation.x}, y: ${value?.translation.y}, rotation: ${value?.rotation.value}`
+  );
+});
+
 // --------------------------------------------------------------- //
 // Example of using a prefix topic to subscribe to multiple topics //
 // --------------------------------------------------------------- //
