@@ -188,8 +188,6 @@ export function buildStructDescriptor(
   parsedFields: ParsedField[],
   getNestedDescriptor: (name: string) => StructDescriptor | null
 ): StructDescriptor {
-  const seen = new Set<string>([typeName]);
-
   function resolveElemSize(f: ParsedField): { elemSize: number; nested: StructDescriptor | null } {
     if (isPrimitiveType(f.typeName)) {
       const elemSize = getPrimitiveSize(f.typeName as PrimitiveTypeName);
@@ -200,12 +198,12 @@ export function buildStructDescriptor(
       }
       return { elemSize, nested: null };
     }
+    if (f.typeName === typeName) {
+      throw new Error(`Struct schema: circular struct reference "${f.typeName}" in "${typeName}"`);
+    }
     const nested = getNestedDescriptor(f.typeName);
     if (!nested) {
       throw new Error(`Struct schema: unknown or circular struct type "${f.typeName}" in "${typeName}"`);
-    }
-    if (seen.has(f.typeName)) {
-      throw new Error(`Struct schema: circular struct reference "${f.typeName}" in "${typeName}"`);
     }
     return { elemSize: nested.size, nested };
   }

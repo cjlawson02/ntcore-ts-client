@@ -144,8 +144,8 @@ export class NetworkTablesStructTopic<
   override setValue(value: T): void {
     const validated = this.maybeValidate(value);
     const encoded = this.encodeValue(validated);
-    super.setValue(encoded);
     this.decodedValue = validated;
+    super.setValue(encoded);
   }
 
   private decodeValue(value: Uint8Array): T | null {

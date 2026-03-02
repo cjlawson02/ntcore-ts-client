@@ -291,6 +291,6 @@ function writeBitfield(
   const mask = (0xffffffff >>> (32 - bitWidth)) >>> 0;
   const v = ((value as number) & mask) >>> 0;
   const raw = readStorageUnit(view, offset, byteSize);
-  const updated = (raw & ~(mask << bitShift)) | (v << bitShift);
+  const updated = ((raw & ~(mask << bitShift)) | (v << bitShift)) >>> 0;
   writeStorageUnit(view, offset, byteSize, updated);
 }
