@@ -4,64 +4,44 @@ Note: there may be breaking changes between each beta version, but if a breaking
 
 ## 4.0.0
 
+This release renames the package from `ntcore-ts-client` to `@ntcore/client` and introduces
+protobuf topics, struct topics, a configurable logging system, and runtime data validation
+with zod.
+
 ### Breaking Changes
 
-- **BREAKING CHANGE: Removed `client` getter from `NetworkTables` class**
-  - The `client` property is now private and no longer accessible
-  - If you need access to the underlying PubSubClient, you'll need to refactor your code
-- **BREAKING CHANGE: Renamed `NetworkTablesTypeInfos.kArrayBuffer` to `kUint8Array`**
-  - The raw binary type is now named `kUint8Array` to match the actual value type (`Uint8Array`)
-  - Migration: replace `NetworkTablesTypeInfos.kArrayBuffer` with `NetworkTablesTypeInfos.kUint8Array`
+- **Package renamed** from `ntcore-ts-client` to `@ntcore/client`. Update your imports accordingly.
+- **Removed `client` getter** from `NetworkTables`. The underlying `PubSubClient` is now private.
+- **Renamed `NetworkTablesTypeInfos.kArrayBuffer`** to `kUint8Array` to match the actual value type (`Uint8Array`).
 
 ### New Features
 
-- Added protobuf support and type generation for custom messages
-- Added comprehensive logging system with tslog integration
-  - Configurable log levels per module (socket, messenger, pubsub, default)
-  - New static methods: `NetworkTables.setLogLevel()`, `NetworkTables.setModuleLogLevel()`, `NetworkTables.getModuleLogLevel()`
-  - Exported `LogLevel` enum and `LoggerModule` type for programmatic control
-- Added optimistic resolution of publishers
-  - Workaround for WPILib server bug (wpilibsuite/allwpilib#7680) where announcements may not be received in certain scenarios
-  - Publishers now resolve optimistically before server confirmation when the bug scenario is detected, improving performance and reliability
-- Implemented in-flight operation management to prevent race conditions
-  - Prevents duplicate schema registrations and topic publishes
-  - Ensures operations complete in the correct order
-- Implemented buffered value updates for prefix topics in PubSubClient
-- Added type numbers for `float`, `json`, `rpc`, `msgpack`, `protobuf`, and `float[]`
-- **`NetworkTables.stopAutoConnect()`** — Stops automatic reconnection
-- **`NetworkTables.startAutoConnect()`** — Resumes automatic reconnection after a previous `stopAutoConnect()` call.
+- **Protobuf topics** — `createProtobufTopic()` for publishing and subscribing to protobuf-encoded topics with automatic schema registration, encoding/decoding, and optional zod validation.
+- **Struct topics** — `createStructTopic()` for WPILib struct-encoded topics (`Pose2d`, `Rotation2d`, etc.) with automatic schema parsing, binary encoding/decoding, and built-in schemas for common WPILib types.
+- **Configurable logging** — per-module log levels via `NetworkTables.setLogLevel()`, `NetworkTables.setModuleLogLevel()`, and `NetworkTables.getModuleLogLevel()`. Exported `LogLevel` enum and `LoggerModule` type.
+- **`stopAutoConnect()` / `startAutoConnect()`** — control automatic reconnection behavior.
+- **`getRttMs()`** — returns the best round-trip time to the robot in milliseconds.
+- **Runtime data validation** — all topic values are validated against their declared type using zod schemas.
+- **Prefix topic local notifications** — prefix topics now fire callbacks for locally published values, not just server-announced ones.
+- **Optimistic publisher resolution** — workaround for WPILib server bug ([wpilibsuite/allwpilib#7680](https://github.com/wpilibsuite/allwpilib/issues/7680)) where announcements may not arrive after publish.
+- **In-flight operation management** — prevents duplicate schema registrations and topic publishes during reconnection.
+- **Additional type numbers** — added `float`, `json`, `rpc`, `msgpack`, `protobuf`, `structschema`, and `float[]` to `NetworkTablesTypeInfos`.
 
 ### Bug Fixes
 
-- Fixed type number for `raw` type (now correctly `5` instead of `3`)
-- Fixed properties message parsing to correctly handle spec-based message format
-- Enhanced reconnect behavior and error handling in PubSubClient and Socket
-- Fixed critical bug in `setProperties` where it filtered for 'announce' messages but checked for 'ack' field
-  - `setProperties` now correctly resolves and no longer times out unnecessarily
-- Fixed race condition in `publish` and `setProperties` where timeouts weren't cleared on success
-- Enhanced PubSubClient and NetworkTablesTypeInfos validation
-  - Added data type validation during topic updates
-  - Improved type handling for float and JSON types
-- Fixed publisher updates to be queued until topic announcement
-- Fixed issue where updates weren't sent to `pubuid` correctly
-- Improved cleanup and error handling across PubSubClient, Messenger, and Socket
+- Fixed `raw` type number (now correctly `5` instead of `3`).
+- Fixed `setProperties` filtering for `'announce'` messages instead of `'properties'` with `ack` field, which caused unnecessary timeouts.
+- Fixed race condition where publish/setProperties timeouts weren't cleared on success.
+- Fixed publisher updates not being queued until topic announcement.
+- Fixed `pubuid` not being sent correctly on updates.
+- Fixed heartbeat handling and exposed RTT measurement.
 
-### Improvements
+### Migration from `ntcore-ts-client` 3.x
 
-- Improved type checking and data validation
-- Enhanced TypeScript types in PubSubClient and NetworkTablesTopic
-- Better test coverage with enhanced unit tests for logger utilities, socket, and messenger functionality
-- Minor improvements of docs and examples
-
-### Non-library changes
-
-- Added end-to-end testing and benchmarks
-- Added example robot code for WPILib 2026
-- Removed docs directory from repository
-- Improved example client code with enhanced logging and type safety
-- Added renovate.json for automated dependency updates
-- Migrated from jest to vitest for testing
-- Migrated to new eslint.config.mjs format and rollup for bundling
+1. Change your dependency from `ntcore-ts-client` to `@ntcore/client`.
+2. Replace `NetworkTablesTypeInfos.kArrayBuffer` with `NetworkTablesTypeInfos.kUint8Array`.
+3. Remove any usage of the `client` getter on `NetworkTables` instances.
+4. Install `zod` (>=4.0.0) as a peer dependency.
 
 ## 3.1.3
 
