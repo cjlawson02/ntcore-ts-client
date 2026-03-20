@@ -27,7 +27,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - run: npm ci
-      - uses: nrwl/nx-set-shas@v4
+      - uses: nrwl/nx-set-shas@v5
 
       - name: Install protoc and xvfb
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler xvfb

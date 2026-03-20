@@ -38,7 +38,7 @@ jobs:
           node-version: 24
           cache: 'npm'
       - run: npm ci
-      - uses: nrwl/nx-set-shas@v4
+      - uses: nrwl/nx-set-shas@v5
       - name: Build docs
         run: npx nx run client:docs
       - name: Upload artifact
