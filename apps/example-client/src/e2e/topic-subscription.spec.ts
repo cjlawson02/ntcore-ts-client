@@ -92,4 +92,124 @@ describe('Feature: Topic Subscription (robot → client)', () => {
     },
     VALUE_WAIT_MS + 5_000
   );
+
+  // SUB-5…SUB-12: one test per NT wire type, each exercising the full msgpack
+  // encode/decode + type-number ↔ type-string interop path against a real server.
+  // (Unit tests only cover the local zod/validateData layer.)
+
+  it(
+    '[SUB-5] receives kBoolean value from server',
+    async () => {
+      const topic = nt.createTopic<boolean>('/MyTable/Scalars/Bool', NetworkTablesTypeInfos.kBoolean);
+      const value = await waitForValue<boolean>(topic, (v) => typeof v === 'boolean', 'Bool scalar timeout');
+      expect(typeof value).toBe('boolean');
+    },
+    VALUE_WAIT_MS + 5_000
+  );
+
+  it(
+    '[SUB-6] receives kInteger value from server',
+    async () => {
+      const topic = nt.createTopic<number>('/MyTable/Scalars/Int', NetworkTablesTypeInfos.kInteger);
+      const value = await waitForValue<number>(
+        topic,
+        (v) => typeof v === 'number' && Number.isInteger(v),
+        'Int scalar timeout'
+      );
+      expect(Number.isInteger(value)).toBe(true);
+      expect(value).toBe(42);
+    },
+    VALUE_WAIT_MS + 5_000
+  );
+
+  it(
+    '[SUB-7] receives kFloat value from server',
+    async () => {
+      const topic = nt.createTopic<number>('/MyTable/Scalars/Float', NetworkTablesTypeInfos.kFloat);
+      const value = await waitForValue<number>(
+        topic,
+        (v) => typeof v === 'number' && Number.isFinite(v),
+        'Float scalar timeout'
+      );
+      expect(Number.isFinite(value)).toBe(true);
+      expect(value).toBeCloseTo(1.5, 5);
+    },
+    VALUE_WAIT_MS + 5_000
+  );
+
+  it(
+    '[SUB-8] receives kBooleanArray value from server',
+    async () => {
+      const topic = nt.createTopic<boolean[]>('/MyTable/Scalars/BoolArray', NetworkTablesTypeInfos.kBooleanArray);
+      const value = await waitForValue<boolean[]>(
+        topic,
+        (v) => Array.isArray(v) && v.length === 3 && v.every((x) => typeof x === 'boolean'),
+        'BoolArray timeout'
+      );
+      expect(value).toEqual([true, false, true]);
+    },
+    VALUE_WAIT_MS + 5_000
+  );
+
+  it(
+    '[SUB-9] receives kDoubleArray value from server',
+    async () => {
+      const topic = nt.createTopic<number[]>('/MyTable/Scalars/DoubleArray', NetworkTablesTypeInfos.kDoubleArray);
+      const value = await waitForValue<number[]>(
+        topic,
+        (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite),
+        'DoubleArray timeout'
+      );
+      expect(value).toHaveLength(3);
+      expect(value[0]).toBeCloseTo(1.1);
+      expect(value[1]).toBeCloseTo(2.2);
+      expect(value[2]).toBeCloseTo(3.3);
+    },
+    VALUE_WAIT_MS + 5_000
+  );
+
+  it(
+    '[SUB-10] receives kIntegerArray value from server',
+    async () => {
+      const topic = nt.createTopic<number[]>('/MyTable/Scalars/IntArray', NetworkTablesTypeInfos.kIntegerArray);
+      const value = await waitForValue<number[]>(
+        topic,
+        (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isInteger),
+        'IntArray timeout'
+      );
+      expect(value).toEqual([10, 20, 30]);
+    },
+    VALUE_WAIT_MS + 5_000
+  );
+
+  it(
+    '[SUB-11] receives kFloatArray value from server',
+    async () => {
+      const topic = nt.createTopic<number[]>('/MyTable/Scalars/FloatArray', NetworkTablesTypeInfos.kFloatArray);
+      const value = await waitForValue<number[]>(
+        topic,
+        (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite),
+        'FloatArray timeout'
+      );
+      expect(value).toHaveLength(3);
+      expect(value[0]).toBeCloseTo(0.5, 5);
+      expect(value[1]).toBeCloseTo(1.5, 5);
+      expect(value[2]).toBeCloseTo(2.5, 5);
+    },
+    VALUE_WAIT_MS + 5_000
+  );
+
+  it(
+    '[SUB-12] receives kStringArray value from server',
+    async () => {
+      const topic = nt.createTopic<string[]>('/MyTable/Scalars/StringArray', NetworkTablesTypeInfos.kStringArray);
+      const value = await waitForValue<string[]>(
+        topic,
+        (v) => Array.isArray(v) && v.length === 3 && v.every((x) => typeof x === 'string'),
+        'StringArray timeout'
+      );
+      expect(value).toEqual(['alpha', 'beta', 'gamma']);
+    },
+    VALUE_WAIT_MS + 5_000
+  );
 });

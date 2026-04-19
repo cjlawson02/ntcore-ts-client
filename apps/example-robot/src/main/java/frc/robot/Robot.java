@@ -25,6 +25,22 @@ public class Robot extends TimedRobot {
   /** Subscribes to client-published struct, echoes to PoseStructEcho for E2E verification. */
   private StructSubscriber<Pose2d> m_poseStructFromClientSub;
   private StructPublisher<Pose2d> m_poseStructEchoPub;
+
+  // --- Scalar primitives (E2E: topic-subscription.md SUB-5..SUB-7) ---
+  private BooleanPublisher m_scalarBoolPub;
+  private IntegerPublisher m_scalarIntPub;
+  private FloatPublisher m_scalarFloatPub;
+
+  // --- Scalar arrays (E2E: topic-subscription.md SUB-8..SUB-12) ---
+  private BooleanArrayPublisher m_scalarBoolArrayPub;
+  private DoubleArrayPublisher m_scalarDoubleArrayPub;
+  private IntegerArrayPublisher m_scalarIntArrayPub;
+  private FloatArrayPublisher m_scalarFloatArrayPub;
+  private StringArrayPublisher m_scalarStringArrayPub;
+
+  /** Custom (non-built-in) struct publisher used by the struct-schema-fetch E2E spec. */
+  private StructPublisher<Waypoint> m_waypointPub;
+
   private double m_demoTime = 0;
   private static final double kDemoFigure8ScaleX = 1.8;
   private static final double kDemoFigure8ScaleY = 1.2;
@@ -57,6 +73,33 @@ public class Robot extends TimedRobot {
     m_poseStructEchoPub = nt.getStructTopic("/MyTable/PoseStructEcho", Pose2d.struct).publish();
 
     m_gyroPub = nt.getDoubleTopic("/MyTable/Gyro").publish();
+
+    // Scalar primitives — each exercised by one E2E test (topic-subscription.md SUB-5..SUB-12)
+    // to prove the wire/msgpack path for its NT type number works end-to-end (unit tests only
+    // cover zod validation of the value).
+    m_scalarBoolPub = nt.getBooleanTopic("/MyTable/Scalars/Bool").publish();
+    m_scalarBoolPub.set(true);
+    m_scalarIntPub = nt.getIntegerTopic("/MyTable/Scalars/Int").publish();
+    m_scalarIntPub.set(42L);
+    m_scalarFloatPub = nt.getFloatTopic("/MyTable/Scalars/Float").publish();
+    m_scalarFloatPub.set(1.5f);
+
+    // Scalar arrays
+    m_scalarBoolArrayPub = nt.getBooleanArrayTopic("/MyTable/Scalars/BoolArray").publish();
+    m_scalarBoolArrayPub.set(new boolean[] {true, false, true});
+    m_scalarDoubleArrayPub = nt.getDoubleArrayTopic("/MyTable/Scalars/DoubleArray").publish();
+    m_scalarDoubleArrayPub.set(new double[] {1.1, 2.2, 3.3});
+    m_scalarIntArrayPub = nt.getIntegerArrayTopic("/MyTable/Scalars/IntArray").publish();
+    m_scalarIntArrayPub.set(new long[] {10L, 20L, 30L});
+    m_scalarFloatArrayPub = nt.getFloatArrayTopic("/MyTable/Scalars/FloatArray").publish();
+    m_scalarFloatArrayPub.set(new float[] {0.5f, 1.5f, 2.5f});
+    m_scalarStringArrayPub = nt.getStringArrayTopic("/MyTable/Scalars/StringArray").publish();
+    m_scalarStringArrayPub.set(new String[] {"alpha", "beta", "gamma"});
+
+    // Custom struct type (not in the ntcore-ts built-in schema table) — forces the client to
+    // fetch the schema from /.schema/struct:Waypoint at runtime (E2E: custom-struct-schema.md).
+    m_waypointPub = nt.getStructTopic("/MyTable/Waypoint", Waypoint.struct).publish();
+    m_waypointPub.set(new Waypoint(1.25, -2.5, Math.PI / 3, 7));
   }
 
   /**

@@ -11,6 +11,8 @@ This folder contains **feature specs** for the `@ntcore-ts/client` library as ex
 | [`prefix-topics.md`](./prefix-topics.md)               | [`../src/e2e/prefix-topics.spec.ts`](../src/e2e/prefix-topics.spec.ts)               |
 | [`struct-topic-options.md`](./struct-topic-options.md) | [`../src/e2e/struct-topic-options.spec.ts`](../src/e2e/struct-topic-options.spec.ts) |
 | [`retained-values.md`](./retained-values.md)           | [`../src/e2e/retained-values.spec.ts`](../src/e2e/retained-values.spec.ts)           |
+| [`topic-lifecycle.md`](./topic-lifecycle.md)           | [`../src/e2e/topic-lifecycle.spec.ts`](../src/e2e/topic-lifecycle.spec.ts)           |
+| [`custom-struct-schema.md`](./custom-struct-schema.md) | [`../src/e2e/custom-struct-schema.spec.ts`](../src/e2e/custom-struct-schema.spec.ts) |
 
 ## Spec template
 
