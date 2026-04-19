@@ -57,7 +57,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
     "@types/ws": "^8.18.1",
-    "@vitejs/plugin-react": "^5.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
     "@vitest/coverage-v8": "4.1.4",
     "@vitest/eslint-plugin": "^1.6.6",
     "@vitest/ui": "4.1.4",
