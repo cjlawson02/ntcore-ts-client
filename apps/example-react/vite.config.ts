@@ -10,9 +10,6 @@ export default defineConfig({
   build: {
     outDir: '../../dist/apps/example-react',
     reportCompressedSize: true,
-    commonjsOptions: {
-      transformMixedEsModules: true,
-    },
   },
   test: {
     passWithNoTests: true,
