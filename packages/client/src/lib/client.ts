@@ -164,7 +164,8 @@ export class NetworkTables {
   /**
    * Adds a listener for robot connection status updates.
    * @param callback - The callback to call when the connection status changes.
-   * @param immediateNotify - Whether to immediately notify the callback of the current connection status.
+   * @param immediateNotify - When true, also notifies once with the current status on a microtask after
+   *   this method returns (so the returned disposer can be called from that first notification).
    * @returns A function to remove the listener.
    */
   addRobotConnectionListener(callback: (_: boolean) => void, immediateNotify?: boolean) {

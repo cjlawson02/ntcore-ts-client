@@ -143,10 +143,12 @@ describe('NetworkTablesSocket', () => {
   });
 
   describe('addConnectionListener', () => {
-    it('should immediately notify when immediateNotify is true and remove via disposer', () => {
+    it('should immediately notify when immediateNotify is true and remove via disposer', async () => {
       const listener = vi.fn();
       const dispose = socket.addConnectionListener(listener, true);
 
+      expect(listener).not.toHaveBeenCalled();
+      await Promise.resolve();
       expect(listener).toHaveBeenCalledWith(true);
 
       socket['_websocket'] = {
@@ -165,6 +167,28 @@ describe('NetworkTablesSocket', () => {
 
       // No new calls after dispose.
       expect(listener).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not run deferred immediateNotify after dispose()', async () => {
+      const listener = vi.fn();
+      const dispose = socket.addConnectionListener(listener, true);
+      dispose();
+      await Promise.resolve();
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('allows calling disposer from the immediate-notify callback', async () => {
+      const listener = vi.fn();
+      const dispose = socket.addConnectionListener((connected) => {
+        if (connected) {
+          listener(connected);
+          dispose();
+        }
+      }, true);
+      expect(socket['connectionListeners'].size).toBe(1);
+      await Promise.resolve();
+      expect(listener).toHaveBeenCalledWith(true);
+      expect(socket['connectionListeners'].size).toBe(0);
     });
   });
 

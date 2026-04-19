@@ -289,7 +289,9 @@ export class NetworkTablesSocket {
   /**
    * Create a connection listener.
    * @param callback - Called when the connection state changes.
-   * @param immediateNotify - Whether to immediately notify the callback of the current connection state.
+   * @param immediateNotify - When true, the callback is also invoked with the current connection state
+   *   on a microtask after this method returns, so the returned disposer can be used safely from that
+   *   first invocation (unlike a synchronous notify before return).
    * @returns A function that removes the listener.
    */
   addConnectionListener(callback: (_: boolean) => void, immediateNotify?: boolean) {
@@ -301,7 +303,10 @@ export class NetworkTablesSocket {
     });
 
     if (immediateNotify) {
-      callback(this.isConnected());
+      queueMicrotask(() => {
+        if (!this.connectionListeners.has(callback)) return;
+        callback(this.isConnected());
+      });
     }
 
     return () => this.removeConnectionListener(callback);

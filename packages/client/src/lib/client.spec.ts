@@ -60,10 +60,12 @@ describe('NetworkTables', () => {
     expect(networkTables.isRobotConnecting()).toBe(true);
   });
 
-  it('allows adding and removing robot connection listeners', () => {
+  it('allows adding and removing robot connection listeners', async () => {
     const spy = vi.fn();
     const networkTables = NetworkTables.getInstanceByTeam(973);
     const removeListener = networkTables.addRobotConnectionListener(spy, true);
+    expect(spy).not.toHaveBeenCalled();
+    await Promise.resolve();
     expect(spy).toHaveBeenCalledWith(false);
     removeListener();
   });
