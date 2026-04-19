@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "React bindings for @ntcore-ts/client (NetworkTables for FRC)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cjlawson02/ntcore-ts.git",
+    "directory": "packages/react"
+  },
   "peerDependencies": {
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
