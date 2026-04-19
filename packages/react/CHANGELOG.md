@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.0.0
+## @ntcore-ts/react-v1.0.0-beta.1
 
-Initial release of `@ntcore-ts/react` — React bindings for `@ntcore-ts/client`.
+Initial npm release of `@ntcore-ts/react` — React bindings for `@ntcore-ts/client`.
 
 ### Hooks
 

@@ -1,6 +1,6 @@
 {
   "name": "@ntcore-ts/client",
-  "version": "4.0.0-beta.1",
+  "version": "1.0.0-beta.1",
   "description": "TypeScript client for WPILib NetworkTables 4.1 protocol",
   "license": "MIT",
   "repository": {

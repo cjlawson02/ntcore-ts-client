@@ -2,7 +2,9 @@
 
 Note: there may be breaking changes between each beta version, but if a breaking change is introduced out of beta, it will be a major version change
 
-## 4.0.0
+## @ntcore-ts/client-v1.0.0-beta.1
+
+First npm release of `@ntcore-ts/client` under the `@ntcore-ts` scope. The public semver line starts at **1.x** (including prereleases such as `1.0.0-beta.1`).
 
 This release renames the package from `ntcore-ts-client` to `@ntcore-ts/client` and introduces
 protobuf topics, struct topics, a configurable logging system, and runtime data validation
