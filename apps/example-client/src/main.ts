@@ -2,7 +2,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { z as zod } from 'zod';
 
-import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore/client';
+import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore-ts/client';
 
 // Import types generated from the proto file
 import type { TestData } from './generated/customproto';

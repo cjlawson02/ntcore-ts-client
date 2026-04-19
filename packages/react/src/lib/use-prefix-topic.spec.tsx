@@ -21,7 +21,7 @@ const mockNt = {
   addRobotConnectionListener: vi.fn(() => vi.fn()),
 };
 
-vi.mock('@ntcore/client', () => ({
+vi.mock('@ntcore-ts/client', () => ({
   NetworkTables: {
     getInstanceByTeam: vi.fn(() => mockNt),
     getInstanceByURI: vi.fn(() => mockNt),

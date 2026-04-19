@@ -16,8 +16,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@ntcore/client": ["packages/client/src/index.ts"],
-      "@ntcore/react": ["packages/react/src/index.ts"]
+      "@ntcore-ts/client": ["packages/client/src/index.ts"],
+      "@ntcore-ts/react": ["packages/react/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

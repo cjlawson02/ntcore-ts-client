@@ -1,6 +1,6 @@
 # Example React Dashboard
 
-A minimal React dashboard that uses [@ntcore/react](../../packages/react) to display and control NetworkTables topics from [example-robot](../example-robot) (Java FRC).
+A minimal React dashboard that uses [@ntcore-ts/react](../../packages/react) to display and control NetworkTables topics from [example-robot](../example-robot) (Java FRC).
 
 ## Run with the robot (local simulation)
 

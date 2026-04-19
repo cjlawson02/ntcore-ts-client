@@ -1,6 +1,6 @@
 import './ConnectionBackdrop.scss';
 import { useEffect, useState } from 'react';
-import { useConnectionStatus, useNtcore } from '@ntcore/react';
+import { useConnectionStatus, useNtcore } from '@ntcore-ts/react';
 import { HelpDialog } from './HelpDialog';
 
 type ConnectionBackdropProps = {

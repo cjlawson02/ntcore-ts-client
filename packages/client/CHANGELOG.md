@@ -4,13 +4,13 @@ Note: there may be breaking changes between each beta version, but if a breaking
 
 ## 4.0.0
 
-This release renames the package from `ntcore-ts-client` to `@ntcore/client` and introduces
+This release renames the package from `ntcore-ts-client` to `@ntcore-ts/client` and introduces
 protobuf topics, struct topics, a configurable logging system, and runtime data validation
 with zod.
 
 ### Breaking Changes
 
-- **Package renamed** from `ntcore-ts-client` to `@ntcore/client`. Update your imports accordingly.
+- **Package renamed** from `ntcore-ts-client` to `@ntcore-ts/client`. Update your imports accordingly.
 - **Removed `client` getter** from `NetworkTables`. The underlying `PubSubClient` is now private.
 - **Renamed `NetworkTablesTypeInfos.kArrayBuffer`** to `kUint8Array` to match the actual value type (`Uint8Array`).
 
@@ -38,7 +38,7 @@ with zod.
 
 ### Migration from `ntcore-ts-client` 3.x
 
-1. Change your dependency from `ntcore-ts-client` to `@ntcore/client`.
+1. Change your dependency from `ntcore-ts-client` to `@ntcore-ts/client`.
 2. Replace `NetworkTablesTypeInfos.kArrayBuffer` with `NetworkTablesTypeInfos.kUint8Array`.
 3. Remove any usage of the `client` getter on `NetworkTables` instances.
 4. Install `zod` (>=4.0.0) as a peer dependency.

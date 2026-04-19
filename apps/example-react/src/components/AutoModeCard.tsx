@@ -1,5 +1,5 @@
 import './AutoModeCard.scss';
-import { useTopic, NetworkTablesTypeInfos } from '@ntcore/react';
+import { useTopic, NetworkTablesTypeInfos } from '@ntcore-ts/react';
 
 const OPTIONS = ['Default', 'My Auto'];
 

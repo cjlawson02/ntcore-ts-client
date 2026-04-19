@@ -1,5 +1,5 @@
 import React, { createContext, ReactNode, useContext, useMemo, useState } from 'react';
-import { NetworkTables } from '@ntcore/client';
+import { NetworkTables } from '@ntcore-ts/client';
 
 export const NtcoreContext = createContext<NetworkTables | null>(null);
 

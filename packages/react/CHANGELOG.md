@@ -2,7 +2,7 @@
 
 ## 1.0.0
 
-Initial release of `@ntcore/react` — React bindings for `@ntcore/client`.
+Initial release of `@ntcore-ts/react` — React bindings for `@ntcore-ts/client`.
 
 ### Hooks
 
@@ -20,4 +20,4 @@ Initial release of `@ntcore/react` — React bindings for `@ntcore/client`.
 
 ### Re-exports
 
-- Re-exports `NetworkTablesTypeInfos`, `NetworkTablesTypeInfo`, `NetworkTablesTypes`, `SubscribeOptions`, and `TopicProperties` from `@ntcore/client` for convenience.
+- Re-exports `NetworkTablesTypeInfos`, `NetworkTablesTypeInfo`, `NetworkTablesTypes`, `SubscribeOptions`, and `TopicProperties` from `@ntcore-ts/client` for convenience.

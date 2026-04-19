@@ -1,4 +1,4 @@
-import { useTopic, NetworkTablesTypeInfos } from '@ntcore/react';
+import { useTopic, NetworkTablesTypeInfos } from '@ntcore-ts/react';
 import { ValueCard } from './ValueCard';
 import './AccelerometerCard.scss';
 

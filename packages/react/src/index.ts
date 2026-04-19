@@ -10,5 +10,5 @@ export { useStructTopic } from './lib/use-struct-topic';
 export type { UseStructTopicOptions, UseStructTopicResult } from './lib/use-struct-topic';
 export { useConnectionStatus } from './lib/use-connection-status';
 
-export type { NetworkTablesTypeInfo, NetworkTablesTypes, SubscribeOptions, TopicProperties } from '@ntcore/client';
-export { NetworkTablesTypeInfos } from '@ntcore/client';
+export type { NetworkTablesTypeInfo, NetworkTablesTypes, SubscribeOptions, TopicProperties } from '@ntcore-ts/client';
+export { NetworkTablesTypeInfos } from '@ntcore-ts/client';

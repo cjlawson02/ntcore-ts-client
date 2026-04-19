@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { useProtobufTopic } from '@ntcore/react';
+import { useProtobufTopic } from '@ntcore-ts/react';
 import { mathDegreesToDisplayDegrees, normalizeDegrees, useShortestPathDisplay } from '../utils/angle';
 import { ValueCard } from './ValueCard';
 import './PoseCard.scss';

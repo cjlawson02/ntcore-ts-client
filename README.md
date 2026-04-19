@@ -28,7 +28,7 @@ This section will help get you started with sending and receiving data over Netw
 
 ### Installation
 
-`npm install --save @ntcore/client`
+`npm install --save @ntcore-ts/client`
 
 ### Connecting to the NetworkTables Server
 
@@ -39,7 +39,7 @@ The NetworkTables class is instance-based, but allows for connections to multipl
 Use this at the top of your file:
 
 ```typescript
-import { NetworkTables } from '@ntcore/client';
+import { NetworkTables } from '@ntcore-ts/client';
 ```
 
 ### With Team Number
@@ -110,7 +110,7 @@ await publish(properties: TopicProperties = {}, id?: number)
 For example, here's a subscription for a Gyro:
 
 ```typescript
-import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore/client';
+import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore-ts/client';
 
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -132,7 +132,7 @@ gyroTopic.subscribe((value, params) => {
 Or a publisher for an auto mode:
 
 ```typescript
-import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore/client';
+import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore-ts/client';
 
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -154,7 +154,7 @@ You can also subscribe to multiple topics by using a "wildcard" through creating
 For example, here's a subscription for an Accelerometer with topics `/MyTable/Accelerometer/X`, `/MyTable/Accelerometer/Y`, and `/MyTable/Accelerometer/Z`:
 
 ```typescript
-import { NetworkTables } from '@ntcore/client';
+import { NetworkTables } from '@ntcore-ts/client';
 
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -196,7 +196,7 @@ For custom message types using [Protocol Buffers](https://protobuf.dev/), use `c
 **Subscribing to a protobuf topic** (e.g. a topic announced by the robot with a known shape):
 
 ```typescript
-import { NetworkTables } from '@ntcore/client';
+import { NetworkTables } from '@ntcore-ts/client';
 import { z } from 'zod';
 
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -220,7 +220,7 @@ poseTopic.subscribe((value) => {
 
 ```typescript
 import * as path from 'path';
-import { NetworkTables } from '@ntcore/client';
+import { NetworkTables } from '@ntcore-ts/client';
 
 const ntcore = NetworkTables.getInstanceByURI('localhost');
 
@@ -242,7 +242,7 @@ For WPILib struct types (e.g., `Pose2d`, `Translation2d`) over NetworkTables, us
 **Subscribing to a struct topic** (e.g., a topic announced by the robot):
 
 ```typescript
-import { NetworkTables } from '@ntcore/client';
+import { NetworkTables } from '@ntcore-ts/client';
 import { z } from 'zod';
 
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -276,7 +276,7 @@ customTopic.setValue({ x: 1.5, y: -2.0 });
 
 **Array of structs:** Use `typeName: 'Translation2d[]'` (or `Pose2d[]`, etc.) for topics that publish arrays of structs.
 
-**React:** Use `useStructTopic` from `@ntcore/react` for subscribing and optionally publishing struct topics in React components.
+**React:** Use `useStructTopic` from `@ntcore-ts/react` for subscribing and optionally publishing struct topics in React components.
 
 > **Note:** Struct fields using `int64` or `uint64` are returned as JavaScript `number`, which has a precision limit of ±2^53. Values beyond `Number.MAX_SAFE_INTEGER` will lose precision. No built-in WPILib struct types are affected (they all use `double`).
 
@@ -287,7 +287,7 @@ You can also subscribe to all topics by doing the above, but with a prefix of `/
 For example, here's a subscription for all topics:
 
 ```typescript
-import { NetworkTables } from '@ntcore/client';
+import { NetworkTables } from '@ntcore-ts/client';
 
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
@@ -324,7 +324,7 @@ The library uses [tslog](https://github.com/fullstack-build/tslog) for structure
 Set the log level for all modules:
 
 ```typescript
-import { NetworkTables, LogLevel } from '@ntcore/client';
+import { NetworkTables, LogLevel } from '@ntcore-ts/client';
 
 // Set global log level to DEBUG
 NetworkTables.setLogLevel(LogLevel.DEBUG);
@@ -338,7 +338,7 @@ NetworkTables.setLogLevel(LogLevel.SILENT);
 Configure log levels for specific modules to focus debugging on particular areas:
 
 ```typescript
-import { NetworkTables, LogLevel } from '@ntcore/client';
+import { NetworkTables, LogLevel } from '@ntcore-ts/client';
 
 // Enable detailed debugging for socket connections only
 NetworkTables.setModuleLogLevel('socket', LogLevel.DEBUG);
@@ -362,7 +362,7 @@ Available modules:
 Check the current log level for a module:
 
 ```typescript
-import { NetworkTables, LogLevel } from '@ntcore/client';
+import { NetworkTables, LogLevel } from '@ntcore-ts/client';
 
 const currentLevel = NetworkTables.getModuleLogLevel('socket');
 console.log(`Socket log level: ${LogLevel[currentLevel]}`);
@@ -390,7 +390,7 @@ Example output:
 You can also import and use the logger utilities directly:
 
 ```typescript
-import { LogLevel, setLogLevel, setModuleLogLevel, LoggerModule } from '@ntcore/client';
+import { LogLevel, setLogLevel, setModuleLogLevel, LoggerModule } from '@ntcore-ts/client';
 
 // Set log levels programmatically
 setLogLevel(LogLevel.INFO);

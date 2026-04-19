@@ -1,13 +1,13 @@
-# @ntcore/react
+# @ntcore-ts/react
 
-React bindings for [@ntcore/client](https://github.com/robototes/ntcore-ts) (NetworkTables for FRC). Provides a context provider and hooks so components can subscribe to topics and connection status without managing lifecycle by hand.
+React bindings for [@ntcore-ts/client](https://github.com/robototes/ntcore-ts) (NetworkTables for FRC). Provides a context provider and hooks so components can subscribe to topics and connection status without managing lifecycle by hand.
 
-Requires **React 18+** and **@ntcore/client**.
+Requires **React 18+** and **@ntcore-ts/client**.
 
 ## Installation
 
 ```bash
-npm install @ntcore/react @ntcore/client react react-dom
+npm install @ntcore-ts/react @ntcore-ts/client react react-dom
 ```
 
 ## Usage
@@ -15,7 +15,7 @@ npm install @ntcore/react @ntcore/client react react-dom
 Wrap your app with `NtcoreProvider` (by team number or URI), then use hooks in descendants.
 
 ```tsx
-import { NtcoreProvider, useTopic, useConnectionStatus, NetworkTablesTypeInfos } from '@ntcore/react';
+import { NtcoreProvider, useTopic, useConnectionStatus, NetworkTablesTypeInfos } from '@ntcore-ts/react';
 
 // By team number (e.g. 973 → roborio-973-frc.local)
 function App() {
@@ -137,8 +137,8 @@ if (nt) {
 
 When using `useNtcore()`, the client exposes `getURI()`, `getPort()`, `changeURI(uri, port)`, `stopAutoConnect()`, and `startAutoConnect()` for connection-overlay UX (see Recommended connection UX above).
 
-Re-exports from @ntcore/client: `NetworkTablesTypeInfos`, and types `NetworkTablesTypeInfo`, `NetworkTablesTypes`, `SubscribeOptions`, `TopicProperties`.
+Re-exports from @ntcore-ts/client: `NetworkTablesTypeInfos`, and types `NetworkTablesTypeInfo`, `NetworkTablesTypes`, `SubscribeOptions`, `TopicProperties`.
 
 ## Running unit tests
 
-Run `nx test @ntcore/react` to execute the unit tests via [Vitest](https://vitest.dev/).
+Run `nx test react` to execute the unit tests via [Vitest](https://vitest.dev/).

@@ -23,7 +23,7 @@
         "format": ["esm", "cjs"],
         "generateExportsField": true,
         "sourceMap": true,
-        "external": ["react", "react-dom", "react/jsx-runtime", "@ntcore/client"],
+        "external": ["react", "react-dom", "react/jsx-runtime", "@ntcore-ts/client"],
         "compiler": "babel",
         "assets": [
           {

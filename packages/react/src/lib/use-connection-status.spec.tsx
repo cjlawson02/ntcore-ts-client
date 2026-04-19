@@ -12,7 +12,7 @@ const mockNt = {
   getRttMs: vi.fn(() => 12),
 };
 
-vi.mock('@ntcore/client', () => ({
+vi.mock('@ntcore-ts/client', () => ({
   NetworkTables: {
     getInstanceByTeam: vi.fn(() => mockNt),
     getInstanceByURI: vi.fn(() => mockNt),

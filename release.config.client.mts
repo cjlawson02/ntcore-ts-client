@@ -41,7 +41,7 @@ const config: GlobalConfig = {
       '@semantic-release/git',
       {
         assets: ['package.json', 'CHANGELOG.md'],
-        message: 'chore(release): @ntcore/client ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}',
+        message: 'chore(release): @ntcore-ts/client ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}',
       },
     ],
   ],

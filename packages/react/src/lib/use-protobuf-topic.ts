@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { SubscribeOptions, TopicProperties } from '@ntcore/client';
+import type { SubscribeOptions, TopicProperties } from '@ntcore-ts/client';
 import { useNtcore } from './context';
 import type { ZodSchema } from 'zod';
 

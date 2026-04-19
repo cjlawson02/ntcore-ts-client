@@ -1,6 +1,6 @@
 import './App.scss';
 import { useCallback, useEffect, useState } from 'react';
-import { useConnectionStatus } from '@ntcore/react';
+import { useConnectionStatus } from '@ntcore-ts/react';
 import { ConnectionBackdrop } from '../components/ConnectionBackdrop';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { GyroCard } from '../components/GyroCard';

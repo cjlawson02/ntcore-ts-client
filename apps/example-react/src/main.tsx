@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { NtcoreProvider } from '@ntcore/react';
+import { NtcoreProvider } from '@ntcore-ts/react';
 import App from './app/App';
 import './styles.scss';
 

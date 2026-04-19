@@ -1,6 +1,6 @@
 import './AllTopicsTable.scss';
 import React, { Fragment, useCallback, useMemo, useState } from 'react';
-import { usePrefixTopicMap, type NetworkTablesTypes } from '@ntcore/react';
+import { usePrefixTopicMap, type NetworkTablesTypes } from '@ntcore-ts/react';
 
 function formatValue(value: NetworkTablesTypes | null): string {
   if (value == null) return 'null';

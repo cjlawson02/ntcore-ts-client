@@ -1,4 +1,4 @@
-# @ntcore/client
+# @ntcore-ts/client
 
 A TypeScript library for communication over [WPILib's NetworkTables 4.1 protocol](https://github.com/wpilibsuite/allwpilib/blob/main/ntcore/doc/networktables4.adoc).
 

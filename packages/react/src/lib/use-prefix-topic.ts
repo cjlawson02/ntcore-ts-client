@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { NetworkTablesTypes } from '@ntcore/client';
-import type { SubscribeOptions } from '@ntcore/client';
+import type { NetworkTablesTypes } from '@ntcore-ts/client';
+import type { SubscribeOptions } from '@ntcore-ts/client';
 import { useNtcore } from './context';
 
 /**

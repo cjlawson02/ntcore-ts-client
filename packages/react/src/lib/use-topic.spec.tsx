@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NetworkTablesTypeInfos } from '@ntcore/client';
+import { NetworkTablesTypeInfos } from '@ntcore-ts/client';
 import { NtcoreProvider } from './context';
 import { useTopic } from './use-topic';
 
@@ -21,7 +21,7 @@ const mockNt = {
   addRobotConnectionListener: vi.fn(() => vi.fn()),
 };
 
-vi.mock('@ntcore/client', () => ({
+vi.mock('@ntcore-ts/client', () => ({
   NetworkTables: {
     getInstanceByTeam: vi.fn(() => mockNt),
     getInstanceByURI: vi.fn(() => mockNt),

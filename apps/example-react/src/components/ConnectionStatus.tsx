@@ -1,5 +1,5 @@
 import './ConnectionStatus.scss';
-import { useConnectionStatus } from '@ntcore/react';
+import { useConnectionStatus } from '@ntcore-ts/react';
 
 type ConnectionStatusProps = {
   /** When set, clicking the indicator opens the connection backdrop (disconnected or connected) */
