@@ -145,6 +145,14 @@ describe('NetworkTablesProtobufTopic', () => {
       topic.updateValue(encoded, 1000);
       expect(topic.getValue()).toEqual({ value: 123 });
     });
+
+    it('includes scalar default values when decoding', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/defaults');
+      topic.announce({ id: 1, name: '/proto/defaults', type: 'proto:test.Simple', properties: {} });
+      const encoded = messageType.encode({}).finish();
+      topic.updateValue(encoded, 1000);
+      expect(topic.getValue()).toEqual({ value: 0 });
+    });
   });
 
   describe('announce', () => {
