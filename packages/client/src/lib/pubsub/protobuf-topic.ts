@@ -145,7 +145,7 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
     const messageType = this.ensureMessageType();
 
     const decoded = messageType.decode(value);
-    const obj = messageType.toObject(decoded) as T;
+    const obj = messageType.toObject(decoded, { defaults: true }) as T;
 
     // If a validator is provided, validate the decoded object
     if (this._validator) {
