@@ -46,3 +46,4 @@ docs/
 .nx/polygraph
 .claude/worktrees
 .claude/settings.local.json
+.nx/migrate-runs
