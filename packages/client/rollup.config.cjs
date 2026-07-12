@@ -1,7 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
+const { readFileSync } = require('node:fs');
+const { withNx } = require('@nx/rollup/with-nx');
 
 const VIRTUAL_DESCRIPTOR_ID = '\0protobuf-descriptor-json';
 
@@ -30,10 +28,15 @@ function protobufDescriptorJson() {
   };
 }
 
-/**
- * Nx Rollup config: handles descriptor.json for ESM and CJS for browser and Node.
- */
-export default function (config) {
-  config.plugins = [protobufDescriptorJson(), ...(config.plugins ?? [])];
-  return config;
-}
+const options = {
+  outputPath: '../../dist/packages/client',
+  main: './src/index.ts',
+  tsConfig: './tsconfig.lib.json',
+  format: ['esm', 'cjs'],
+  generateExportsField: true,
+  sourceMap: true,
+};
+
+module.exports = withNx(options, {
+  plugins: [protobufDescriptorJson()],
+});

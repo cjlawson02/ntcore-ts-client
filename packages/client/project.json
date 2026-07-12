@@ -14,24 +14,12 @@
       }
     },
     "build": {
-      "executor": "@nx/rollup:rollup",
-      "outputs": ["{options.outputPath}"],
-      "options": {
-        "outputPath": "dist/packages/client",
-        "main": "packages/client/src/index.ts",
-        "tsConfig": "packages/client/tsconfig.lib.json",
-        "format": ["esm", "cjs"],
-        "rollupConfig": "packages/client/rollup.config.mjs",
-        "generateExportsField": true,
-        "sourceMap": true
-      },
       "dependsOn": ["typecheck"]
     },
     "test": {
-      "executor": "@nx/vitest:test",
-      "outputs": ["{options.reportsDirectory}"],
+      "outputs": ["{projectRoot}/{options.coverage.reportsDirectory}", "{workspaceRoot}/coverage/packages/client"],
       "options": {
-        "reportsDirectory": "../../coverage/packages/client"
+        "coverage.reportsDirectory": "../../coverage/packages/client"
       }
     },
     "bench": {

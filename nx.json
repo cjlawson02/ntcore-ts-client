@@ -29,10 +29,22 @@
     {
       "plugin": "@nx/rollup/plugin",
       "options": {
-        "buildTargetName": "rollup:build",
+        "buildTargetName": "build",
         "buildDepsTargetName": "build-deps",
         "watchDepsTargetName": "watch-deps"
       }
+    },
+    {
+      "plugin": "@nx/vite/plugin",
+      "options": {
+        "buildTargetName": "build",
+        "serveTargetName": "serve",
+        "previewTargetName": "preview",
+        "serveStaticTargetName": "serve-static",
+        "devTargetName": "dev",
+        "typecheckTargetName": "typecheck"
+      },
+      "include": ["apps/example-react/**/*"]
     }
   ],
   "targetDefaults": {

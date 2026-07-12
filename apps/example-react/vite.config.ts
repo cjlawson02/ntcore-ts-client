@@ -1,12 +1,22 @@
 /// <reference types="vitest/config" />
-import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import tsconfigPaths from 'vite-tsconfig-paths';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   root: __dirname,
   cacheDir: '../../node_modules/.vite/apps/example-react',
-  plugins: [react(), nxViteTsPaths()],
+  plugins: [
+    react(),
+    tsconfigPaths({
+      root: path.join(__dirname, '../..'),
+    }),
+  ],
   build: {
     outDir: '../../dist/apps/example-react',
     reportCompressedSize: true,

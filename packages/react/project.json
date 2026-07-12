@@ -14,33 +14,13 @@
       }
     },
     "build": {
-      "executor": "@nx/rollup:rollup",
-      "outputs": ["{options.outputPath}"],
-      "options": {
-        "outputPath": "dist/packages/react",
-        "main": "packages/react/src/index.ts",
-        "tsConfig": "packages/react/tsconfig.lib.json",
-        "format": ["esm", "cjs"],
-        "generateExportsField": true,
-        "sourceMap": true,
-        "external": ["react", "react-dom", "react/jsx-runtime", "@ntcore-ts/client"],
-        "compiler": "babel",
-        "assets": [
-          {
-            "input": "packages/react",
-            "output": ".",
-            "glob": "README.md"
-          }
-        ]
-      },
       "dependsOn": ["typecheck", "client:build"]
     },
     "test": {
-      "executor": "@nx/vitest:test",
-      "outputs": ["{options.reportsDirectory}"],
+      "outputs": ["{projectRoot}/{options.coverage.reportsDirectory}", "{workspaceRoot}/coverage/packages/react"],
       "options": {
-        "reportsDirectory": "../../coverage/packages/react",
-        "configFile": "packages/react/vite.config.mts"
+        "config": "./vite.config.mts",
+        "coverage.reportsDirectory": "../../coverage/packages/react"
       }
     }
   }

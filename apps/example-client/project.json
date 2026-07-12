@@ -54,9 +54,10 @@
       }
     },
     "e2e": {
-      "executor": "@nx/vitest:test",
+      "executor": "nx:run-commands",
       "options": {
-        "configFile": "apps/example-client/vitest.e2e.config.ts"
+        "command": "npx vitest run --config vitest.e2e.config.ts",
+        "cwd": "apps/example-client"
       }
     },
     "e2e:local": {
