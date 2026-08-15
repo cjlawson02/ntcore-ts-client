@@ -2,32 +2,39 @@
 
 Note: there may be breaking changes between each beta version, but if a breaking change is introduced out of beta, it will be a major version change
 
-## @ntcore-ts/client-v1.0.0-beta.1
+## @ntcore-ts/client-v1.0.0
 
-First npm release of `@ntcore-ts/client` under the `@ntcore-ts` scope. The public semver line starts at **1.x** (including prereleases such as `1.0.0-beta.1`).
+First stable release of `@ntcore-ts/client` under the `@ntcore-ts` scope. This is the public 1.x line: the package is renamed from `ntcore-ts-client`, topic factories follow WPILib naming (`getDoubleTopic`, `getStructTopic`, …), geometry types are first-class, and `close()` tears down the singleton so it does not leak.
 
-This release renames the package from `ntcore-ts-client` to `@ntcore-ts/client` and introduces
-protobuf topics, struct topics, a configurable logging system, and runtime data validation
-with zod.
-
-### Breaking Changes
+### Breaking Changes (from `ntcore-ts-client` 3.x)
 
 - **Package renamed** from `ntcore-ts-client` to `@ntcore-ts/client`. Update your imports accordingly.
 - **Removed `client` getter** from `NetworkTables`. The underlying `PubSubClient` is now private.
 - **Renamed `NetworkTablesTypeInfos.kArrayBuffer`** to `kUint8Array` to match the actual value type (`Uint8Array`).
+- **Typed factories.** Use `getDoubleTopic`, `getStringTopic`, …, `getJsonTopic`, `getProtobufTopic`, `getStructTopic`, and `getPrefixTopic`. `createTopic(name, typeInfo)` remains only when the type is not known until runtime; passing a protobuf or `struct:…` type throws.
+- **`getStructTopic` requires a type when creating a topic.** Pass a descriptor (`getStructTopic(name, Pose2d)`) or `{ typeName }`. A later call with the same name and no `typeName` returns the cached instance. A mismatched `typeName` (e.g. `Pose2d` vs `Pose2d[]`) throws.
+- **`setProperties` takes a `TopicProperties` object** (e.g. `{ persistent: true, retained: true }`).
+- **Subscribe `id` / `save` are internal.** Public `subscribe(callback, options?)` only.
+- **Protocol Zod schemas are not public barrel exports.** Import types (`SubscribeOptions`, `TopicProperties`, …) from `@ntcore-ts/client`.
+- **`zod` is a runtime dependency.** Install `zod` in the app only if you write custom validators.
 
 ### New Features
 
-- **Protobuf topics** — `createProtobufTopic()` for publishing and subscribing to protobuf-encoded topics with automatic schema registration, encoding/decoding, and optional zod validation.
-- **Struct topics** — `createStructTopic()` for WPILib struct-encoded topics (`Pose2d`, `Rotation2d`, etc.) with automatic schema parsing, binary encoding/decoding, and built-in schemas for common WPILib types.
+- **WPILib-style scalar factories** — `getBooleanTopic`, `getDoubleTopic`, `getIntegerTopic`, `getFloatTopic`, `getStringTopic`, matching array factories, `getRawTopic`, and `getJsonTopic`.
+- **JSON topics** — `getJsonTopic<T>(name, defaultValue?, { validator })` returns a parsed object; wire format is a JSON string with type `'json'`.
+- **Protobuf topics** — `getProtobufTopic` with automatic schema registration, encoding/decoding, and optional zod validation. `protoFilePath` is Node-only; `protoSource` (file text) and `messageType` (prebuilt protobufjs `Type`) work in the browser.
+- **Struct topics** — `getStructTopic(name, Pose2d)` (or `{ typeName, schema }`) for WPILib struct-encoded topics with binary encoding/decoding and built-in schemas.
+- **Geometry types** — `Pose2d`, `Translation2d`, `Rotation2d`, and the rest of the built-in WPILib struct shapes, plus matching Zod schemas (`Pose2dSchema`, …).
 - **Configurable logging** — per-module log levels via `NetworkTables.setLogLevel()`, `NetworkTables.setModuleLogLevel()`, and `NetworkTables.getModuleLogLevel()`. Exported `LogLevel` enum and `LoggerModule` type.
-- **`stopAutoConnect()` / `startAutoConnect()`** — control automatic reconnection behavior.
-- **`getRttMs()`** — returns the best round-trip time to the robot in milliseconds.
-- **Runtime data validation** — all topic values are validated against their declared type using zod schemas.
-- **Prefix topic local notifications** — prefix topics now fire callbacks for locally published values, not just server-announced ones.
+- **`close()` / `retain()` / `release()`** — `close()` disconnects, unsubscribes/unpublishes, stops reconnect, and drops the singleton. `retain`/`release` share an instance across owners (used by `NtcoreProvider`).
+- **`stopAutoConnect()` / `startAutoConnect()`** — control automatic reconnection.
+- **`getRttMs()`** — best round-trip time to the robot in milliseconds.
+- **Runtime data validation** — topic values are validated against their declared type using zod.
+- **Prefix topics** — `getPrefixTopic` wildcard subscriptions; local publishes notify prefix subscribers; `immediateNotify` replays cached matching subtopic values (client-side only; not a fake topic named the prefix).
 - **Optimistic publisher resolution** — workaround for WPILib server bug ([wpilibsuite/allwpilib#7680](https://github.com/wpilibsuite/allwpilib/issues/7680)) where announcements may not arrive after publish.
 - **In-flight operation management** — prevents duplicate schema registrations and topic publishes during reconnection.
-- **Additional type numbers** — added `float`, `json`, `rpc`, `msgpack`, `protobuf`, `structschema`, and `float[]` to `NetworkTablesTypeInfos`.
+- **Singleton topic reuse** — a later `getJsonTopic` / `getProtobufTopic` / `getStructTopic` for the same name returns the existing instance and applies options. A later `validator` replaces the previous one.
+- **Additional type numbers** — `float`, `json`, `rpc`, `msgpack`, `protobuf`, `structschema`, and `float[]` on `NetworkTablesTypeInfos`.
 
 ### Bug Fixes
 
@@ -37,13 +44,24 @@ with zod.
 - Fixed publisher updates not being queued until topic announcement.
 - Fixed `pubuid` not being sent correctly on updates.
 - Fixed heartbeat handling and exposed RTT measurement.
+- `close()` stops the reconnect timer; a previous socket `onclose` cannot start a new connection after teardown.
+- Stale websocket handlers after `reinstantiate()` are ignored.
+- JSON topic reuse no longer wipes an existing value.
+- Protobuf `applyOptions({ protoSource })` parses immediately; a failed `protoFilePath` load does not poison an already-working message type.
+- Struct array vs scalar type mismatches throw instead of silently casting.
+- Prefix local notify uses the topic’s public value (not only the wire value).
+- Schema parse failures are isolated; proto source/schema size is capped.
 
 ### Migration from `ntcore-ts-client` 3.x
 
-1. Change your dependency from `ntcore-ts-client` to `@ntcore-ts/client`.
+1. Change the dependency from `ntcore-ts-client` to `@ntcore-ts/client`.
 2. Replace `NetworkTablesTypeInfos.kArrayBuffer` with `NetworkTablesTypeInfos.kUint8Array`.
 3. Remove any usage of the `client` getter on `NetworkTables` instances.
-4. Install `zod` (>=4.0.0) as a peer dependency.
+4. Prefer `getDoubleTopic(name)` (etc.) over `createTopic(name, NetworkTablesTypeInfos.kDouble)`.
+5. Struct/protobuf/prefix: `getStructTopic('/MyTable/PoseStruct', Pose2d)`, `getProtobufTopic(name, options)`, `getPrefixTopic(prefix)`.
+6. `setProperties({ retained: true })` instead of boolean arguments.
+7. Call `nt.close()` when the client is done (React: `NtcoreProvider` retains/releases for you).
+8. Import `Pose2d` / `Pose2dSchema` from `@ntcore-ts/client`. Custom validators still need `zod` in the app; the client depends on it itself.
 
 ## 3.1.3
 
