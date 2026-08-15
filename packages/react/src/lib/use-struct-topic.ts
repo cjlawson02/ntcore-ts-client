@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   isStructTypeDescriptor,
   type StructTypeDescriptor,
@@ -7,6 +7,7 @@ import {
 } from '@ntcore-ts/client';
 import { toError, useNtcore } from './context';
 import { trackPublish, unpublishWhenDone, claimPublishOwner, type TrackedPublish } from './unpublish-when-done';
+import { useLatestRef } from './use-latest-ref';
 import type { ZodSchema } from 'zod';
 
 /**
@@ -92,13 +93,9 @@ export function useStructTopic<T extends object | object[]>(
   const [isReadyToWrite, setIsReadyToWrite] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [identity, setIdentity] = useState({ nt, name, typeName: resolved.typeName });
-  const optionsRef = useRef(resolved);
-  optionsRef.current = resolved;
-
-  const typeOrOptionsRef = useRef(typeOrOptions);
-  typeOrOptionsRef.current = typeOrOptions;
-  const maybeOptionsRef = useRef(maybeOptions);
-  maybeOptionsRef.current = maybeOptions;
+  const optionsRef = useLatestRef(resolved);
+  const typeOrOptionsRef = useLatestRef(typeOrOptions);
+  const maybeOptionsRef = useLatestRef(maybeOptions);
 
   if (nt !== identity.nt || name !== identity.name || resolved.typeName !== identity.typeName) {
     setIdentity({ nt, name, typeName: resolved.typeName });
@@ -107,13 +104,13 @@ export function useStructTopic<T extends object | object[]>(
     setError(null);
   }
 
-  const getTopic = () => {
+  const getTopic = useCallback(() => {
     const arg = typeOrOptionsRef.current;
     if (isStructTypeDescriptor(arg)) {
       return nt.getStructTopic(name, arg, maybeOptionsRef.current);
     }
     return nt.getStructTopic(name, toStructTopicOptions(optionsRef.current));
-  };
+  }, [nt, name, typeOrOptionsRef, maybeOptionsRef, optionsRef]);
 
   useEffect(() => {
     let cancelled = false;
@@ -152,7 +149,7 @@ export function useStructTopic<T extends object | object[]>(
         unpublishWhenDone(topic, trackedPublish, setError, ownerToken);
       }
     };
-  }, [nt, name, resolved.typeName]);
+  }, [nt, name, resolved.typeName, getTopic, optionsRef]);
 
   const setValueCb = useCallback(
     (value: T) => {
@@ -164,7 +161,7 @@ export function useStructTopic<T extends object | object[]>(
         setError(toError(e));
       }
     },
-    [nt, name, isReadyToWrite]
+    [isReadyToWrite, getTopic, optionsRef]
   );
 
   const setValue = resolved.publish !== undefined ? setValueCb : undefined;

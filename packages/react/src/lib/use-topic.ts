@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   NetworkTablesTypeInfos,
   type NetworkTablesTypeInfo,
@@ -8,6 +8,7 @@ import {
 } from '@ntcore-ts/client';
 import { toError, useNtcore } from './context';
 import { trackPublish, unpublishWhenDone, claimPublishOwner, type TrackedPublish } from './unpublish-when-done';
+import { useLatestRef } from './use-latest-ref';
 
 /**
  * Options for useTopic. Use `publish: true` to become the publisher with default
@@ -79,21 +80,17 @@ export function useTopic<T>(
 ): UseTopicResult<T> {
   const nt = useNtcore();
   const publishOpt = options?.publish;
+  const typeNum = typeInfo[0];
+  const typeStr = typeInfo[1];
 
   const [state, setState] = useState<T | null>(options?.defaultValue ?? null);
   const [isReadyToWrite, setIsReadyToWrite] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [identity, setIdentity] = useState({ nt, name, typeNum: typeInfo[0], typeStr: typeInfo[1] });
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
+  const [identity, setIdentity] = useState({ nt, name, typeNum, typeStr });
+  const optionsRef = useLatestRef(options);
 
-  if (
-    nt !== identity.nt ||
-    name !== identity.name ||
-    typeInfo[0] !== identity.typeNum ||
-    typeInfo[1] !== identity.typeStr
-  ) {
-    setIdentity({ nt, name, typeNum: typeInfo[0], typeStr: typeInfo[1] });
+  if (nt !== identity.nt || name !== identity.name || typeNum !== identity.typeNum || typeStr !== identity.typeStr) {
+    setIdentity({ nt, name, typeNum, typeStr });
     setState(options?.defaultValue ?? null);
     setIsReadyToWrite(false);
     setError(null);
@@ -139,7 +136,7 @@ export function useTopic<T>(
         unpublishWhenDone(topic, trackedPublish, setError, ownerToken);
       }
     };
-  }, [nt, name, typeInfo[0], typeInfo[1]]);
+  }, [nt, name, typeNum, typeStr, optionsRef, typeInfo]);
 
   const setValueCb = useCallback(
     (value: T) => {
@@ -155,7 +152,7 @@ export function useTopic<T>(
         setError(toError(e));
       }
     },
-    [nt, name, typeInfo, isReadyToWrite]
+    [nt, name, typeInfo, isReadyToWrite, optionsRef]
   );
 
   const setValue = publishOpt !== undefined ? setValueCb : undefined;

@@ -7,24 +7,24 @@ describe('struct-codec', () => {
   describe('round-trip', () => {
     it('round-trip Translation2d pack then unpack', () => {
       const desc = getBuiltInDescriptor('Translation2d');
-      expect(desc).toBeDefined();
+      if (!desc) throw new Error('expected Translation2d descriptor');
       const value = { x: 1.5, y: -2.25 };
-      const buf = pack(value, desc!);
+      const buf = pack(value, desc);
       expect(buf.length).toBe(16);
-      const back = unpack(buf, desc!);
+      const back = unpack(buf, desc);
       expect(back).toEqual(value);
     });
 
     it('round-trip Pose2d (nested structs)', () => {
       const desc = getBuiltInDescriptor('Pose2d');
-      expect(desc).toBeDefined();
+      if (!desc) throw new Error('expected Pose2d descriptor');
       const value = {
         translation: { x: 1, y: 2 },
         rotation: { value: 0.5 },
       };
-      const buf = pack(value, desc!);
+      const buf = pack(value, desc);
       expect(buf.length).toBe(24);
-      const back = unpack(buf, desc!);
+      const back = unpack(buf, desc);
       expect(back).toEqual(value);
     });
 
@@ -97,16 +97,16 @@ describe('struct-codec', () => {
   describe('errors', () => {
     it('reject buffer too small for unpack', () => {
       const desc = getBuiltInDescriptor('Translation2d');
-      expect(desc).toBeDefined();
+      if (!desc) throw new Error('expected Translation2d descriptor');
       const short = new Uint8Array(8);
-      expect(() => unpack(short, desc!)).toThrow(/buffer too small/);
+      expect(() => unpack(short, desc)).toThrow(/buffer too small/);
     });
 
     it('reject invalid value for pack (missing fields)', () => {
       const desc = getBuiltInDescriptor('Translation2d');
-      expect(desc).toBeDefined();
-      expect(() => pack({} as StructPlainObject, desc!)).toThrow(/missing required field/);
-      expect(() => pack({ x: 1 } as StructPlainObject, desc!)).toThrow(/missing required field/);
+      if (!desc) throw new Error('expected Translation2d descriptor');
+      expect(() => pack({} as StructPlainObject, desc)).toThrow(/missing required field/);
+      expect(() => pack({ x: 1 } as StructPlainObject, desc)).toThrow(/missing required field/);
     });
   });
 });

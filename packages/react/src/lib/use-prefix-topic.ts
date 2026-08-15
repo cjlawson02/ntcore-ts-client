@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { NetworkTablesTypes } from '@ntcore-ts/client';
 import type { SubscribeOptions } from '@ntcore-ts/client';
 import { useNtcore } from './context';
+import { useLatestRef } from './use-latest-ref';
 
 /**
  * Last update from a prefix topic: value, NT type string, and subtopic name.
@@ -29,10 +30,8 @@ function usePrefixTopicSubscription(
   onUpdate: PrefixTopicUpdateCallback
 ): void {
   const nt = useNtcore();
-  const onUpdateRef = useRef(onUpdate);
-  onUpdateRef.current = onUpdate;
-  const subscribeOptionsRef = useRef(subscribeOptions);
-  subscribeOptionsRef.current = subscribeOptions;
+  const onUpdateRef = useLatestRef(onUpdate);
+  const subscribeOptionsRef = useLatestRef(subscribeOptions);
 
   useEffect(() => {
     const topic = nt.getPrefixTopic(prefix);
@@ -44,7 +43,7 @@ function usePrefixTopicSubscription(
       }
     }, subscribeOptionsRef.current ?? undefined);
     return () => topic.unsubscribe(subuid);
-  }, [nt, prefix]);
+  }, [nt, prefix, onUpdateRef, subscribeOptionsRef]);
 }
 
 /**
@@ -98,15 +97,13 @@ export function usePrefixTopicMap(
   const [identity, setIdentity] = useState({ nt, prefix });
   const pendingRef = useRef<Record<string, PrefixTopicMapEntry>>({});
   const rafRef = useRef<number | null>(null);
+  const [mapGeneration, setMapGeneration] = useState(0);
+  const mapGenerationRef = useLatestRef(mapGeneration);
 
   if (nt !== identity.nt || prefix !== identity.prefix) {
     setIdentity({ nt, prefix });
-    pendingRef.current = {};
     setByName({});
-    if (rafRef.current != null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
+    setMapGeneration((g) => g + 1);
   }
 
   const flush = useRef(() => {
@@ -118,24 +115,29 @@ export function usePrefixTopicMap(
     }
   }).current;
 
-  usePrefixTopicSubscription(prefix, subscribeOptions, (name, value, type) => {
-    if (!name.startsWith(prefix)) return;
-    pendingRef.current[name] = { value, type };
-    if (rafRef.current == null) {
-      rafRef.current = requestAnimationFrame(flush);
-    }
-  });
-
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    pendingRef.current = {};
+    return () => {
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
       pendingRef.current = {};
-    },
-    [nt, prefix]
-  );
+    };
+  }, [nt, prefix]);
+
+  usePrefixTopicSubscription(prefix, subscribeOptions, (name, value, type) => {
+    if (!name.startsWith(prefix)) return;
+    pendingRef.current[name] = { value, type };
+    if (rafRef.current == null) {
+      const scheduledFor = mapGenerationRef.current;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (mapGenerationRef.current !== scheduledFor) return;
+        flush();
+      });
+    }
+  });
 
   return byName;
 }

@@ -179,7 +179,8 @@ export abstract class NetworkTablesBaseTopic<T> {
   protected toProtocolSubscribeOptions(
     options: Omit<SubscribeOptions, 'prefix'> = {}
   ): Omit<SubscribeOptions, 'prefix' | 'immediateNotify'> {
-    const { immediateNotify: _ignored, ...rest } = options;
+    const rest = { ...options };
+    delete rest.immediateNotify;
     return rest;
   }
 

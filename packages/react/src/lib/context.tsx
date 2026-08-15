@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useMemo } from 'react';
 import { NetworkTables } from '@ntcore-ts/client';
 
 export const NtcoreContext = createContext<NetworkTables | null>(null);
@@ -53,14 +53,12 @@ export function NtcoreProvider({ children, port = DEFAULT_PORT, ...rest }: Ntcor
   const team = 'team' in rest ? rest.team : undefined;
   const uri = 'uri' in rest ? rest.uri : undefined;
 
-  const [nt, setNt] = useState(() => lookupNetworkTables(team, uri, effectivePort));
+  const nt = useMemo(() => lookupNetworkTables(team, uri, effectivePort), [team, uri, effectivePort]);
 
   useEffect(() => {
-    const instance = lookupNetworkTables(team, uri, effectivePort);
-    instance.retain();
-    setNt(instance);
-    return () => instance.release();
-  }, [team, uri, effectivePort]);
+    nt.retain();
+    return () => nt.release();
+  }, [nt]);
 
   return <NtcoreContext.Provider value={nt}>{children}</NtcoreContext.Provider>;
 }

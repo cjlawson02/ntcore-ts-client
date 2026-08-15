@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { SubscribeOptions, TopicProperties } from '@ntcore-ts/client';
 import { toError, useNtcore } from './context';
 import { trackPublish, unpublishWhenDone, claimPublishOwner, type TrackedPublish } from './unpublish-when-done';
+import { useLatestRef } from './use-latest-ref';
 import type { ZodSchema } from 'zod';
 
 /**
@@ -62,8 +63,7 @@ export function useProtobufTopic<T extends object>(
   const [isReadyToWrite, setIsReadyToWrite] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [identity, setIdentity] = useState({ nt, name });
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
+  const optionsRef = useLatestRef(options);
 
   if (nt !== identity.nt || name !== identity.name) {
     setIdentity({ nt, name });
@@ -109,7 +109,7 @@ export function useProtobufTopic<T extends object>(
         unpublishWhenDone(topic, trackedPublish, setError, ownerToken);
       }
     };
-  }, [nt, name]);
+  }, [nt, name, optionsRef]);
 
   const setValueCb = useCallback(
     (value: T) => {
@@ -122,7 +122,7 @@ export function useProtobufTopic<T extends object>(
         setError(toError(e));
       }
     },
-    [nt, name, isReadyToWrite]
+    [nt, name, isReadyToWrite, optionsRef]
   );
 
   const setValue = options?.publish !== undefined ? setValueCb : undefined;
