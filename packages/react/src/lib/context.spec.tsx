@@ -41,9 +41,7 @@ describe('NtcoreProvider and useNtcore', () => {
   });
 
   it('useNtcore returns instance when wrapped with NtcoreProvider (team)', () => {
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <NtcoreProvider team={973}>{children}</NtcoreProvider>
-    );
+    const wrapper = ({ children }: { children: ReactNode }) => <NtcoreProvider team={973}>{children}</NtcoreProvider>;
     const { result } = renderHook(() => useNtcore(), { wrapper });
     expect(result.current).toBe(mockNt);
   });
