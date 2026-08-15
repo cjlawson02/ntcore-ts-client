@@ -1,47 +1,48 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { NetworkTablesTypes } from '@ntcore-ts/client';
 import type { SubscribeOptions } from '@ntcore-ts/client';
 import { useNtcore } from './context';
 
 /**
- * Last update from a prefix topic: value and announcement params (e.g. subtopic name).
+ * Last update from a prefix topic: value, NT type string, and subtopic name.
  */
 export type PrefixTopicUpdate = {
   name: string;
   value: NetworkTablesTypes | null;
+  type: string;
 };
 
-type PrefixTopicUpdateCallback = (name: string, value: NetworkTablesTypes | null) => void;
+export type PrefixTopicMapEntry = {
+  value: NetworkTablesTypes | null;
+  type: string;
+};
+
+type PrefixTopicUpdateCallback = (name: string, value: NetworkTablesTypes | null, type: string) => void;
 
 /**
- * Shared subscription to a prefix topic. Calls onUpdate for each announcement; onReset when effect runs (e.g. prefix/nt change).
- * Callbacks are ref-backed so subscription is stable.
+ * Shared subscription to a prefix topic. Calls onUpdate for each announcement.
+ * Callbacks and subscribe options are ref-backed so the subscription stays stable.
  */
 function usePrefixTopicSubscription(
   prefix: string,
   subscribeOptions: Omit<SubscribeOptions, 'prefix'> | undefined,
-  onUpdate: PrefixTopicUpdateCallback,
-  onReset?: () => void
+  onUpdate: PrefixTopicUpdateCallback
 ): void {
   const nt = useNtcore();
   const onUpdateRef = useRef(onUpdate);
-  const onResetRef = useRef(onReset);
+  onUpdateRef.current = onUpdate;
   const subscribeOptionsRef = useRef(subscribeOptions);
-
-  useLayoutEffect(() => {
-    onUpdateRef.current = onUpdate;
-    onResetRef.current = onReset;
-    subscribeOptionsRef.current = subscribeOptions;
-  });
+  subscribeOptionsRef.current = subscribeOptions;
 
   useEffect(() => {
-    if (!nt) return;
-    onResetRef.current?.();
-    const topic = nt.createPrefixTopic(prefix);
-    const subuid = topic.subscribe(
-      (value, params) => onUpdateRef.current(params.name, value),
-      subscribeOptionsRef.current ?? undefined
-    );
+    const topic = nt.getPrefixTopic(prefix);
+    const subuid = topic.subscribe((value, params) => {
+      try {
+        onUpdateRef.current(params.name, value, params.type);
+      } catch {
+        /* consumer callback threw */
+      }
+    }, subscribeOptionsRef.current ?? undefined);
     return () => topic.unsubscribe(subuid);
   }, [nt, prefix]);
 }
@@ -56,27 +57,29 @@ function usePrefixTopicSubscription(
  *
  * @param prefix - Topic prefix (e.g. "/SmartDashboard" or "/" for all).
  * @param subscribeOptions - Optional subscribe options (e.g. { periodic: 0.02 }).
- * @returns Latest update `{ name, value }` or null when outside provider or before first update.
+ * @returns Latest update `{ name, value, type }` or null before first update.
  */
 export function usePrefixTopic(
   prefix: string,
   subscribeOptions?: Omit<SubscribeOptions, 'prefix'>
 ): PrefixTopicUpdate | null {
+  const nt = useNtcore();
   const [state, setState] = useState<PrefixTopicUpdate | null>(null);
+  const [identity, setIdentity] = useState({ nt, prefix });
 
-  usePrefixTopicSubscription(
-    prefix,
-    subscribeOptions,
-    (name, value) => setState({ name, value }),
-    () => queueMicrotask(() => setState(null))
-  );
+  if (nt !== identity.nt || prefix !== identity.prefix) {
+    setIdentity({ nt, prefix });
+    setState(null);
+  }
+
+  usePrefixTopicSubscription(prefix, subscribeOptions, (name, value, type) => setState({ name, value, type }));
 
   return state;
 }
 
 /**
  * Subscribes to all topics under a NetworkTables prefix and returns a map of every
- * topic name to its latest value. Updates are batched with requestAnimationFrame so
+ * topic name to its latest value and NT type. Updates are batched with requestAnimationFrame so
  * rapid announcements all appear. Use when you need to list or iterate over all topics
  * (e.g. an "all topics" table). For only the latest single update, use `usePrefixTopic` instead.
  *
@@ -84,49 +87,54 @@ export function usePrefixTopic(
  *
  * @param prefix - Topic prefix (e.g. "/SmartDashboard" or "/" for all).
  * @param subscribeOptions - Optional subscribe options (e.g. { periodic: 0.02 }).
- * @returns Map of topic name to value, or null when outside provider. Empty object after first flush when no topics yet.
+ * @returns Map of topic name to `{ value, type }`. Empty object after first flush when no topics yet.
  */
 export function usePrefixTopicMap(
   prefix: string,
   subscribeOptions?: Omit<SubscribeOptions, 'prefix'>
-): Record<string, NetworkTablesTypes | null> | null {
-  const [byName, setByName] = useState<Record<string, NetworkTablesTypes | null> | null>(null);
-  const pendingRef = useRef<Record<string, NetworkTablesTypes | null>>({});
+): Record<string, PrefixTopicMapEntry> {
+  const nt = useNtcore();
+  const [byName, setByName] = useState<Record<string, PrefixTopicMapEntry>>({});
+  const [identity, setIdentity] = useState({ nt, prefix });
+  const pendingRef = useRef<Record<string, PrefixTopicMapEntry>>({});
   const rafRef = useRef<number | null>(null);
+
+  if (nt !== identity.nt || prefix !== identity.prefix) {
+    setIdentity({ nt, prefix });
+    pendingRef.current = {};
+    setByName({});
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }
 
   const flush = useRef(() => {
     rafRef.current = null;
     const next = pendingRef.current;
     if (Object.keys(next).length > 0) {
       pendingRef.current = {};
-      setByName((prev) => ({ ...(prev ?? {}), ...next }));
+      setByName((prev) => ({ ...prev, ...next }));
     }
   }).current;
 
-  usePrefixTopicSubscription(
-    prefix,
-    subscribeOptions,
-    (name, value) => {
-      pendingRef.current[name] = value;
-      if (rafRef.current == null) {
-        rafRef.current = requestAnimationFrame(flush);
-      }
-    },
-    () => {
+  usePrefixTopicSubscription(prefix, subscribeOptions, (name, value, type) => {
+    if (!name.startsWith(prefix)) return;
+    pendingRef.current[name] = { value, type };
+    if (rafRef.current == null) {
+      rafRef.current = requestAnimationFrame(flush);
+    }
+  });
+
+  useEffect(
+    () => () => {
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
       pendingRef.current = {};
-      setByName({});
-    }
-  );
-
-  useEffect(
-    () => () => {
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
     },
-    []
+    [nt, prefix]
   );
 
   return byName;

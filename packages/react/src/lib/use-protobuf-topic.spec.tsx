@@ -5,6 +5,7 @@ import { NtcoreProvider } from './context';
 import { useProtobufTopic } from './use-protobuf-topic';
 
 const mockUnsubscribe = vi.fn();
+const mockUnpublish = vi.fn();
 const mockSubscribe = vi.fn((cb: (v: unknown) => void) => {
   setTimeout(() => cb(1.234), 0);
   return 99;
@@ -12,13 +13,18 @@ const mockSubscribe = vi.fn((cb: (v: unknown) => void) => {
 const mockProtobufTopic = {
   subscribe: mockSubscribe,
   unsubscribe: mockUnsubscribe,
+  unpublish: mockUnpublish,
   setValue: vi.fn(),
   publish: vi.fn().mockResolvedValue(undefined),
+  pubuid: 1,
 };
 
 const mockNt = {
-  createProtobufTopic: vi.fn(() => mockProtobufTopic),
+  getProtobufTopic: vi.fn(() => mockProtobufTopic),
   addRobotConnectionListener: vi.fn(() => vi.fn()),
+  close: vi.fn(),
+  retain: vi.fn(),
+  release: vi.fn(),
 };
 
 vi.mock('@ntcore-ts/client', () => ({
@@ -32,13 +38,13 @@ vi.mock('@ntcore-ts/client', () => ({
 describe('useProtobufTopic', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockProtobufTopic.publish.mockResolvedValue(undefined);
   });
 
-  it('returns { value: null, setValue: undefined, isReadyToWrite: false } outside provider', () => {
-    const { result } = renderHook(() => useProtobufTopic<{ x: number }>('/proto/pose'));
-    expect(result.current.value).toBeNull();
-    expect(result.current.setValue).toBeUndefined();
-    expect(result.current.isReadyToWrite).toBe(false);
+  it('throws outside provider', () => {
+    expect(() => renderHook(() => useProtobufTopic<{ x: number }>('/proto/pose'))).toThrow(
+      'useNtcore must be used within NtcoreProvider'
+    );
   });
 
   it('subscribes and unsubscribes when inside provider', async () => {
@@ -46,19 +52,20 @@ describe('useProtobufTopic', () => {
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result, unmount } = renderHook(() => useProtobufTopic<Record<string, unknown>>('/proto/test'), { wrapper });
-    expect(mockNt.createProtobufTopic).toHaveBeenCalledWith('/proto/test', undefined);
+    expect(mockNt.getProtobufTopic).toHaveBeenCalledWith('/proto/test', undefined);
     expect(mockSubscribe).toHaveBeenCalled();
     await act(async () => {
       await new Promise((r) => setTimeout(r, 10));
     });
     expect(result.current.value).toBe(1.234);
-    expect(result.current.setValue).toBeUndefined(); // subscribe-only, no publish
+    expect(result.current.setValue).toBeUndefined();
     expect(result.current.isReadyToWrite).toBe(false);
+    expect(result.current.error).toBeNull();
     unmount();
     expect(mockUnsubscribe).toHaveBeenCalledWith(99);
   });
 
-  it('passes options to createProtobufTopic', () => {
+  it('passes options to getProtobufTopic', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
@@ -70,7 +77,7 @@ describe('useProtobufTopic', () => {
         }),
       { wrapper }
     );
-    expect(mockNt.createProtobufTopic).toHaveBeenCalledWith('/proto/opts', {
+    expect(mockNt.getProtobufTopic).toHaveBeenCalledWith('/proto/opts', {
       defaultValue: { value: 0 },
       protoFilePath: '/path/to.proto',
     });
@@ -93,5 +100,36 @@ describe('useProtobufTopic', () => {
       setValue?.({ x: 5 });
     });
     expect(mockProtobufTopic.setValue).toHaveBeenCalledWith({ x: 5 });
+  });
+
+  it('unpublishes on unmount when publish is set', async () => {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { unmount } = renderHook(() => useProtobufTopic<{ x: number }>('/proto/pub', { publish: true }), { wrapper });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    unmount();
+    expect(mockUnpublish).toHaveBeenCalled();
+  });
+
+  it('unpublishes after an in-flight publish resolves on unmount', async () => {
+    let resolvePublish!: () => void;
+    mockProtobufTopic.publish.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolvePublish = resolve;
+      })
+    );
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { unmount } = renderHook(() => useProtobufTopic<{ x: number }>('/proto/pub', { publish: true }), { wrapper });
+    unmount();
+    expect(mockUnpublish).not.toHaveBeenCalled();
+    await act(async () => {
+      resolvePublish();
+    });
+    expect(mockUnpublish).toHaveBeenCalled();
   });
 });

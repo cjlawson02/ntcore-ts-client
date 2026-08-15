@@ -1,12 +1,18 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { SubscribeOptions, TopicProperties } from '@ntcore-ts/client';
-import { useNtcore } from './context';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  isStructTypeDescriptor,
+  type StructTypeDescriptor,
+  type SubscribeOptions,
+  type TopicProperties,
+} from '@ntcore-ts/client';
+import { toError, useNtcore } from './context';
+import { trackPublish, unpublishWhenDone, claimPublishOwner, type TrackedPublish } from './unpublish-when-done';
 import type { ZodSchema } from 'zod';
 
 /**
  * Options for useStructTopic (defaultValue, validator, typeName, schema, subscribeOptions, publish).
  */
-export type UseStructTopicOptions<T extends Record<string, unknown> | Record<string, unknown>[]> = {
+export type UseStructTopicOptions<T extends object | object[] = object> = {
   defaultValue?: T;
   validator?: ZodSchema<T>;
   typeName?: string;
@@ -17,19 +23,42 @@ export type UseStructTopicOptions<T extends Record<string, unknown> | Record<str
    * When provided, only call setValue after isReadyToWrite is true.
    */
   publish?: true | TopicProperties;
+  /** When `publish` is set, call `topic.unpublish()` on unmount (default `true`). */
+  unpublishOnUnmount?: boolean;
 };
+
+export type UseStructTopicTypeOptions<T extends object> = Omit<UseStructTopicOptions<T>, 'typeName' | 'validator'>;
 
 /**
  * Result of useStructTopic. When you pass `publish`, setValue is defined and you must
  * wait for isReadyToWrite before calling it.
  */
-export type UseStructTopicResult<T extends Record<string, unknown> | Record<string, unknown>[]> = {
+export type UseStructTopicResult<T extends object | object[]> = {
   value: T | null;
   setValue: ((value: T) => void) | undefined;
   /** True once the server has acknowledged our publish request. */
   isReadyToWrite: boolean;
+  error: Error | null;
 };
 
+function toStructTopicOptions<T extends object | object[]>(options: UseStructTopicOptions<T>) {
+  return {
+    ...(options.typeName !== undefined ? { typeName: options.typeName } : {}),
+    ...(options.validator !== undefined ? { validator: options.validator } : {}),
+    ...(options.defaultValue !== undefined ? { defaultValue: options.defaultValue } : {}),
+    ...(options.schema !== undefined ? { schema: options.schema } : {}),
+  };
+}
+
+/**
+ * Subscribes to a NetworkTables struct topic using a WPILib-style type descriptor
+ * (e.g. `useStructTopic('/MyTable/PoseStruct', Pose2d)`).
+ */
+export function useStructTopic<T extends object>(
+  name: string,
+  type: StructTypeDescriptor<T>,
+  options?: UseStructTopicTypeOptions<T>
+): UseStructTopicResult<T>;
 /**
  * Subscribes to a NetworkTables struct topic and returns the latest decoded value.
  * Unsubscribes on unmount.
@@ -40,70 +69,105 @@ export type UseStructTopicResult<T extends Record<string, unknown> | Record<stri
  * Only call setValue when isReadyToWrite is true.
  *
  * Subscription is re-created only when `nt` or `name` change. Optional options are read at subscribe time.
- *
- * @param name - Topic name (e.g. "/MyTable/PoseStruct").
- * @param options - Optional typeName, schema, defaultValue, validator, subscribeOptions, publish.
- * @returns { value, setValue, isReadyToWrite }.
  */
-export function useStructTopic<T extends Record<string, unknown> | Record<string, unknown>[]>(
+export function useStructTopic<T extends object | object[]>(
   name: string,
   options?: UseStructTopicOptions<T>
+): UseStructTopicResult<T>;
+export function useStructTopic<T extends object | object[]>(
+  name: string,
+  typeOrOptions?: StructTypeDescriptor<object> | UseStructTopicOptions<T>,
+  maybeOptions?: UseStructTopicTypeOptions<object>
 ): UseStructTopicResult<T> {
-  const nt = useNtcore();
-  const [state, setState] = useState<T | null>(options?.defaultValue ?? null);
-  const [isReadyToWrite, setIsReadyToWrite] = useState(false);
-  const optionsRef = useRef(options);
+  const resolved: UseStructTopicOptions<T> = isStructTypeDescriptor(typeOrOptions)
+    ? {
+        typeName: typeOrOptions.typeName,
+        validator: typeOrOptions.schema as ZodSchema<T>,
+        ...(maybeOptions as UseStructTopicTypeOptions<T> | undefined),
+      }
+    : (typeOrOptions ?? {});
 
-  useLayoutEffect(() => {
-    optionsRef.current = options;
-  });
+  const nt = useNtcore();
+  const [state, setState] = useState<T | null>(resolved.defaultValue ?? null);
+  const [isReadyToWrite, setIsReadyToWrite] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [identity, setIdentity] = useState({ nt, name, typeName: resolved.typeName });
+  const optionsRef = useRef(resolved);
+  optionsRef.current = resolved;
+
+  const typeOrOptionsRef = useRef(typeOrOptions);
+  typeOrOptionsRef.current = typeOrOptions;
+  const maybeOptionsRef = useRef(maybeOptions);
+  maybeOptionsRef.current = maybeOptions;
+
+  if (nt !== identity.nt || name !== identity.name || resolved.typeName !== identity.typeName) {
+    setIdentity({ nt, name, typeName: resolved.typeName });
+    setState(resolved.defaultValue ?? null);
+    setIsReadyToWrite(false);
+    setError(null);
+  }
+
+  const getTopic = () => {
+    const arg = typeOrOptionsRef.current;
+    if (isStructTypeDescriptor(arg)) {
+      return nt.getStructTopic(name, arg, maybeOptionsRef.current);
+    }
+    return nt.getStructTopic(name, toStructTopicOptions(optionsRef.current));
+  };
 
   useEffect(() => {
-    if (!nt) return;
     let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) {
-        setState(optionsRef.current?.defaultValue ?? null);
-        setIsReadyToWrite(false);
+    const topic = getTopic();
+    const subuid = topic.subscribe((v) => {
+      if (cancelled) return;
+      try {
+        setState((v ?? null) as T | null);
+      } catch (e) {
+        setError(toError(e));
       }
-    });
-    const topic = nt.createStructTopic<T>(name, optionsRef.current);
-    const subuid = topic.subscribe((v) => setState(v ?? null), optionsRef.current?.subscribeOptions ?? undefined);
-    const publish = optionsRef.current?.publish;
-    if (publish !== undefined) {
+    }, optionsRef.current.subscribeOptions ?? undefined);
+    const publish = optionsRef.current.publish;
+    const unpublishOnUnmount = optionsRef.current.unpublishOnUnmount ?? publish !== undefined;
+    const shouldPublish = publish !== undefined;
+    let trackedPublish: TrackedPublish | undefined;
+    let ownerToken: number | undefined;
+    if (shouldPublish) {
+      ownerToken = claimPublishOwner(topic);
       const properties = publish === true ? {} : publish;
-      topic
-        .publish(properties)
-        .then(() => {
-          if (!cancelled) setIsReadyToWrite(true);
-        })
-        .catch(() => {
-          /* publish failure: do not update state */
-        });
-      return () => {
-        cancelled = true;
-        topic.unsubscribe(subuid);
-      };
+      trackedPublish = trackPublish(
+        topic
+          .publish(properties)
+          .then(() => {
+            if (!cancelled) setIsReadyToWrite(true);
+          })
+          .catch((e) => {
+            if (!cancelled) setError(toError(e));
+          })
+      );
     }
     return () => {
       cancelled = true;
       topic.unsubscribe(subuid);
+      if (shouldPublish && unpublishOnUnmount && ownerToken !== undefined) {
+        unpublishWhenDone(topic, trackedPublish, setError, ownerToken);
+      }
     };
-  }, [nt, name]);
+  }, [nt, name, resolved.typeName]);
 
   const setValueCb = useCallback(
     (value: T) => {
-      if (!nt) return;
-      const publish = optionsRef.current?.publish;
+      const publish = optionsRef.current.publish;
       if (publish !== undefined && !isReadyToWrite) return;
-      const topic = nt.createStructTopic<T>(name, optionsRef.current);
-      topic.setValue(value);
+      try {
+        getTopic().setValue(value);
+      } catch (e) {
+        setError(toError(e));
+      }
     },
     [nt, name, isReadyToWrite]
   );
 
-  const isPublisher = options?.publish !== undefined;
-  const setValue = nt !== null && isPublisher ? setValueCb : undefined;
+  const setValue = resolved.publish !== undefined ? setValueCb : undefined;
 
-  return { value: state, setValue, isReadyToWrite };
+  return { value: state, setValue, isReadyToWrite, error };
 }

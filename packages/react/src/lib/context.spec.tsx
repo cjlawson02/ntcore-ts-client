@@ -20,12 +20,18 @@ const mockNt = {
     if (immediate) cb(true);
     return mockRemoveConnectionListener;
   }),
+  close: vi.fn(),
+  retain: vi.fn(),
+  release: vi.fn(),
 };
+
+const mockGetInstanceByTeam = vi.fn((_team: number, _port?: number) => mockNt);
+const mockGetInstanceByURI = vi.fn((_uri: string, _port?: number) => mockNt);
 
 vi.mock('@ntcore-ts/client', () => ({
   NetworkTables: {
-    getInstanceByTeam: vi.fn(() => mockNt),
-    getInstanceByURI: vi.fn(() => mockNt),
+    getInstanceByTeam: (team: number, port?: number) => mockGetInstanceByTeam(team, port),
+    getInstanceByURI: (uri: string, port?: number) => mockGetInstanceByURI(uri, port),
   },
   NetworkTablesTypeInfos: {},
 }));
@@ -33,17 +39,19 @@ vi.mock('@ntcore-ts/client', () => ({
 describe('NtcoreProvider and useNtcore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetInstanceByTeam.mockImplementation((_team: number, _port?: number) => mockNt);
+    mockGetInstanceByURI.mockImplementation((_uri: string, _port?: number) => mockNt);
   });
 
-  it('useNtcore returns null outside provider', () => {
-    const { result } = renderHook(() => useNtcore());
-    expect(result.current).toBeNull();
+  it('useNtcore throws outside provider', () => {
+    expect(() => renderHook(() => useNtcore())).toThrow('useNtcore must be used within NtcoreProvider');
   });
 
   it('useNtcore returns instance when wrapped with NtcoreProvider (team)', () => {
     const wrapper = ({ children }: { children: ReactNode }) => <NtcoreProvider team={973}>{children}</NtcoreProvider>;
     const { result } = renderHook(() => useNtcore(), { wrapper });
     expect(result.current).toBe(mockNt);
+    expect(mockGetInstanceByTeam).toHaveBeenCalledWith(973, 5810);
   });
 
   it('useNtcore returns instance when wrapped with NtcoreProvider (uri)', () => {
@@ -52,6 +60,37 @@ describe('NtcoreProvider and useNtcore', () => {
     );
     const { result } = renderHook(() => useNtcore(), { wrapper });
     expect(result.current).toBe(mockNt);
+    expect(mockGetInstanceByURI).toHaveBeenCalledWith('localhost', 5810);
+  });
+
+  it('switches instance when uri changes and releases the previous one', () => {
+    const first = { ...mockNt, close: vi.fn(), retain: vi.fn(), release: vi.fn() };
+    const second = { ...mockNt, close: vi.fn(), retain: vi.fn(), release: vi.fn() };
+    mockGetInstanceByURI.mockImplementation((uri: string) => (uri === 'localhost' ? first : second));
+    const uriRef = { current: 'localhost' };
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri={uriRef.current}>{children}</NtcoreProvider>
+    );
+    const { rerender } = renderHook(() => useNtcore(), { wrapper });
+    expect(mockGetInstanceByURI).toHaveBeenCalledWith('localhost', 5810);
+    expect(first.retain).toHaveBeenCalled();
+    mockGetInstanceByURI.mockClear();
+    uriRef.current = '192.168.1.1';
+    rerender();
+    expect(mockGetInstanceByURI).toHaveBeenCalledWith('192.168.1.1', 5810);
+    expect(first.release).toHaveBeenCalledTimes(1);
+    expect(second.retain).toHaveBeenCalled();
+    expect(second.release).not.toHaveBeenCalled();
+  });
+
+  it('releases the NetworkTables instance when the provider unmounts', () => {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { unmount } = renderHook(() => useNtcore(), { wrapper });
+    expect(mockNt.release).not.toHaveBeenCalled();
+    unmount();
+    expect(mockNt.release).toHaveBeenCalledTimes(1);
   });
 
   it('throws when neither team nor uri is provided', () => {

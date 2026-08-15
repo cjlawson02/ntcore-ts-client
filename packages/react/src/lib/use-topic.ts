@@ -1,14 +1,20 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { NetworkTablesTypeInfo, NetworkTablesTypes } from '@ntcore-ts/client';
-import type { SubscribeOptions, TopicProperties } from '@ntcore-ts/client';
-import { useNtcore } from './context';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  NetworkTablesTypeInfos,
+  type NetworkTablesTypeInfo,
+  type NetworkTablesTypes,
+  type SubscribeOptions,
+  type TopicProperties,
+} from '@ntcore-ts/client';
+import { toError, useNtcore } from './context';
+import { trackPublish, unpublishWhenDone, claimPublishOwner, type TrackedPublish } from './unpublish-when-done';
 
 /**
  * Options for useTopic. Use `publish: true` to become the publisher with default
  * properties (not retained). Use `publish: { retained: true }` (or other TopicProperties)
  * to become the publisher with specific properties.
  */
-export type UseTopicOptions<T extends NetworkTablesTypes> = {
+export type UseTopicOptions<T = NetworkTablesTypes> = {
   /** Shown before the first update. */
   defaultValue?: T;
   /** Subscribe options (e.g. { periodic: 0.02 }). */
@@ -20,17 +26,24 @@ export type UseTopicOptions<T extends NetworkTablesTypes> = {
    * When provided, only call setValue after isReadyToWrite is true.
    */
   publish?: true | TopicProperties;
+  /**
+   * When `publish` is set, call `topic.unpublish()` on unmount (default `true`).
+   * Set to `false` to keep publishing after the component unmounts.
+   */
+  unpublishOnUnmount?: boolean;
 };
 
 /**
  * Result of useTopic. When you pass `publish`, setValue is defined and you must
  * wait for isReadyToWrite before calling it.
  */
-export type UseTopicResult<T extends NetworkTablesTypes> = {
+export type UseTopicResult<T = NetworkTablesTypes> = {
   value: T | null;
   setValue: ((value: T) => void) | undefined;
   /** True once the server has acknowledged our publish request. Only check this when you passed `publish`. */
   isReadyToWrite: boolean;
+  /** Last publish or setValue error, if any. */
+  error: Error | null;
 };
 
 /**
@@ -47,71 +60,105 @@ export type UseTopicResult<T extends NetworkTablesTypes> = {
  * @param name - Topic name (e.g. "/MyTable/Gyro").
  * @param typeInfo - Type info from NetworkTablesTypeInfos (e.g. NetworkTablesTypeInfos.kDouble).
  * @param options - Optional defaultValue, subscribeOptions, and publish (make me the publisher).
- * @returns { value, setValue, isReadyToWrite }.
+ * @returns { value, setValue, isReadyToWrite, error }.
  */
+export function useTopic<T extends object>(
+  name: string,
+  typeInfo: typeof NetworkTablesTypeInfos.kJson,
+  options?: UseTopicOptions<T>
+): UseTopicResult<T>;
 export function useTopic<T extends NetworkTablesTypes>(
+  name: string,
+  typeInfo: NetworkTablesTypeInfo,
+  options?: UseTopicOptions<T>
+): UseTopicResult<T>;
+export function useTopic<T>(
   name: string,
   typeInfo: NetworkTablesTypeInfo,
   options?: UseTopicOptions<T>
 ): UseTopicResult<T> {
   const nt = useNtcore();
-  const defaultValue = options?.defaultValue;
   const publishOpt = options?.publish;
 
-  const [state, setState] = useState<T | null>(defaultValue ?? null);
+  const [state, setState] = useState<T | null>(options?.defaultValue ?? null);
   const [isReadyToWrite, setIsReadyToWrite] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [identity, setIdentity] = useState({ nt, name, typeNum: typeInfo[0], typeStr: typeInfo[1] });
   const optionsRef = useRef(options);
+  optionsRef.current = options;
 
-  useLayoutEffect(() => {
-    optionsRef.current = options;
-  });
+  if (
+    nt !== identity.nt ||
+    name !== identity.name ||
+    typeInfo[0] !== identity.typeNum ||
+    typeInfo[1] !== identity.typeStr
+  ) {
+    setIdentity({ nt, name, typeNum: typeInfo[0], typeStr: typeInfo[1] });
+    setState(options?.defaultValue ?? null);
+    setIsReadyToWrite(false);
+    setError(null);
+  }
 
   useEffect(() => {
-    if (!nt) return;
     let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) {
-        setState(optionsRef.current?.defaultValue ?? null);
-        setIsReadyToWrite(false);
+    const topic =
+      typeInfo[1] === 'json'
+        ? nt.getJsonTopic(name, optionsRef.current?.defaultValue as object | undefined)
+        : nt.createTopic(name, typeInfo, optionsRef.current?.defaultValue as NetworkTablesTypes | undefined);
+    const subuid = topic.subscribe((v) => {
+      if (cancelled) return;
+      try {
+        setState(v as T);
+      } catch (e) {
+        setError(toError(e));
       }
-    });
-    const topic = nt.createTopic<T>(name, typeInfo, optionsRef.current?.defaultValue);
-    const subuid = topic.subscribe((v) => setState(v), optionsRef.current?.subscribeOptions ?? undefined);
+    }, optionsRef.current?.subscribeOptions ?? undefined);
     const publish = optionsRef.current?.publish;
-    if (publish !== undefined) {
+    const unpublishOnUnmount = optionsRef.current?.unpublishOnUnmount ?? publish !== undefined;
+    const shouldPublish = publish !== undefined;
+    let trackedPublish: TrackedPublish | undefined;
+    let ownerToken: number | undefined;
+    if (shouldPublish) {
+      ownerToken = claimPublishOwner(topic);
       const properties = publish === true ? {} : publish;
-      topic
-        .publish(properties)
-        .then(() => {
-          if (!cancelled) setIsReadyToWrite(true);
-        })
-        .catch(() => {
-          /* publish failure: do not update state */
-        });
-      return () => {
-        cancelled = true;
-        topic.unsubscribe(subuid);
-      };
+      trackedPublish = trackPublish(
+        topic
+          .publish(properties)
+          .then(() => {
+            if (!cancelled) setIsReadyToWrite(true);
+          })
+          .catch((e) => {
+            if (!cancelled) setError(toError(e));
+          })
+      );
     }
     return () => {
       cancelled = true;
       topic.unsubscribe(subuid);
+      if (shouldPublish && unpublishOnUnmount && ownerToken !== undefined) {
+        unpublishWhenDone(topic, trackedPublish, setError, ownerToken);
+      }
     };
-  }, [nt, name, typeInfo]);
+  }, [nt, name, typeInfo[0], typeInfo[1]]);
 
   const setValueCb = useCallback(
     (value: T) => {
-      if (!nt) return;
       const publish = optionsRef.current?.publish;
       if (publish !== undefined && !isReadyToWrite) return;
-      const topic = nt.createTopic<T>(name, typeInfo, optionsRef.current?.defaultValue);
-      topic.setValue(value);
+      try {
+        const topic =
+          typeInfo[1] === 'json'
+            ? nt.getJsonTopic(name, optionsRef.current?.defaultValue as object | undefined)
+            : nt.createTopic(name, typeInfo, optionsRef.current?.defaultValue as NetworkTablesTypes | undefined);
+        topic.setValue(value as never);
+      } catch (e) {
+        setError(toError(e));
+      }
     },
     [nt, name, typeInfo, isReadyToWrite]
   );
 
-  const isPublisher = publishOpt !== undefined;
-  const setValue = nt !== null && isPublisher ? setValueCb : undefined;
+  const setValue = publishOpt !== undefined ? setValueCb : undefined;
 
-  return { value: state, setValue, isReadyToWrite };
+  return { value: state, setValue, isReadyToWrite, error };
 }

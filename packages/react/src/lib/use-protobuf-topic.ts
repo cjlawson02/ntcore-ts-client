@@ -1,16 +1,19 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SubscribeOptions, TopicProperties } from '@ntcore-ts/client';
-import { useNtcore } from './context';
+import { toError, useNtcore } from './context';
+import { trackPublish, unpublishWhenDone, claimPublishOwner, type TrackedPublish } from './unpublish-when-done';
 import type { ZodSchema } from 'zod';
 
 /**
- * Options for useProtobufTopic (defaultValue, validator, protoFilePath, subscribeOptions, publish).
+ * Options for useProtobufTopic (defaultValue, validator, protoFilePath, protoSource, messageType, subscribeOptions, publish).
  * validator is compatible with ZodSchema<T> from 'zod'.
  */
 export type UseProtobufTopicOptions<T extends object> = {
   defaultValue?: T;
   validator?: ZodSchema<T>;
   protoFilePath?: string;
+  protoSource?: string;
+  messageType?: import('protobufjs').Type;
   subscribeOptions?: SubscribeOptions;
   /**
    * Make this client the publisher of the topic so you can write with setValue.
@@ -19,6 +22,8 @@ export type UseProtobufTopicOptions<T extends object> = {
    * When provided, only call setValue after isReadyToWrite is true.
    */
   publish?: true | TopicProperties;
+  /** When `publish` is set, call `topic.unpublish()` on unmount (default `true`). */
+  unpublishOnUnmount?: boolean;
 };
 
 /**
@@ -30,6 +35,7 @@ export type UseProtobufTopicResult<T extends object> = {
   setValue: ((value: T) => void) | undefined;
   /** True once the server has acknowledged our publish request. Only check this when you passed `publish`. */
   isReadyToWrite: boolean;
+  error: Error | null;
 };
 
 /**
@@ -44,8 +50,8 @@ export type UseProtobufTopicResult<T extends object> = {
  * Subscription is re-created only when `nt` or `name` change. Optional options are read at subscribe time.
  *
  * @param name - Topic name (e.g. "/MyTable/Pose").
- * @param options - Optional defaultValue, validator, protoFilePath, subscribeOptions, publish.
- * @returns { value, setValue, isReadyToWrite }.
+ * @param options - Optional defaultValue, validator, protoFilePath, protoSource, messageType, subscribeOptions, publish.
+ * @returns { value, setValue, isReadyToWrite, error }.
  */
 export function useProtobufTopic<T extends object>(
   name: string,
@@ -54,58 +60,72 @@ export function useProtobufTopic<T extends object>(
   const nt = useNtcore();
   const [state, setState] = useState<T | null>(options?.defaultValue ?? null);
   const [isReadyToWrite, setIsReadyToWrite] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [identity, setIdentity] = useState({ nt, name });
   const optionsRef = useRef(options);
+  optionsRef.current = options;
 
-  useLayoutEffect(() => {
-    optionsRef.current = options;
-  });
+  if (nt !== identity.nt || name !== identity.name) {
+    setIdentity({ nt, name });
+    setState(options?.defaultValue ?? null);
+    setIsReadyToWrite(false);
+    setError(null);
+  }
 
   useEffect(() => {
-    if (!nt) return;
     let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) {
-        setState(optionsRef.current?.defaultValue ?? null);
-        setIsReadyToWrite(false);
+    const topic = nt.getProtobufTopic<T>(name, optionsRef.current);
+    const subuid = topic.subscribe((v) => {
+      if (cancelled) return;
+      try {
+        setState(v ?? null);
+      } catch (e) {
+        setError(toError(e));
       }
-    });
-    const topic = nt.createProtobufTopic<T>(name, optionsRef.current);
-    const subuid = topic.subscribe((v) => setState(v ?? null), optionsRef.current?.subscribeOptions ?? undefined);
+    }, optionsRef.current?.subscribeOptions ?? undefined);
     const publish = optionsRef.current?.publish;
-    if (publish !== undefined) {
+    const unpublishOnUnmount = optionsRef.current?.unpublishOnUnmount ?? publish !== undefined;
+    const shouldPublish = publish !== undefined;
+    let trackedPublish: TrackedPublish | undefined;
+    let ownerToken: number | undefined;
+    if (shouldPublish) {
+      ownerToken = claimPublishOwner(topic);
       const properties = publish === true ? {} : publish;
-      topic
-        .publish(properties)
-        .then(() => {
-          if (!cancelled) setIsReadyToWrite(true);
-        })
-        .catch(() => {
-          /* publish failure: do not update state */
-        });
-      return () => {
-        cancelled = true;
-        topic.unsubscribe(subuid);
-      };
+      trackedPublish = trackPublish(
+        topic
+          .publish(properties)
+          .then(() => {
+            if (!cancelled) setIsReadyToWrite(true);
+          })
+          .catch((e) => {
+            if (!cancelled) setError(toError(e));
+          })
+      );
     }
     return () => {
       cancelled = true;
       topic.unsubscribe(subuid);
+      if (shouldPublish && unpublishOnUnmount && ownerToken !== undefined) {
+        unpublishWhenDone(topic, trackedPublish, setError, ownerToken);
+      }
     };
   }, [nt, name]);
 
   const setValueCb = useCallback(
     (value: T) => {
-      if (!nt) return;
       const publish = optionsRef.current?.publish;
       if (publish !== undefined && !isReadyToWrite) return;
-      const topic = nt.createProtobufTopic<T>(name, optionsRef.current);
-      topic.setValue(value);
+      try {
+        const topic = nt.getProtobufTopic<T>(name, optionsRef.current);
+        topic.setValue(value);
+      } catch (e) {
+        setError(toError(e));
+      }
     },
     [nt, name, isReadyToWrite]
   );
 
-  const isPublisher = options?.publish !== undefined;
-  const setValue = nt !== null && isPublisher ? setValueCb : undefined;
+  const setValue = options?.publish !== undefined ? setValueCb : undefined;
 
-  return { value: state, setValue, isReadyToWrite };
+  return { value: state, setValue, isReadyToWrite, error };
 }

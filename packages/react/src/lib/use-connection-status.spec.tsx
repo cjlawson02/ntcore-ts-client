@@ -11,6 +11,10 @@ const mockNt = {
     return mockRemoveConnectionListener;
   }),
   getRttMs: vi.fn(() => 12),
+  isRobotConnecting: vi.fn(() => false),
+  close: vi.fn(),
+  retain: vi.fn(),
+  release: vi.fn(),
 };
 
 vi.mock('@ntcore-ts/client', () => ({
@@ -24,22 +28,37 @@ vi.mock('@ntcore-ts/client', () => ({
 describe('useConnectionStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNt.isRobotConnecting.mockReturnValue(false);
   });
 
-  it('returns connected: false and rtt: -1 outside provider', () => {
-    const { result } = renderHook(() => useConnectionStatus());
-    expect(result.current.connected).toBe(false);
-    expect(result.current.rtt).toBe(-1);
+  it('throws outside provider', () => {
+    expect(() => renderHook(() => useConnectionStatus())).toThrow('useNtcore must be used within NtcoreProvider');
   });
 
-  it('returns connected: true and rtt when provider has connection and immediateNotify', async () => {
+  it('returns connected: true, connecting: false, and rtt when provider has connection and immediateNotify', async () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result } = renderHook(() => useConnectionStatus(), { wrapper });
     expect(result.current.connected).toBe(true);
+    expect(result.current.connecting).toBe(false);
     expect(mockNt.addRobotConnectionListener).toHaveBeenCalledWith(expect.any(Function), true);
     await new Promise((r) => setTimeout(r, 50));
     expect(result.current.rtt).toBe(12);
+  });
+
+  it('polls isRobotConnecting when disconnected', async () => {
+    mockNt.addRobotConnectionListener.mockImplementation((cb: (v: boolean) => void) => {
+      cb(false);
+      return mockRemoveConnectionListener;
+    });
+    mockNt.isRobotConnecting.mockReturnValue(true);
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { result } = renderHook(() => useConnectionStatus(), { wrapper });
+    expect(result.current.connected).toBe(false);
+    expect(result.current.connecting).toBe(true);
+    expect(result.current.rtt).toBe(-1);
   });
 });

@@ -6,6 +6,7 @@ import { NtcoreProvider } from './context';
 import { useTopic } from './use-topic';
 
 const mockUnsubscribe = vi.fn();
+const mockUnpublish = vi.fn();
 const mockSubscribe = vi.fn((cb: (v: unknown) => void) => {
   setTimeout(() => cb(1.234), 0);
   return 99;
@@ -13,13 +14,19 @@ const mockSubscribe = vi.fn((cb: (v: unknown) => void) => {
 const mockTopic = {
   subscribe: mockSubscribe,
   unsubscribe: mockUnsubscribe,
+  unpublish: mockUnpublish,
   setValue: vi.fn(),
   publish: vi.fn().mockResolvedValue(undefined),
+  pubuid: 1,
 };
 
 const mockNt = {
   createTopic: vi.fn(() => mockTopic),
+  getJsonTopic: vi.fn(() => mockTopic),
   addRobotConnectionListener: vi.fn(() => vi.fn()),
+  close: vi.fn(),
+  retain: vi.fn(),
+  release: vi.fn(),
 };
 
 vi.mock('@ntcore-ts/client', () => ({
@@ -27,21 +34,19 @@ vi.mock('@ntcore-ts/client', () => ({
     getInstanceByTeam: vi.fn(() => mockNt),
     getInstanceByURI: vi.fn(() => mockNt),
   },
-  NetworkTablesTypeInfos: { kDouble: [3, 'double'] as const },
+  NetworkTablesTypeInfos: { kDouble: [3, 'double'] as const, kJson: [4, 'json'] as const },
 }));
 
 describe('useTopic', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTopic.publish.mockResolvedValue(undefined);
   });
 
   const kDouble = NetworkTablesTypeInfos.kDouble;
 
-  it('returns { value: null, setValue: undefined, isReadyToWrite: false } outside provider', () => {
-    const { result } = renderHook(() => useTopic('/test', kDouble));
-    expect(result.current.value).toBeNull();
-    expect(result.current.setValue).toBeUndefined();
-    expect(result.current.isReadyToWrite).toBe(false);
+  it('throws outside provider', () => {
+    expect(() => renderHook(() => useTopic('/test', kDouble))).toThrow('useNtcore must be used within NtcoreProvider');
   });
 
   it('subscribes and unsubscribes when inside provider', async () => {
@@ -55,7 +60,8 @@ describe('useTopic', () => {
       await new Promise((r) => setTimeout(r, 10));
     });
     expect(result.current.value).toBe(1.234);
-    expect(result.current.setValue).toBeUndefined(); // subscribe-only, no publish
+    expect(result.current.setValue).toBeUndefined();
+    expect(result.current.error).toBeNull();
     unmount();
     expect(mockUnsubscribe).toHaveBeenCalledWith(99);
   });
@@ -90,6 +96,113 @@ describe('useTopic', () => {
       setValue?.(42);
     });
     expect(mockTopic.setValue).toHaveBeenCalledWith(42);
+  });
+
+  it('unpublishes on unmount when publish is set', async () => {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { unmount } = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, { publish: true }), { wrapper });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    unmount();
+    expect(mockUnpublish).toHaveBeenCalled();
+  });
+
+  it('does not unpublish a remounted publisher when the first publish is still in flight', async () => {
+    let resolvePublish!: () => void;
+    mockTopic.publish.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolvePublish = resolve;
+      })
+    );
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const first = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, { publish: true }), { wrapper });
+    first.unmount();
+    const second = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, { publish: true }), { wrapper });
+    await act(async () => {
+      resolvePublish();
+    });
+    expect(mockUnpublish).not.toHaveBeenCalled();
+    second.unmount();
+    expect(mockUnpublish).toHaveBeenCalled();
+  });
+
+  it('unpublishes after an in-flight publish resolves on unmount', async () => {
+    let resolvePublish!: () => void;
+    mockTopic.publish.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolvePublish = resolve;
+      })
+    );
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { unmount } = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, { publish: true }), { wrapper });
+    unmount();
+    expect(mockUnpublish).not.toHaveBeenCalled();
+    await act(async () => {
+      resolvePublish();
+    });
+    expect(mockUnpublish).toHaveBeenCalled();
+  });
+
+  it('does not unpublish on unmount when unpublishOnUnmount is false', async () => {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { unmount } = renderHook(
+      () => useTopic<number>('/MyTable/Gyro', kDouble, { publish: true, unpublishOnUnmount: false }),
+      { wrapper }
+    );
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    unmount();
+    expect(mockUnpublish).not.toHaveBeenCalled();
+  });
+
+  it('sets error when publish rejects', async () => {
+    mockTopic.publish.mockRejectedValueOnce(new Error('publish failed'));
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { result } = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, { publish: true }), { wrapper });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    expect(result.current.error?.message).toBe('publish failed');
+    expect(result.current.isReadyToWrite).toBe(false);
+  });
+
+  it('sets error when setValue throws', async () => {
+    mockTopic.setValue.mockImplementationOnce(() => {
+      throw new Error('not publisher');
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    const { result } = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, { publish: true }), { wrapper });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    act(() => {
+      result.current.setValue?.(42);
+    });
+    expect(result.current.error?.message).toBe('not publisher');
+  });
+
+  it('uses getJsonTopic for kJson', () => {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
+    );
+    renderHook(() => useTopic<{ a: number }>('/json', NetworkTablesTypeInfos.kJson, { defaultValue: { a: 1 } }), {
+      wrapper,
+    });
+    expect(mockNt.getJsonTopic).toHaveBeenCalledWith('/json', { a: 1 });
   });
 
   it('publishes when publish: { retained: true } and isReadyToWrite becomes true after resolve', async () => {
