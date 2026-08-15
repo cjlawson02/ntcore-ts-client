@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NtcoreProvider } from './context';
@@ -41,7 +42,7 @@ describe('useProtobufTopic', () => {
   });
 
   it('subscribes and unsubscribes when inside provider', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result, unmount } = renderHook(() => useProtobufTopic<Record<string, unknown>>('/proto/test'), { wrapper });
@@ -58,7 +59,7 @@ describe('useProtobufTopic', () => {
   });
 
   it('passes options to createProtobufTopic', () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     renderHook(
@@ -76,7 +77,7 @@ describe('useProtobufTopic', () => {
   });
 
   it('publishes when publish: true and isReadyToWrite becomes true after resolve', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result } = renderHook(() => useProtobufTopic<{ x: number }>('/proto/pub', { publish: true }), { wrapper });

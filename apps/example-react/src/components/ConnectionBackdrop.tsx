@@ -1,5 +1,5 @@
 import './ConnectionBackdrop.scss';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useConnectionStatus, useNtcore } from '@ntcore-ts/react';
 import { HelpDialog } from './HelpDialog';
 
@@ -64,7 +64,7 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const effectivePort = mode === 'address' ? port : 5810;
     if (mode === 'team') {

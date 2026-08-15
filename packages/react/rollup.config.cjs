@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { withNx } = require('@nx/rollup/with-nx');
 
 const options = {

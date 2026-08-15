@@ -1,5 +1,5 @@
 import './AllTopicsTable.scss';
-import React, { Fragment, useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { usePrefixTopicMap, type NetworkTablesTypes } from '@ntcore-ts/react';
 
 function formatValue(value: NetworkTablesTypes | null): string {
@@ -185,7 +185,7 @@ export function AllTopicsTable() {
   const tree = useMemo(() => buildTree(rows), [rows]);
 
   const toggleInSet = useCallback(
-    (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (key: string) => {
+    (setter: Dispatch<SetStateAction<Set<string>>>) => (key: string) => {
       setter((prev) => {
         const next = new Set(prev);
         if (next.has(key)) next.delete(key);
@@ -207,7 +207,7 @@ export function AllTopicsTable() {
     );
   }
 
-  function renderRows(nodes: TopicNode[], depth: number): React.ReactNode {
+  function renderRows(nodes: TopicNode[], depth: number): ReactNode {
     return nodes.map((node) => {
       const hasChildren = node.children.length > 0;
       const isExpanded = expanded.has(node.fullPath);

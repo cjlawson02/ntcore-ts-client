@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NetworkTablesTypeInfos } from '@ntcore-ts/client';
@@ -44,7 +45,7 @@ describe('useTopic', () => {
   });
 
   it('subscribes and unsubscribes when inside provider', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result, unmount } = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble), { wrapper });
@@ -60,7 +61,7 @@ describe('useTopic', () => {
   });
 
   it('does not resubscribe when only subscribeOptions reference changes (inline object)', () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { rerender } = renderHook(
@@ -73,7 +74,7 @@ describe('useTopic', () => {
   });
 
   it('publishes when publish: true and isReadyToWrite becomes true after resolve', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result } = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, { publish: true }), { wrapper });
@@ -92,7 +93,7 @@ describe('useTopic', () => {
   });
 
   it('publishes when publish: { retained: true } and isReadyToWrite becomes true after resolve', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result } = renderHook(() => useTopic<number>('/MyTable/Gyro', kDouble, { publish: { retained: true } }), {

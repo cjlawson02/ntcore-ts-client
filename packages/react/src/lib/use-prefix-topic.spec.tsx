@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NtcoreProvider } from './context';
@@ -55,7 +56,7 @@ describe('usePrefixTopic', () => {
   });
 
   it('subscribes and unsubscribes when inside provider', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result, unmount } = renderHook(() => usePrefixTopic('/SmartDashboard'), { wrapper });
@@ -72,7 +73,7 @@ describe('usePrefixTopic', () => {
   });
 
   it('passes subscribeOptions to topic.subscribe', () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     renderHook(() => usePrefixTopic('/SmartDashboard', { periodic: 0.02 }), { wrapper });
@@ -85,7 +86,7 @@ describe('usePrefixTopic', () => {
       setTimeout(() => cb(null, { name: '/foo/unannounced' }), 0);
       return 88;
     });
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result } = renderHook(() => usePrefixTopic('/SmartDashboard'), { wrapper });
@@ -97,7 +98,7 @@ describe('usePrefixTopic', () => {
   });
 
   it('resubscribes when prefix changes', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result, rerender } = renderHook(({ prefix }) => usePrefixTopic(prefix), {
@@ -133,7 +134,7 @@ describe('usePrefixTopicMap', () => {
   });
 
   it('subscribes and unsubscribes when inside provider', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result, unmount } = renderHook(() => usePrefixTopicMap('/SmartDashboard'), { wrapper });
@@ -155,7 +156,7 @@ describe('usePrefixTopicMap', () => {
       }, 0);
       return 88;
     });
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result } = renderHook(() => usePrefixTopicMap('/'), { wrapper });
@@ -164,7 +165,7 @@ describe('usePrefixTopicMap', () => {
   });
 
   it('passes subscribeOptions to topic.subscribe', () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     renderHook(() => usePrefixTopicMap('/SmartDashboard', { periodic: 0.01 }), { wrapper });
@@ -179,7 +180,7 @@ describe('usePrefixTopicMap', () => {
       return rafId;
     });
 
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { rerender } = renderHook(({ prefix }) => usePrefixTopicMap(prefix), {

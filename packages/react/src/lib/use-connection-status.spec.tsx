@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NtcoreProvider } from './context';
@@ -32,7 +33,7 @@ describe('useConnectionStatus', () => {
   });
 
   it('returns connected: true and rtt when provider has connection and immediateNotify', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result } = renderHook(() => useConnectionStatus(), { wrapper });

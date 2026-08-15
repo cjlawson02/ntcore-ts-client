@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NtcoreProvider } from './context';
@@ -41,7 +42,7 @@ describe('useStructTopic', () => {
   });
 
   it('subscribes on mount, unsubscribes on unmount', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result, unmount } = renderHook(
@@ -59,7 +60,7 @@ describe('useStructTopic', () => {
   });
 
   it('setValue only when isReadyToWrite (publish path)', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result } = renderHook(
@@ -80,7 +81,7 @@ describe('useStructTopic', () => {
 
   it('supports array-of-struct type (Translation2d[]) without cast', () => {
     type Translation2d = { x: number; y: number };
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result } = renderHook(

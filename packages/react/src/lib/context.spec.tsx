@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NtcoreProvider, useNtcore } from './context';
@@ -40,7 +41,7 @@ describe('NtcoreProvider and useNtcore', () => {
   });
 
   it('useNtcore returns instance when wrapped with NtcoreProvider (team)', () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider team={973}>{children}</NtcoreProvider>
     );
     const { result } = renderHook(() => useNtcore(), { wrapper });
@@ -48,7 +49,7 @@ describe('NtcoreProvider and useNtcore', () => {
   });
 
   it('useNtcore returns instance when wrapped with NtcoreProvider (uri)', () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost">{children}</NtcoreProvider>
     );
     const { result } = renderHook(() => useNtcore(), { wrapper });
@@ -58,7 +59,7 @@ describe('NtcoreProvider and useNtcore', () => {
   it('throws when neither team nor uri is provided', () => {
     expect(() =>
       renderHook(() => useNtcore(), {
-        wrapper: ({ children }: { children: React.ReactNode }) => (
+        wrapper: ({ children }: { children: ReactNode }) => (
           <NtcoreProvider {...({} as NtcoreProviderProps)}>{children}</NtcoreProvider>
         ),
       })
@@ -66,7 +67,7 @@ describe('NtcoreProvider and useNtcore', () => {
   });
 
   it('throws when port is invalid (e.g. NaN)', () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
+    const wrapper = ({ children }: { children: ReactNode }) => (
       <NtcoreProvider uri="localhost" port={Number.NaN}>
         {children}
       </NtcoreProvider>
