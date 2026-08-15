@@ -1,5 +1,5 @@
 import './ConnectionBackdrop.scss';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useConnectionStatus, useNtcore } from '@ntcore-ts/react';
 import { HelpDialog } from './HelpDialog';
 
@@ -19,22 +19,12 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
   const [port, setPort] = useState(5810);
   const [helpOpen, setHelpOpen] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [seededNt, setSeededNt] = useState<typeof nt>(null);
 
-  useEffect(() => {
-    if (!open) setHelpOpen(false);
-  }, [open]);
+  if (!open && helpOpen) setHelpOpen(false);
+  if (connected && isConnecting) setIsConnecting(false);
 
-  useEffect(() => {
-    if (connected && isConnecting) setIsConnecting(false);
-  }, [connected, isConnecting]);
-
-  const handleFormChange = () => {
-    nt?.stopAutoConnect();
-    setIsConnecting(false);
-  };
-
-  useEffect(() => {
-    if (!nt) return;
+  if (nt && nt !== seededNt) {
     const currentUri = nt.getURI();
     const match = currentUri.match(/^roborio-(\d+)-frc\.local$/);
     if (match) {
@@ -45,12 +35,18 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
       setUri(currentUri);
     }
     setPort(nt.getPort());
-  }, [nt]);
+    setSeededNt(nt);
+  }
 
-  const handleClose = () => {
+  const handleFormChange = () => {
+    nt?.stopAutoConnect();
+    setIsConnecting(false);
+  };
+
+  const handleClose = useCallback(() => {
     nt?.startAutoConnect();
     onClose();
-  };
+  }, [nt, onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -62,7 +58,7 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [open, onClose]);
+  }, [open, handleClose]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

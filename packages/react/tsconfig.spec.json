@@ -5,8 +5,7 @@
     "types": ["vitest/globals", "vitest/importMeta", "vite/client", "node", "vitest"]
   },
   "include": [
-    "vite.config.ts",
-    "vite.config.mts",
+    "vitest.config.mts",
     "rollup.config.mts",
     "src/**/*.test.ts",
     "src/**/*.spec.ts",

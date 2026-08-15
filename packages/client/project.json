@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/client/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["type:lib", "scope:client"],
   "targets": {
     "typecheck": {
       "executor": "nx:run-commands",
@@ -15,12 +15,6 @@
     },
     "build": {
       "dependsOn": ["typecheck"]
-    },
-    "test": {
-      "outputs": ["{projectRoot}/{options.coverage.reportsDirectory}", "{workspaceRoot}/coverage/packages/client"],
-      "options": {
-        "coverage.reportsDirectory": "../../coverage/packages/client"
-      }
     },
     "bench": {
       "executor": "nx:run-commands",

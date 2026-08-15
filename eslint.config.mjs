@@ -26,8 +26,20 @@ export default [
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
           depConstraints: [
             {
-              sourceTag: '*',
-              onlyDependOnLibsWithTags: ['*'],
+              sourceTag: 'type:app',
+              onlyDependOnLibsWithTags: ['type:lib'],
+            },
+            {
+              sourceTag: 'type:lib',
+              onlyDependOnLibsWithTags: ['type:lib'],
+            },
+            {
+              sourceTag: 'scope:react',
+              onlyDependOnLibsWithTags: ['scope:client', 'scope:react'],
+            },
+            {
+              sourceTag: 'scope:client',
+              onlyDependOnLibsWithTags: ['scope:client'],
             },
           ],
         },

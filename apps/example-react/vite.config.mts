@@ -1,4 +1,3 @@
-/// <reference types="vitest/config" />
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,18 +15,7 @@ export default defineConfig({
   },
   build: {
     outDir: '../../dist/apps/example-react',
+    emptyOutDir: true,
     reportCompressedSize: true,
-  },
-  test: {
-    passWithNoTests: true,
-    globals: true,
-    environment: 'jsdom',
-    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    reporters: ['default'],
-    coverage: {
-      reportsDirectory: '../../coverage/apps/example-react',
-      provider: 'v8',
-      include: ['src/**/*.{ts,tsx}'],
-    },
   },
 });

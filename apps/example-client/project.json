@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/example-client/src",
   "projectType": "application",
-  "tags": [],
+  "tags": ["type:app"],
   "targets": {
     "generate-types": {
       "executor": "nx:run-commands",
@@ -56,7 +56,7 @@
     "e2e": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx vitest run --config vitest.e2e.config.ts",
+        "command": "npx vitest run --config vitest.e2e.config.mts",
         "cwd": "apps/example-client"
       }
     },

@@ -68,7 +68,7 @@ fi
 echo "Running E2E tests..."
 # Run vitest directly so test output is shown (Nx vitest executor buffers output)
 set +e
-npx vitest run --config apps/example-client/vitest.e2e.config.ts
+npx vitest run --config apps/example-client/vitest.e2e.config.mts
 E2E_EXIT=$?
 set -e
 cleanup $E2E_EXIT

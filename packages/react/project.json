@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/react/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["type:lib", "scope:react"],
   "targets": {
     "typecheck": {
       "executor": "nx:run-commands",
@@ -15,13 +15,6 @@
     },
     "build": {
       "dependsOn": ["typecheck", "client:build"]
-    },
-    "test": {
-      "outputs": ["{projectRoot}/{options.coverage.reportsDirectory}", "{workspaceRoot}/coverage/packages/react"],
-      "options": {
-        "config": "./vite.config.mts",
-        "coverage.reportsDirectory": "../../coverage/packages/react"
-      }
     }
   }
 }

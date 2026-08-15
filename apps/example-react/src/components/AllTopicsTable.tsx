@@ -130,7 +130,7 @@ function ValueCell({ value, rowKey, expanded, onToggleJsonKey, isExpandable }: V
   const formatted = formatValue(value);
   if (formatted === 'null' && isExpandable) return null;
   const isMono = formatted === 'null' || (formatted.startsWith('<binary ') && formatted.endsWith('B>'));
-  return isMono ? <span className="all-topics-table__value-text">{formatted}</span> : <>{formatted}</>;
+  return isMono ? <span className="all-topics-table__value-text">{formatted}</span> : formatted;
 }
 
 interface TopicNode {
@@ -176,11 +176,11 @@ function buildTree(rows: [string, NetworkTablesTypes | null][]): TopicNode {
  * topic name and latest value in a table. Topics are shown in a nested tree with row expanders.
  */
 export function AllTopicsTable() {
-  const byName = usePrefixTopicMap('/') ?? {};
+  const byName = usePrefixTopicMap('/');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [jsonExpanded, setJsonExpanded] = useState<Set<string>>(new Set());
 
-  const rows = useMemo(() => Object.entries(byName).sort(([a], [b]) => a.localeCompare(b)), [byName]);
+  const rows = useMemo(() => Object.entries(byName ?? {}).sort(([a], [b]) => a.localeCompare(b)), [byName]);
 
   const tree = useMemo(() => buildTree(rows), [rows]);
 

@@ -1,5 +1,5 @@
 import './App.scss';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useConnectionStatus } from '@ntcore-ts/react';
 import { ConnectionBackdrop } from '../components/ConnectionBackdrop';
 import { ConnectionStatus } from '../components/ConnectionStatus';
@@ -15,14 +15,16 @@ export default function App() {
   const [hasEverConnected, setHasEverConnected] = useState(false);
   const [backdropOpenByUser, setBackdropOpenByUser] = useState(false);
   const [closedByUser, setClosedByUser] = useState(false);
+  const [wasConnected, setWasConnected] = useState(connected);
 
-  useEffect(() => {
+  if (connected !== wasConnected) {
+    setWasConnected(connected);
     if (connected) {
       setHasEverConnected(true);
       setBackdropOpenByUser(false);
       setClosedByUser(false);
     }
-  }, [connected]);
+  }
 
   const showBackdrop = (connected === false && !hasEverConnected && !closedByUser) || backdropOpenByUser;
 

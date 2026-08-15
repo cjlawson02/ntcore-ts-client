@@ -1,5 +1,6 @@
-/** @type {import('lint-staged').Config} */
-export default {
+import type { Configuration } from 'lint-staged';
+
+const config: Configuration = {
   '*': () => [
     'npx nx format:write --uncommitted',
     'npx nx affected --target=lint-fix --uncommitted',
@@ -7,3 +8,5 @@ export default {
     'npx nx affected --target=build --uncommitted',
   ],
 };
+
+export default config;

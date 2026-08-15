@@ -27,12 +27,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - run: npm ci
-      - uses: nrwl/nx-set-shas@v5
 
       - name: Install protoc and xvfb
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler xvfb
 
       - run: npx nx format:check
+      - run: npx nx run-many -t typecheck
       - run: npx nx run-many -t build
       - run: npx nx run-many -t lint
       - run: npx nx run-many -t test --coverage

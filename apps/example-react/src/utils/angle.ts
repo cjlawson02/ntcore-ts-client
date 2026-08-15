@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 
 /** Normalize angle to [0, 360). */
 export function normalizeDegrees(degrees: number): number {
@@ -32,13 +32,29 @@ export function shortestPathDegrees(prev: number, normalized: number): number {
  * Use for needles/rotation UI; when input is null returns 0 and clears internal state.
  */
 export function useShortestPathDisplay(normalizedDegreesOrNull: number | null): number {
-  const prevRef = useRef<number | null>(null);
+  const [prevNormalized, setPrevNormalized] = useState<number | null>(null);
+  const [display, setDisplay] = useState(0);
+
   if (normalizedDegreesOrNull == null) {
-    prevRef.current = null;
+    if (prevNormalized !== null) {
+      setPrevNormalized(null);
+      setDisplay(0);
+    }
     return 0;
   }
-  const display =
-    prevRef.current === null ? normalizedDegreesOrNull : shortestPathDegrees(prevRef.current, normalizedDegreesOrNull);
-  prevRef.current = display;
+
+  if (prevNormalized === null) {
+    setPrevNormalized(normalizedDegreesOrNull);
+    setDisplay(normalizedDegreesOrNull);
+    return normalizedDegreesOrNull;
+  }
+
+  if (normalizedDegreesOrNull !== prevNormalized) {
+    const next = shortestPathDegrees(display, normalizedDegreesOrNull);
+    setPrevNormalized(normalizedDegreesOrNull);
+    setDisplay(next);
+    return next;
+  }
+
   return display;
 }
