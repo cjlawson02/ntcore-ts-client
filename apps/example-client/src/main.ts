@@ -84,7 +84,6 @@ const accelerometerTopic = ntcore.getPrefixTopic('/MyTable/Accelerometer/');
 
 let x: number;
 let y: number;
-let z: number;
 
 // Subscribe to all topics under the prefix /MyTable/Accelerometer/
 accelerometerTopic.subscribe((value, params) => {
@@ -95,8 +94,6 @@ accelerometerTopic.subscribe((value, params) => {
     x = zod.number().parse(value);
   } else if (params.name.endsWith('Y')) {
     y = zod.number().parse(value);
-  } else if (params.name.endsWith('Z')) {
-    z = zod.number().parse(value);
   }
 
   // Since there can be THAT many different types in subtopics,
@@ -106,11 +103,11 @@ accelerometerTopic.subscribe((value, params) => {
   } else if (params.type === 'double') {
     console.log('[Accel Prefix Topic] The accelerometer is high precision');
 
-    console.log(`[Accel Prefix Topic] Latest update: X: ${x}, Y: ${y}, Z: ${z}`);
+    console.log(`[Accel Prefix Topic] Latest update: X: ${x}, Y: ${y}`);
   }
 });
 
-// x, y, and z will be updated as new values come in
+// x and y will be updated as new values come in
 
 // ---------------------------------------------------------- //
 // Example of using a prefix topic to subscribe to all topics //

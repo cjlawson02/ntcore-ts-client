@@ -138,7 +138,7 @@ autoModeTopic.setValue('25 Ball Auto and Climb');
 
 You can also subscribe to multiple topics by using a "wildcard" through creating a prefix topic.
 
-For example, here's a subscription for an Accelerometer with topics `/MyTable/Accelerometer/X`, `/MyTable/Accelerometer/Y`, and `/MyTable/Accelerometer/Z`:
+For example, here's a subscription for an Accelerometer with topics `/MyTable/Accelerometer/X` and `/MyTable/Accelerometer/Y`:
 
 ```typescript
 import { NetworkTables } from '@ntcore-ts/client';
@@ -149,7 +149,7 @@ const ntcore = NetworkTables.getInstanceByTeam(973);
 // Create the accelerometer prefix topic
 const accelerometerTopic = ntcore.getPrefixTopic('/MyTable/Accelerometer/');
 
-let x, y, z;
+let x, y;
 
 // Subscribe to all topics under the prefix /MyTable/Accelerometer/
 accelerometerTopic.subscribe((value, params) => {
@@ -160,8 +160,6 @@ accelerometerTopic.subscribe((value, params) => {
     x = value;
   } else if (params.name.endsWith('Y')) {
     y = value;
-  } else if (params.name.endsWith('Z')) {
-    z = value;
   }
 
   // Since there can be many types in subtopics,
@@ -173,7 +171,7 @@ accelerometerTopic.subscribe((value, params) => {
   }
 });
 
-// x, y, and z will be updated as new values come in
+// x and y will be updated as new values come in
 ```
 
 ### Protobuf Topics

@@ -24,7 +24,7 @@ A minimal React dashboard that uses [@ntcore-ts/react](../../packages/react) to 
 
    - **Connection status** — click to reopen the connection overlay after the first connect.
    - **Connection overlay** — shown until the first successful connect (unless dismissed). Team number or address/port fields seed from the current NT client when available. Escape or Close resumes auto-connect.
-   - **Sensors** — Gyro and Accelerometer X/Y/Z.
+   - **Sensors** — Gyro and Accelerometer X/Y.
    - **Pose** — protobuf `/MyTable/Pose` with a top-down field view.
    - **Pose (Struct)** — struct `/MyTable/PoseStruct` (`Pose2d`) with the same visualization.
    - **Auto Mode** — subscribe and publish `/MyTable/AutoMode` (retained string).
