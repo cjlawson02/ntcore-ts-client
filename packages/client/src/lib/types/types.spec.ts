@@ -52,10 +52,10 @@ describe('NetworkTablesTypeInfos', () => {
       expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kString, 'abc')).toEqual('abc');
     });
 
-    it('should return the correct NT type for a JSON value', () => {
-      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kJson, '{ "someJson": true }')).toEqual({
-        someJson: true,
-      });
+    it('should return the wire JSON string for a JSON value', () => {
+      expect(NetworkTablesTypeInfos.validateData(NetworkTablesTypeInfos.kJson, '{ "someJson": true }')).toEqual(
+        '{ "someJson": true }'
+      );
     });
 
     it('should throw for a bad JSON value', () => {

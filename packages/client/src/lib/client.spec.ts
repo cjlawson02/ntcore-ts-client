@@ -1,6 +1,11 @@
 import { NetworkTables } from './client';
+import { PubSubClient } from './pubsub/pubsub';
+import { Messenger } from './socket/messenger';
+import { NetworkTablesSocket } from './socket/socket';
+import { Pose2d } from './struct/geometry';
 import { NetworkTablesTypeInfos } from './types/types';
 import { LogLevel } from './util/logger';
+import { z } from 'zod';
 
 describe('NetworkTables', () => {
   beforeEach(() => {
@@ -78,32 +83,32 @@ describe('NetworkTables', () => {
 
   it('creates a prefix topic', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
-    const topic = networkTables.createPrefixTopic('/');
+    const topic = networkTables.getPrefixTopic('/');
     expect(topic).toBeDefined();
   });
 
   it('creates a protobuf topic', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
-    const topic = networkTables.createProtobufTopic<{ value: number }>('/proto/test');
+    const topic = networkTables.getProtobufTopic<{ value: number }>('/proto/test');
     expect(topic).toBeDefined();
     expect(topic.getValue()).toBeNull();
   });
 
   it('creates a protobuf topic with options', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
-    const topic = networkTables.createProtobufTopic<{ value: number }>('/proto/opts', {
+    const topic = networkTables.getProtobufTopic<{ value: number }>('/proto/opts', {
       defaultValue: { value: 42 },
     });
     expect(topic).toBeDefined();
     expect(topic.getValue()).toEqual({ value: 42 });
   });
 
-  it('returns existing protobuf topic with options applied on subsequent createProtobufTopic calls', () => {
+  it('returns existing protobuf topic with options applied on subsequent getProtobufTopic calls', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
-    const topic1 = networkTables.createProtobufTopic<{ value: number }>('/proto/reuse');
+    const topic1 = networkTables.getProtobufTopic<{ value: number }>('/proto/reuse');
     expect(topic1.getValue()).toBeNull();
 
-    const topic2 = networkTables.createProtobufTopic<{ value: number }>('/proto/reuse', {
+    const topic2 = networkTables.getProtobufTopic<{ value: number }>('/proto/reuse', {
       defaultValue: { value: 99 },
     });
     expect(topic2).toBe(topic1);
@@ -113,32 +118,32 @@ describe('NetworkTables', () => {
   it('throws when createTopic is called with kProtobuf type', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
     expect(() => networkTables.createTopic('/proto/bad', NetworkTablesTypeInfos.kProtobuf)).toThrow(
-      "Protobuf types are not allowed in createTopic. Use createProtobufTopic('/proto/bad', options) instead for proper encoding/decoding support."
+      "Protobuf types are not allowed in createTopic. Use getProtobufTopic('/proto/bad', options) instead for proper encoding/decoding support."
     );
   });
 
   it('throws when createTopic is called with struct type', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
     expect(() => networkTables.createTopic('/struct/bad', [5, 'struct:Pose2d'])).toThrow(
-      "Struct types are not allowed in createTopic. Use createStructTopic('/struct/bad', options) instead for proper encoding/decoding support."
+      "Struct types are not allowed in createTopic. Use getStructTopic('/struct/bad', options) instead for proper encoding/decoding support."
     );
   });
 
   it('creates a struct topic', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
-    const topic = networkTables.createStructTopic<{ x: number; y: number }>('/struct/pose', {
+    const topic = networkTables.getStructTopic<{ x: number; y: number }>('/struct/pose', {
       typeName: 'Translation2d',
     });
     expect(topic).toBeDefined();
     expect(topic.getValue()).toBeNull();
   });
 
-  it('returns existing struct topic with options applied on subsequent createStructTopic calls', () => {
+  it('returns existing struct topic with options applied on subsequent getStructTopic calls', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
-    const topic1 = networkTables.createStructTopic<{ x: number; y: number }>('/struct/reuse', {
+    const topic1 = networkTables.getStructTopic<{ x: number; y: number }>('/struct/reuse', {
       typeName: 'Translation2d',
     });
-    const topic2 = networkTables.createStructTopic<{ x: number; y: number }>('/struct/reuse', {
+    const topic2 = networkTables.getStructTopic<{ x: number; y: number }>('/struct/reuse', {
       typeName: 'Translation2d',
       defaultValue: { x: 1, y: 2 },
     });
@@ -146,9 +151,29 @@ describe('NetworkTables', () => {
     expect(topic2.getValue()).toEqual({ x: 1, y: 2 });
   });
 
+  it('throws when getStructTopic creates a new topic without typeName', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    expect(() => networkTables.getStructTopic('/no-type')).toThrow(
+      /Pass a descriptor \(e\.g\. Pose2d\) or \{ typeName \}/
+    );
+  });
+
+  it('returns the existing struct topic when getStructTopic is called again without typeName', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const first = networkTables.getStructTopic('/pose-mm', Pose2d);
+    const second = networkTables.getStructTopic('/pose-mm');
+    expect(second).toBe(first);
+  });
+
+  it('throws when getStructTopic reuses a topic with a mismatched array type', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    networkTables.getStructTopic('/pose-mm', Pose2d);
+    expect(() => networkTables.getStructTopic('/pose-mm', { typeName: 'Pose2d[]' })).toThrow(/type mismatch/);
+  });
+
   it('creates struct topic with array type (Translation2d[]) and getValue/setValue work', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
-    const topic = networkTables.createStructTopic<Array<{ x: number; y: number }>>('/struct/arr', {
+    const topic = networkTables.getStructTopic<Array<{ x: number; y: number }>>('/struct/arr', {
       typeName: 'Translation2d[]',
     });
     expect(topic).toBeDefined();
@@ -190,5 +215,82 @@ describe('NetworkTables', () => {
   it('getRttMs returns -1 when not connected', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
     expect(networkTables.getRttMs()).toBe(-1);
+  });
+
+  it('creates typed topics from WPILib-style factories', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    expect(networkTables.getBooleanTopic('/b', true).getValue()).toBe(true);
+    expect(networkTables.getDoubleTopic('/d', 1.5).getValue()).toBe(1.5);
+    expect(networkTables.getIntegerTopic('/i', 3).getValue()).toBe(3);
+    expect(networkTables.getFloatTopic('/f', 1.25).getValue()).toBe(1.25);
+    expect(networkTables.getStringTopic('/s', 'hi').getValue()).toBe('hi');
+    expect(networkTables.getBooleanArrayTopic('/ba', [true]).getValue()).toEqual([true]);
+    expect(networkTables.getDoubleArrayTopic('/da', [1, 2]).getValue()).toEqual([1, 2]);
+    expect(networkTables.getIntegerArrayTopic('/ia', [1]).getValue()).toEqual([1]);
+    expect(networkTables.getFloatArrayTopic('/fa', [0.5]).getValue()).toEqual([0.5]);
+    expect(networkTables.getStringArrayTopic('/sa', ['a']).getValue()).toEqual(['a']);
+    expect(networkTables.getRawTopic('/raw', new Uint8Array([1, 2])).getValue()).toEqual(new Uint8Array([1, 2]));
+    expect(networkTables.getPrefixTopic('/')).toBeDefined();
+  });
+
+  it('creates a JSON topic that stores a parsed object', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.getJsonTopic('/json', { a: 1 });
+    expect(topic.getValue()).toEqual({ a: 1 });
+    expect(topic.typeInfo).toEqual([4, 'json']);
+  });
+
+  it('createTopic with kJson returns a JSON topic', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.createTopic('/json2', NetworkTablesTypeInfos.kJson, { b: true });
+    expect(topic.getValue()).toEqual({ b: true });
+  });
+
+  it('getJsonTopic applies a validator on a reused topic', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const schema = z.object({ a: z.number() });
+    const first = networkTables.getJsonTopic('/json-v', { a: 1 });
+    const second = networkTables.getJsonTopic('/json-v', { a: 1 }, { validator: schema });
+    expect(second).toBe(first);
+    expect(() => second.updateValue(JSON.stringify({ a: 'nope' }), Date.now())).toThrow();
+  });
+
+  it('getJsonTopic reuse does not wipe an existing value', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const first = networkTables.getJsonTopic('/json-keep', { a: 1 });
+    first.updateValue(JSON.stringify({ a: 99 }), Date.now());
+    const second = networkTables.getJsonTopic('/json-keep', { a: 0 });
+    expect(second).toBe(first);
+    expect(second.getValue()).toEqual({ a: 99 });
+  });
+
+  it('getStructTopic with Pose2d infers the geometry type', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    const topic = networkTables.getStructTopic('/MyTable/PoseStruct', Pose2d);
+    expect(topic.typeInfo[1]).toBe('struct:Pose2d');
+    expect(topic.getValue()).toBeNull();
+  });
+
+  it('close removes the instance so a later getInstance creates a new one', () => {
+    const first = NetworkTables.getInstanceByURI('close-test.local');
+    const serverUrl = first['_client'].messenger.socket['serverUrl'] as string;
+    first.close();
+    expect(NetworkTables['_instances'].has('close-test.local:5810')).toBe(false);
+    expect(PubSubClient['_instances'].has(serverUrl)).toBe(false);
+    expect(Messenger['_instances'].has(serverUrl)).toBe(false);
+    expect(NetworkTablesSocket['instances'].has(serverUrl)).toBe(false);
+    const second = NetworkTables.getInstanceByURI('close-test.local');
+    expect(second).not.toBe(first);
+    second.close();
+  });
+
+  it('release closes the instance only when retain count reaches zero', () => {
+    const nt = NetworkTables.getInstanceByURI('retain-test.local');
+    nt.retain();
+    nt.retain();
+    nt.release();
+    expect(NetworkTables['_instances'].has('retain-test.local:5810')).toBe(true);
+    nt.release();
+    expect(NetworkTables['_instances'].has('retain-test.local:5810')).toBe(false);
   });
 });

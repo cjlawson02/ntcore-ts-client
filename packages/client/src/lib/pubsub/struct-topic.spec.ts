@@ -59,7 +59,7 @@ describe('NetworkTablesStructTopic', () => {
     expect(topic.getValue()).toEqual({ x: 3, y: 4 });
   });
 
-  it('returns existing topic when createStructTopic called again with same name', () => {
+  it('returns existing topic when getStructTopic is called again with same name', () => {
     const topic1 = new NetworkTablesStructTopic<{ x: number }>(client, '/struct/same', {
       typeName: 'Rotation2d',
     });

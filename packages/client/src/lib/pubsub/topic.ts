@@ -110,7 +110,10 @@ export class NetworkTablesTopic<
   protected afterSetWireValue(): void {
     if (this._wireValue == null) return;
     // Notify prefix subscribers (e.g. "all topics" table) so locally published values appear there.
-    this.client.notifyPrefixTopicsForLocalUpdate(this.getAnnounceParamsForNotify(), this._wireValue);
+    this.client.notifyPrefixTopicsForLocalUpdate(
+      this.getAnnounceParamsForNotify(),
+      (this.getValue() ?? this._wireValue) as NetworkTablesTypes
+    );
 
     // If we're disconnected, just keep our local retained value.
     // We will always resend the latest retained value after reconnect.
@@ -155,7 +158,6 @@ export class NetworkTablesTopic<
    * @returns The value of the topic.
    */
   getValue(): TPublic | null {
-    pubsubLogger.debug('Value retrieved', { topicName: this.name, value: this._wireValue });
     return this._wireValue as TPublic | null;
   }
 
@@ -208,26 +210,57 @@ export class NetworkTablesTopic<
   /**
    * Creates a new subscriber.
    * @param callback - The callback to call when the topic value changes.
+   * @param options - The options for the subscriber. `immediateNotify` is client-side only and is
+   *   not sent to the NT server. `id` and `save` are not part of this public signature.
+   * @returns The UID of the subscriber.
+   */
+  subscribe(callback: CallbackFn<TPublic>, options: Omit<SubscribeOptions, 'prefix'> = {}) {
+    const subuid = this.subscribeWithId(callback, options, undefined, true);
+    if (options.immediateNotify) {
+      const params =
+        this._announceParams ??
+        ({
+          name: this.name,
+          id: -1,
+          type: this._typeInfo[1],
+          properties: this._publishProperties ?? {},
+          ...(this._pubuid != null ? { pubuid: this._pubuid } : {}),
+        } as const);
+      callback(this.getValue(), params);
+    }
+    return subuid;
+  }
+
+  /**
+   * Creates a new subscriber, optionally reusing a subscription UID.
+   * @internal Used by resubscribeAll. Does not honor `immediateNotify`.
+   * @param callback - The callback to call when the topic value changes.
    * @param options - The options for the subscriber.
    * @param id - The UID of the subscriber. You must verify that the ID is not already in use.
    * @param save - Whether to save the subscriber.
    * @returns The UID of the subscriber.
    */
-  subscribe(callback: CallbackFn<TPublic>, options: Omit<SubscribeOptions, 'prefix'> = {}, id?: number, save = true) {
+  protected subscribeWithId(
+    callback: CallbackFn<TPublic>,
+    options: Omit<SubscribeOptions, 'prefix'> = {},
+    id?: number,
+    save = true
+  ) {
     const subuid = id || this.client.messenger.getNextSubUID();
+    const serverOptions = this.toProtocolSubscribeOptions(options);
 
     const subscribeParams: SubscribeMessageParams = {
       topics: [this.name],
       subuid,
-      options,
+      options: serverOptions,
     };
     this.client.messenger.subscribe(subscribeParams);
 
-    if (save) this.subscribers.set(subuid, { callback, options });
+    if (save) this.subscribers.set(subuid, { callback, options: serverOptions });
     pubsubLogger.debug('Subscriber added', {
       topicName: this.name,
       subuid,
-      options,
+      options: serverOptions,
       totalSubscribers: this.subscribers.size,
     });
 
@@ -239,7 +272,7 @@ export class NetworkTablesTopic<
     pubsubLogger.debug('Resubscribe all', { topicName: this.name, subscriberCount });
     this.client = client;
     this.subscribers.forEach((info, subuid) => {
-      this.subscribe(info.callback, info.options, subuid, false);
+      this.subscribeWithId(info.callback, info.options, subuid, false);
     });
   }
 
@@ -314,7 +347,7 @@ export class NetworkTablesTopic<
    * Unpublishes the topic.
    */
   unpublish() {
-    if (!this.publisher || this._pubuid == null) {
+    if (this._pubuid == null) {
       pubsubLogger.debug('Publisher check failed before unpublish', {
         topicName: this.name,
         publisher: this.publisher,

@@ -201,6 +201,31 @@ describe('Topic', () => {
         } as SubscribeMessageParams,
       });
     });
+
+    it('invokes the callback immediately when immediateNotify is true', () => {
+      topic.subscribe(callback, { immediateNotify: true });
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith('default', expect.objectContaining({ name: 'test' }));
+    });
+
+    it('does not invoke the callback immediately when immediateNotify is omitted', () => {
+      topic.subscribe(callback);
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('strips immediateNotify before sending options to the server', () => {
+      const send = vi.fn();
+      topic['client']['_messenger']['_socket']['sendTextFrame'] = send;
+      topic.subscribe(callback, { immediateNotify: true, periodic: 0.02 });
+      expect(send).toHaveBeenCalledWith({
+        method: 'subscribe',
+        params: {
+          topics: ['test'],
+          subuid: expect.any(Number),
+          options: { periodic: 0.02 },
+        } as SubscribeMessageParams,
+      });
+    });
   });
 
   describe('unsubscribe', () => {
@@ -318,7 +343,7 @@ describe('Topic', () => {
 
       // Ensure publish() does NOT use the optimistic resolution workaround by creating an
       // exact subscription match for this topic name.
-      isolatedTopic.subscribe(() => {}, {}, undefined, false);
+      isolatedTopic['subscribeWithId'](() => {}, {}, undefined, false);
 
       vi.useFakeTimers();
       try {
@@ -493,7 +518,7 @@ describe('Topic', () => {
   describe('setProperties', () => {
     it('should set the properties', () => {
       topic['client']['messenger']['_socket']['sendTextFrame'] = vi.fn();
-      topic.setProperties(true, true);
+      topic.setProperties({ persistent: true, retained: true });
       expect(topic['client']['messenger']['_socket']['sendTextFrame']).toHaveBeenCalledWith({
         method: 'setproperties',
         params: {
@@ -523,7 +548,7 @@ describe('Topic', () => {
       await publishPromise;
 
       // Test setProperties timeout cleanup
-      const setPropertiesPromise = topic.setProperties(true, true);
+      const setPropertiesPromise = topic.setProperties({ persistent: true, retained: true });
 
       // Send properties response quickly (100ms) with ack: true
       const propertiesResponse: PropertiesMessage = {

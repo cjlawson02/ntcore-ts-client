@@ -17,5 +17,13 @@ describe('barrel exports', () => {
     // PubSub barrels should export the topic classes.
     expect(pubsub.NetworkTablesTopic).toBeDefined();
     expect(pubsub.NetworkTablesPrefixTopic).toBeDefined();
+    expect(pubsub.NetworkTablesProtobufTopic).toBeDefined();
+    expect(pubsub.NetworkTablesJsonTopic).toBeDefined();
+
+    // Geometry types are public; protocol Zod schemas are not.
+    expect(root.Pose2d).toBeDefined();
+    expect(root.Pose2dSchema).toBeDefined();
+    expect((root as { finiteNumSchema?: unknown }).finiteNumSchema).toBeUndefined();
+    expect((types as { finiteNumSchema?: unknown }).finiteNumSchema).toBeUndefined();
   });
 });

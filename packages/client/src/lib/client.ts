@@ -1,8 +1,10 @@
 import { NetworkTablesPrefixTopic } from './pubsub/prefix-topic';
-import { NetworkTablesProtobufTopic } from './pubsub/protobuf-topic';
+import { NetworkTablesProtobufTopic, type ProtobufTopicOptions } from './pubsub/protobuf-topic';
+import { NetworkTablesJsonTopic, type JsonTopicOptions } from './pubsub/json-topic';
 import { NetworkTablesStructTopic } from './pubsub/struct-topic';
 import { PubSubClient } from './pubsub/pubsub';
 import { NetworkTablesTopic } from './pubsub/topic';
+import { isStructTypeDescriptor, type StructTypeDescriptor, type StructTypeName } from './struct/geometry';
 import { NetworkTablesTypeInfos } from './types/types';
 import {
   defaultLogger,
@@ -17,6 +19,14 @@ import { Util } from './util/util';
 import type { NetworkTablesTypeInfo, NetworkTablesTypes } from './types/types';
 
 import type { z } from 'zod';
+
+/** Options for getStructTopic when using an options object. */
+export interface StructTopicOptions<T extends object | object[] = object> {
+  typeName?: StructTypeName;
+  schema?: string;
+  defaultValue?: T;
+  validator?: z.ZodSchema<T>;
+}
 
 /** Properties for creating the NetworkTables class. */
 interface NT_PROPS {
@@ -40,6 +50,7 @@ export class NetworkTables {
 
   /** The instance of the NetworkTables class. */
   private static _instances = new Map<string, NetworkTables>();
+  private retainCount = 0;
 
   /**
    * Creates a new NetworkTables instance.
@@ -138,9 +149,7 @@ export class NetworkTables {
    * @returns Whether the robot is connected.
    */
   isRobotConnected() {
-    const connected = this._client.messenger.socket.isConnected();
-    defaultLogger.debug('Connection status queried', { connected, uri: this.uri, port: this.port });
-    return connected;
+    return this._client.messenger.socket.isConnected();
   }
 
   /**
@@ -148,9 +157,7 @@ export class NetworkTables {
    * @returns Whether the robot is connecting.
    */
   isRobotConnecting() {
-    const connecting = this._client.messenger.socket.isConnecting();
-    defaultLogger.debug('Connection status queried', { connecting, uri: this.uri, port: this.port });
-    return connecting;
+    return this._client.messenger.socket.isConnecting();
   }
 
   /**
@@ -189,9 +196,51 @@ export class NetworkTables {
   }
 
   /**
+   * Disconnects from the server, unsubscribes/unpublishes all topics, and drops this instance
+   * (and the underlying PubSubClient/Messenger/Socket singletons) so they do not leak.
+   */
+  close(): void {
+    defaultLogger.info('Closing NetworkTables instance', { uri: this.uri, port: this.port });
+    this.retainCount = 0;
+    this._client.cleanup();
+    this._client.releaseInstance();
+    NetworkTables._instances.delete(`${this.uri}:${this.port}`);
+  }
+
+  /**
+   * Increments the retain count used by NtcoreProvider so multiple trees can share
+   * this singleton without tearing it down on the first unmount.
+   */
+  retain(): void {
+    this.retainCount++;
+  }
+
+  /**
+   * Decrements the retain count and calls {@link close} when it reaches zero.
+   */
+  release(): void {
+    this.retainCount--;
+    if (this.retainCount <= 0) {
+      this.close();
+    }
+  }
+
+  /**
+   * Creates a new JSON topic. Wire format is a JSON string with type `'json'`.
+   * @param name - The name of the topic.
+   * @param typeInfo - Must be {@link NetworkTablesTypeInfos.kJson}.
+   * @param defaultValue - The default parsed JSON value of the topic.
+   */
+  createTopic<T extends object>(
+    name: string,
+    typeInfo: typeof NetworkTablesTypeInfos.kJson,
+    defaultValue?: T
+  ): NetworkTablesJsonTopic<T>;
+  /**
    * Creates a new topic.
    * @param name - The name of the topic.
-   * @param typeInfo - The type information of the topic. Protobuf types are not allowed (use createProtobufTopic instead).
+   * @param typeInfo - The type information of the topic. Protobuf types are not allowed (use getProtobufTopic instead).
+   *   Struct types are not allowed (use getStructTopic instead). JSON types return a {@link NetworkTablesJsonTopic}.
    * @param defaultValue - The default value of the topic.
    * @returns The topic.
    * @remarks
@@ -200,42 +249,94 @@ export class NetworkTables {
    * `defaultValue` from the first call to `createTopic` for a given topic name and type will be used.
    * If a topic with the same name but different type exists, an error is thrown.
    */
-  createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T) {
-    if (typeInfo === NetworkTablesTypeInfos.kProtobuf) {
+  createTopic<T extends NetworkTablesTypes>(
+    name: string,
+    typeInfo: NetworkTablesTypeInfo,
+    defaultValue?: T
+  ): NetworkTablesTopic<T>;
+  createTopic(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: NetworkTablesTypes | object) {
+    if (typeInfo === NetworkTablesTypeInfos.kProtobuf || typeInfo[1] === 'protobuf') {
       throw new Error(
-        `Protobuf types are not allowed in createTopic. Use createProtobufTopic('${name}', options) instead for proper encoding/decoding support.`
+        `Protobuf types are not allowed in createTopic. Use getProtobufTopic('${name}', options) instead for proper encoding/decoding support.`
       );
     }
     if (typeof typeInfo[1] === 'string' && typeInfo[1].startsWith('struct:')) {
       throw new Error(
-        `Struct types are not allowed in createTopic. Use createStructTopic('${name}', options) instead for proper encoding/decoding support.`
+        `Struct types are not allowed in createTopic. Use getStructTopic('${name}', options) instead for proper encoding/decoding support.`
       );
     }
     defaultLogger.debug('Topic created', { topicName: name, type: typeInfo[1] });
-    return new NetworkTablesTopic<T>(this._client, name, typeInfo, defaultValue);
+    if (typeInfo === NetworkTablesTypeInfos.kJson || typeInfo[1] === 'json') {
+      return this.getJsonTopic(name, defaultValue as object | undefined);
+    }
+    return new NetworkTablesTopic(this._client, name, typeInfo, defaultValue as NetworkTablesTypes | undefined);
+  }
+
+  getBooleanTopic(name: string, defaultValue?: boolean): NetworkTablesTopic<boolean> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kBoolean, defaultValue);
+  }
+
+  getDoubleTopic(name: string, defaultValue?: number): NetworkTablesTopic<number> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kDouble, defaultValue);
+  }
+
+  getIntegerTopic(name: string, defaultValue?: number): NetworkTablesTopic<number> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kInteger, defaultValue);
+  }
+
+  getFloatTopic(name: string, defaultValue?: number): NetworkTablesTopic<number> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kFloat, defaultValue);
+  }
+
+  getStringTopic(name: string, defaultValue?: string): NetworkTablesTopic<string> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kString, defaultValue);
+  }
+
+  getBooleanArrayTopic(name: string, defaultValue?: boolean[]): NetworkTablesTopic<boolean[]> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kBooleanArray, defaultValue);
+  }
+
+  getDoubleArrayTopic(name: string, defaultValue?: number[]): NetworkTablesTopic<number[]> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kDoubleArray, defaultValue);
+  }
+
+  getIntegerArrayTopic(name: string, defaultValue?: number[]): NetworkTablesTopic<number[]> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kIntegerArray, defaultValue);
+  }
+
+  getFloatArrayTopic(name: string, defaultValue?: number[]): NetworkTablesTopic<number[]> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kFloatArray, defaultValue);
+  }
+
+  getStringArrayTopic(name: string, defaultValue?: string[]): NetworkTablesTopic<string[]> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kStringArray, defaultValue);
+  }
+
+  getRawTopic(name: string, defaultValue?: Uint8Array): NetworkTablesTopic<Uint8Array> {
+    return this.createTopic(name, NetworkTablesTypeInfos.kUint8Array, defaultValue);
+  }
+
+  getJsonTopic<T extends object>(
+    name: string,
+    defaultValue?: T,
+    options?: JsonTopicOptions<T>
+  ): NetworkTablesJsonTopic<T> {
+    const existingTopic = this._client.getTopicFromName(name);
+    if (existingTopic instanceof NetworkTablesJsonTopic) {
+      (existingTopic as NetworkTablesJsonTopic<T>).applyOptions({
+        defaultValue,
+        validator: options?.validator,
+      });
+      return existingTopic as NetworkTablesJsonTopic<T>;
+    }
+    return new NetworkTablesJsonTopic(this._client, name, defaultValue, options);
   }
 
   /**
-   * Creates a new protobuf topic.
-   * @param name - The name of the topic.
-   * @param options - Optional configuration for the protobuf topic.
-   * @param options.defaultValue - The default value of the topic.
-   * @param options.validator - Optional Zod schema to validate decoded protobuf values at runtime.
-   * @param options.protoFilePath - Optional path to the .proto file. If provided, the schema will be registered automatically when publishing.
-   * @returns The topic.
-   * @remarks
-   * If a topic with the same name already exists (from a previous call to `createProtobufTopic`),
-   * the existing topic instance is returned and the options from this call are applied to it,
-   * so the returned instance is always consistently initialized with the requested options.
+   * Creates a protobuf topic.
+   * If a topic with the same name already exists, the existing instance is returned and options are applied.
    */
-  createProtobufTopic<T extends object>(
-    name: string,
-    options?: {
-      defaultValue?: T;
-      validator?: z.ZodSchema<T>;
-      protoFilePath?: string;
-    }
-  ) {
+  getProtobufTopic<T extends object>(name: string, options?: ProtobufTopicOptions<T>) {
     const existingTopic = this._client.getTopicFromName(name);
     if (existingTopic instanceof NetworkTablesProtobufTopic) {
       (existingTopic as NetworkTablesProtobufTopic<T>).applyOptions(options);
@@ -245,34 +346,51 @@ export class NetworkTables {
   }
 
   /**
-   * Creates a new struct topic.
+   * Creates a struct topic from a WPILib-style type descriptor (e.g. `Pose2d`).
+   * Infers `NetworkTablesStructTopic<Pose2d>` from `nt.getStructTopic(name, Pose2d)`.
+   */
+  getStructTopic<T extends object>(
+    name: string,
+    type: StructTypeDescriptor<T>,
+    options?: Omit<StructTopicOptions<T>, 'typeName' | 'validator'>
+  ): NetworkTablesStructTopic<T>;
+  /**
+   * Creates a struct topic.
    * @param name - The name of the topic.
    * @param options - Optional typeName, schema, defaultValue, validator.
-   * @returns The struct topic. If a topic with the same name already exists (from a previous createStructTopic),
-   * the existing topic is returned and options are applied.
+   *   `typeName` (or a type descriptor as the second argument) is required when creating a new topic.
+   *   Reusing an existing topic may omit `typeName`.
+   * @returns The struct topic. If a topic with the same name already exists, the existing topic is returned.
    * @remarks Struct fields using `int64` or `uint64` are returned as JavaScript `number`,
    * which loses precision beyond ±2^53 (`Number.MAX_SAFE_INTEGER`). No built-in WPILib
    * struct types are affected — they all use `double`.
    */
-  createStructTopic<T extends Record<string, unknown> | Record<string, unknown>[]>(
+  getStructTopic<T extends object | object[]>(
     name: string,
-    options?: {
-      typeName?: string;
-      schema?: string;
-      defaultValue?: T;
-      validator?: z.ZodSchema<T>;
-    }
+    options?: StructTopicOptions<T>
+  ): NetworkTablesStructTopic<T>;
+  getStructTopic<T extends object | object[]>(
+    name: string,
+    typeOrOptions?: StructTypeDescriptor<object> | StructTopicOptions<T>,
+    maybeOptions?: Omit<StructTopicOptions<T>, 'typeName' | 'validator'>
   ): NetworkTablesStructTopic<T> {
+    const options: StructTopicOptions<T> = isStructTypeDescriptor(typeOrOptions)
+      ? {
+          typeName: typeOrOptions.typeName,
+          validator: typeOrOptions.schema as z.ZodSchema<T>,
+          defaultValue: maybeOptions?.defaultValue,
+          schema: maybeOptions?.schema,
+        }
+      : (typeOrOptions ?? {});
+
     const existingTopic = this._client.getTopicFromName(name);
     if (existingTopic instanceof NetworkTablesStructTopic) {
-      if (options?.typeName) {
-        const requestedBase = options.typeName.replace(/\[\]$/, '');
+      if (options.typeName) {
+        const requestedType = `struct:${options.typeName}`;
         const existingType = (existingTopic as NetworkTablesStructTopic<T>).typeInfo[1];
-        const requestedPlain = `struct:${requestedBase}`;
-        const requestedArray = `struct:${requestedBase}[]`;
-        if (existingType !== requestedPlain && existingType !== requestedArray) {
+        if (existingType !== requestedType) {
           throw new Error(
-            `createStructTopic: type mismatch for topic "${name}". ` +
+            `getStructTopic: type mismatch for topic "${name}". ` +
               `Existing type "${existingType}" does not match requested typeName "${options.typeName}". ` +
               `A struct topic's type is immutable once created.`
           );
@@ -281,15 +399,20 @@ export class NetworkTables {
       (existingTopic as NetworkTablesStructTopic<T>).applyOptions(options);
       return existingTopic as NetworkTablesStructTopic<T>;
     }
+    if (!options.typeName) {
+      throw new Error(
+        `getStructTopic: cannot create topic "${name}" without a type. Pass a descriptor (e.g. Pose2d) or { typeName }.`
+      );
+    }
     return new NetworkTablesStructTopic<T>(this._client, name, options);
   }
 
   /**
-   * Creates a new topic with a prefix.
+   * Creates a prefix topic (wildcard subscription).
    * @param prefix - The prefix of the topic.
    * @returns The topic.
    */
-  createPrefixTopic(prefix: string) {
+  getPrefixTopic(prefix: string) {
     defaultLogger.debug('Prefix topic created', { prefix });
     return new NetworkTablesPrefixTopic(this._client, prefix);
   }

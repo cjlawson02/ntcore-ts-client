@@ -31,6 +31,9 @@ export class PubSubClient {
   // Unified in-flight operations tracking (schema registrations and topic publishes)
   private readonly inFlightOperations = new Map<string, Promise<unknown>>();
   private _isCleaningUp = false;
+  private readonly beforeUnloadHandler = () => {
+    this.cleanup();
+  };
 
   get messenger() {
     return this._messenger;
@@ -108,11 +111,9 @@ export class PubSubClient {
       });
     });
 
-    // In the DOM, auto-cleanup
+    // In the DOM, auto-cleanup without overwriting an existing beforeunload handler
     if (typeof window !== 'undefined') {
-      window.onbeforeunload = () => {
-        this.cleanup();
-      };
+      window.addEventListener('beforeunload', this.beforeUnloadHandler);
     }
   }
 
@@ -542,16 +543,39 @@ export class PubSubClient {
 
     this.topics.forEach((topic) => {
       topic.unsubscribeAll();
-      if (topic.publisher) topic.unpublish();
+      if (topic.pubuid != null) {
+        try {
+          topic.unpublish();
+        } catch {
+          /* not publisher / already unpublished */
+        }
+      }
     });
     this.prefixTopics.forEach((prefixTopic) => {
       prefixTopic.unsubscribeAll();
     });
     this._messenger.socket.close();
 
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+    }
+
     // Clear the in-flight operations map
     // Existing operations will complete/fail naturally when the socket closes
     // Their finally blocks will try to delete from the map, but that's safe (no-op if already cleared)
     this.inFlightOperations.clear();
+  }
+
+  /**
+   * Removes this client, its messenger, and its socket from their singleton maps.
+   * Call after {@link cleanup} so a later getInstance creates a fresh client.
+   */
+  releaseInstance(): void {
+    for (const [key, instance] of PubSubClient._instances) {
+      if (instance === this) {
+        PubSubClient._instances.delete(key);
+      }
+    }
+    this._messenger.releaseInstance();
   }
 }

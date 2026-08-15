@@ -100,6 +100,71 @@ describe('NetworkTablesProtobufTopic', () => {
       });
       expect(topic.getValue()).toEqual({ value: 7 });
     });
+
+    it('parses protoSource immediately so setValue works on a reused topic', () => {
+      const SIMPLE_PROTO_SOURCE = `syntax = "proto3";
+package fixture;
+message Simple {
+  int32 value = 1;
+}
+`;
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/apply-src');
+      topic.applyOptions({ protoSource: SIMPLE_PROTO_SOURCE });
+      expect(topic['_protobufMessageType']).not.toBeNull();
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 1;
+      topic.setValue({ value: 3 });
+      expect(topic.getValue()).toEqual({ value: 3 });
+    });
+
+    it('throws when applyOptions protoSource would change the message type', () => {
+      const SIMPLE_PROTO_SOURCE = `syntax = "proto3";
+package fixture;
+message Simple {
+  int32 value = 1;
+}
+`;
+      const OTHER_PROTO_SOURCE = `syntax = "proto3";
+package fixture;
+message Other {
+  int32 x = 1;
+}
+`;
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/type-lock', {
+        protoSource: SIMPLE_PROTO_SOURCE,
+      });
+      expect(() => topic.applyOptions({ protoSource: OTHER_PROTO_SOURCE })).toThrow(
+        /Cannot change protobuf message type/
+      );
+    });
+
+    it('does not poison a working message type when applyOptions protoFilePath fails', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const SIMPLE_PROTO_SOURCE = `syntax = "proto3";
+package fixture;
+message Simple {
+  int32 value = 1;
+}
+`;
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/no-poison', {
+        protoSource: SIMPLE_PROTO_SOURCE,
+      });
+      expect(topic['_protobufMessageType']).not.toBeNull();
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 1;
+      topic.applyOptions({ protoFilePath: '/nonexistent/file.proto' });
+      await vi.waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith(
+          'Failed to load proto schema from /nonexistent/file.proto:',
+          expect.any(Error)
+        );
+      });
+      expect(topic['_schemaLoadError']).toBeNull();
+      expect(topic['_protobufMessageType']).not.toBeNull();
+      topic.setValue({ value: 5 });
+      expect(topic.getValue()).toEqual({ value: 5 });
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('getValue', () => {
@@ -402,6 +467,36 @@ describe('NetworkTablesProtobufTopic', () => {
         protoFilePath: '/nonexistent/schema.proto',
       });
       await expect(topic.publish({})).rejects.toThrow(/Failed to register protobuf schema before publishing/);
+    });
+  });
+
+  describe('protoSource and messageType', () => {
+    const SIMPLE_PROTO_SOURCE = `syntax = "proto3";
+package fixture;
+message Simple {
+  int32 value = 1;
+}
+`;
+
+    it('encodes and decodes using protoSource without a file path', async () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/source', {
+        protoSource: SIMPLE_PROTO_SOURCE,
+      });
+      expect(topic['_protobufMessageType']).not.toBeNull();
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 1;
+      topic.setValue({ value: 11 });
+      expect(topic.getValue()).toEqual({ value: 11 });
+    });
+
+    it('encodes using a prebuilt messageType', () => {
+      const topic = new NetworkTablesProtobufTopic<SimpleMessage>(client, '/proto/prebuilt', {
+        messageType,
+      });
+      topic['_publisher'] = true;
+      topic['_pubuid'] = 1;
+      topic.setValue({ value: 22 });
+      expect(topic.getValue()).toEqual({ value: 22 });
     });
   });
 });

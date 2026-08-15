@@ -1,4 +1,5 @@
 export * from './pubsub';
 export * from './types';
 export * from './client';
+export * from './struct/geometry';
 export { LogLevel, type LoggerModule, setLogLevel, setModuleLogLevel, getModuleLogLevel } from './util/logger';

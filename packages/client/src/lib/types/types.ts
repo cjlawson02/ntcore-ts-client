@@ -27,7 +27,13 @@ export type PublishMessage = z.infer<typeof publishMessageSchema>;
 export type UnpublishMessage = z.infer<typeof unpublishMessageSchema>;
 export type SetPropertiesMessage = z.infer<typeof setPropertiesMessageSchema>;
 export type SubscribeMessage = z.infer<typeof subscribeMessageSchema>;
-export type SubscribeOptions = z.infer<typeof subscriptionOptionsSchema>;
+export type SubscribeOptions = z.infer<typeof subscriptionOptionsSchema> & {
+  /**
+   * If true, invoke the callback once with the current value after registering.
+   * This is a client-side option and is not sent to the NT server.
+   */
+  immediateNotify?: boolean;
+};
 export type UnsubscribeMessage = z.infer<typeof unsubscribeMessageSchema>;
 export type AnnounceMessage = z.infer<typeof announceMessageSchema>;
 export type UnannounceMessage = z.infer<typeof unannounceMessageSchema>;
@@ -62,7 +68,7 @@ export class NetworkTablesTypeInfos {
   static readonly kInteger: NetworkTablesTypeInfo = [2, 'int'];
   static readonly kFloat: NetworkTablesTypeInfo = [3, 'float'];
   static readonly kString: NetworkTablesTypeInfo = [4, 'string'];
-  static readonly kJson: NetworkTablesTypeInfo = [4, 'json'];
+  static readonly kJson = [4, 'json'] as const satisfies NetworkTablesTypeInfo;
   static readonly kUint8Array: NetworkTablesTypeInfo = [5, 'raw'];
   static readonly kRPC: NetworkTablesTypeInfo = [5, 'rpc'];
   static readonly kMsgpack: NetworkTablesTypeInfo = [5, 'msgpack'];
@@ -103,7 +109,7 @@ export class NetworkTablesTypeInfos {
         const parsedString = z.string().parse(value);
         const parsedJson = JSON.parse(parsedString);
         if (typeof parsedJson === 'object' && parsedJson !== null) {
-          return parsedJson;
+          return parsedString;
         } else {
           throw new Error(`Bad JSON value: ${value}`);
         }

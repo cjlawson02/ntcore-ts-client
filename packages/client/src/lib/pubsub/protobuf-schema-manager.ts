@@ -13,6 +13,7 @@ const protobuf = (protobufNs as unknown as { default?: typeof protobufNs }).defa
 import type { IFileDescriptorProto, IFileDescriptorSet } from './protobufjs-descriptor';
 
 import { NetworkTablesTypeInfos } from '../types/types';
+import { pubsubLogger } from '../util/logger';
 
 import { NetworkTablesPrefixTopic } from './prefix-topic';
 import { NetworkTablesTopic } from './topic';
@@ -24,6 +25,14 @@ import type { AnnounceMessageParams } from '../types/types';
 function basename(filePath: string): string {
   return filePath.replace(/^.*[/\\]/, '');
 }
+
+/** True when running under Node.js (filesystem APIs such as protobuf.load are available). */
+function isNodeRuntime(): boolean {
+  return typeof process !== 'undefined' && typeof process.versions?.node === 'string';
+}
+
+const MAX_PROTO_SOURCE_CHARS = 1_000_000;
+const MAX_PROTO_SCHEMA_BYTES = 1_000_000;
 
 /**
  * Manages protobuf schema fetching and caching from NetworkTables.
@@ -44,14 +53,9 @@ export class ProtobufSchemaManager {
     this.schemaPrefixTopic = new NetworkTablesPrefixTopic(client, '/.schema/proto:');
 
     // Subscribe to all schema topics and automatically decode and cache them
-    this.schemaPrefixTopic.subscribe(
-      (value, params) => {
-        this.handleSchemaUpdate(value as Uint8Array | null, params);
-      },
-      {},
-      undefined,
-      true
-    );
+    this.schemaPrefixTopic.subscribe((value, params) => {
+      this.handleSchemaUpdate(value as Uint8Array | null, params);
+    });
   }
 
   /**
@@ -63,31 +67,28 @@ export class ProtobufSchemaManager {
   private handleSchemaUpdate(value: Uint8Array | null, params: AnnounceMessageParams): void {
     if (value == null) return;
     if (!ArrayBuffer.isView(value)) return;
+    if (value.byteLength > MAX_PROTO_SCHEMA_BYTES) {
+      pubsubLogger.debug('Rejected oversized protobuf schema', { name: params.name, byteLength: value.byteLength });
+      return;
+    }
 
     const protoFileName = params.name.substring('/.schema/proto:'.length);
     if (!protoFileName) return;
 
-    const decoded = this.fileDescriptorProtoType.decode(value);
-
-    // Convert to a plain JS object (numbers for enums are fine for fromDescriptor)
-    // toObject returns a plain object that matches IFileDescriptorProto structure
-    const fd = this.fileDescriptorProtoType.toObject(decoded, {
-      enums: Number,
-      longs: String,
-      bytes: String,
-    }) as IFileDescriptorProto;
-
-    // IMPORTANT: fromDescriptor is STATIC, not instance
-    // It expects an IFileDescriptorSet with a 'file' array property
-    const descriptorSet: IFileDescriptorSet = { file: [fd] };
-
-    // fromDescriptor is a static method added by protobufjs/ext/descriptor
-    // Our type declaration file augments protobuf.Root to include this method
-    // The method returns Namespace, but we know it's actually a Root instance
-    const schemaRoot = protobuf.Root.fromDescriptor(descriptorSet).resolveAll();
-
-    this.schemaCache.set(protoFileName, schemaRoot);
-    this.schemaCache.set(params.name, schemaRoot);
+    try {
+      const decoded = this.fileDescriptorProtoType.decode(value);
+      const fd = this.fileDescriptorProtoType.toObject(decoded, {
+        enums: Number,
+        longs: String,
+        bytes: String,
+      }) as IFileDescriptorProto;
+      const descriptorSet: IFileDescriptorSet = { file: [fd] };
+      const schemaRoot = protobuf.Root.fromDescriptor(descriptorSet).resolveAll();
+      this.schemaCache.set(protoFileName, schemaRoot);
+      this.schemaCache.set(params.name, schemaRoot);
+    } catch (error) {
+      pubsubLogger.debug('Failed to decode protobuf schema', { name: params.name, error });
+    }
   }
 
   /**
@@ -174,22 +175,95 @@ export class ProtobufSchemaManager {
 
   /**
    * Registers a protobuf schema by loading a proto file and publishing it to NetworkTables.
+   * Node.js only — uses the filesystem. In the browser, use {@link registerSchemaFromSource} or
+   * {@link registerSchemaFromType} instead.
    * @param protoFilePath - Path to the .proto file.
    * @param messageName - Optional message name to use. If not provided, auto-detected from proto file.
    * @returns A promise that resolves to the message name and schema root.
-   * @throws {Error} If the proto file cannot be loaded or schema cannot be registered.
+   * @throws {Error} If called in a browser, or if the proto file cannot be loaded or schema cannot be registered.
    */
   async registerSchema(
     protoFilePath: string,
     messageName?: string
   ): Promise<{ messageName: string; root: protobuf.Namespace }> {
-    // Extract filename from path
+    if (!isNodeRuntime()) {
+      throw new Error(
+        `protoFilePath ("${protoFilePath}") requires Node.js filesystem access. Use protoSource or messageType instead for browser environments.`
+      );
+    }
     const filename = basename(protoFilePath);
-    const schemaTopicName = `/.schema/proto:${filename}`;
+    return this.registerRootFromLoader(
+      filename,
+      messageName,
+      async () => {
+        try {
+          return await protobuf.load(protoFilePath);
+        } catch (error) {
+          throw new Error(
+            `Failed to load proto file "${protoFilePath}": ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      },
+      protoFilePath
+    );
+  }
 
-    // Check if schema is already registered
+  /**
+   * Parses a `.proto` source string without publishing (no filesystem).
+   * @param protoSource - The contents of a .proto file.
+   * @returns The detected message name and resolved root.
+   */
+  parseSource(protoSource: string): { messageName: string; root: protobuf.Root } {
+    if (protoSource.length > MAX_PROTO_SOURCE_CHARS) {
+      throw new Error(`protoSource exceeds ${MAX_PROTO_SOURCE_CHARS} characters`);
+    }
+    try {
+      const parsed = protobuf.parse(protoSource);
+      const root = parsed.root.resolveAll() as protobuf.Root;
+      const messageName = this.getMessageNameFromProto(root);
+      return { messageName, root };
+    } catch (error) {
+      throw new Error(`Failed to parse proto source: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  async registerSchemaFromSource(
+    protoSource: string,
+    filename?: string,
+    messageName?: string
+  ): Promise<{ messageName: string; root: protobuf.Namespace }> {
+    const parsed = this.parseSource(protoSource);
+    const detectedMessageName = messageName || parsed.messageName;
+    const schemaFilename = filename ?? `${detectedMessageName}.proto`;
+    return this.publishRoot(parsed.root, schemaFilename, detectedMessageName);
+  }
+
+  /**
+   * Registers a protobuf schema from a prebuilt protobufjs Type (no filesystem). Safe in the browser.
+   * @param messageType - A protobufjs Type used for encode/decode.
+   * @param filename - Optional filename used for the schema topic (defaults to the message name).
+   * @returns A promise that resolves to the message name and schema root.
+   */
+  async registerSchemaFromType(
+    messageType: protobuf.Type,
+    filename?: string
+  ): Promise<{ messageName: string; root: protobuf.Namespace }> {
+    const normalize = (name: string) => (name.startsWith('.') ? name.slice(1) : name);
+    const detectedMessageName = normalize(messageType.fullName);
+    const schemaFilename = filename ?? `${detectedMessageName}.proto`;
+    return this.publishRoot(messageType.root, schemaFilename, detectedMessageName);
+  }
+
+  /**
+   * Loads a root then publishes it, sharing in-flight protection by schema topic name.
+   */
+  private async registerRootFromLoader(
+    filename: string,
+    messageName: string | undefined,
+    loadRoot: () => Promise<protobuf.Root>,
+    sourceLabel: string
+  ): Promise<{ messageName: string; root: protobuf.Namespace }> {
+    const schemaTopicName = `/.schema/proto:${filename}`;
     if (this.registeredSchemas.has(schemaTopicName)) {
-      // Schema already registered, return cached version
       const cachedRoot = this.schemaCache.get(schemaTopicName);
       if (cachedRoot) {
         const detectedMessageName = messageName || this.getMessageNameFromProto(cachedRoot);
@@ -197,71 +271,88 @@ export class ProtobufSchemaManager {
       }
     }
 
-    // Use unified in-flight protection from PubSubClient
-    // Key format: "schema:" prefix to avoid conflicts with topic publishes
     const operationKey = `schema:${schemaTopicName}`;
     return this.client.getOrCreateInFlightOperation(operationKey, async () => {
-      // Load and parse the proto file
-      let root: protobuf.Root;
-      try {
-        root = await protobuf.load(protoFilePath);
-      } catch (error) {
-        throw new Error(
-          `Failed to load proto file "${protoFilePath}": ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-
-      // Extract and encode FileDescriptorProto
-      let encoded: Uint8Array;
-      try {
-        // toDescriptor is properly typed via our type declaration file
-        const descriptor = root.toDescriptor('proto3');
-        if (!descriptor?.file?.length) {
-          throw new Error('No file descriptor found in proto');
-        }
-        const fileDescriptorProto = descriptor.file[0];
-        encoded = this.fileDescriptorProtoType.encode(fileDescriptorProto).finish();
-      } catch (error) {
-        throw new Error(
-          `Failed to extract/encode FileDescriptorProto from "${protoFilePath}": ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-
-      // Auto-detect message name if not provided
-      const detectedMessageName = messageName || this.getMessageNameFromProto(root);
-
-      // Create or get the schema topic (as raw/ArrayBuffer type for internal use)
-      let schemaTopic = this.client.getTopicFromName<Uint8Array>(schemaTopicName);
-      if (!schemaTopic) {
-        schemaTopic = new NetworkTablesTopic<Uint8Array>(
-          this.client,
-          schemaTopicName,
-          NetworkTablesTypeInfos.kUint8Array
-        );
-      }
-
-      // Publish the schema topic with type "proto:FileDescriptorProto" and retained property
-      // We need to use the messenger directly to publish with a custom type string
-      const pubuid = this.client.messenger.getNextPubUID();
-      // Set pubuid so topic.announce() can match when messenger invokes _onAnnounce before resolving.
-      // Messenger guarantees publish() resolves only after _onAnnounce, so _publisher is set by then.
-      schemaTopic['_pubuid'] = pubuid;
-      await this.client.messenger.publish({
-        name: schemaTopicName,
-        pubuid,
-        type: 'proto:FileDescriptorProto',
-        properties: { retained: true },
-      });
-
-      // Set the schema value (encoded FileDescriptorProto) as the default value
-      this.client.updateServer(schemaTopic, encoded);
-
-      // Cache the schema
-      this.schemaCache.set(schemaTopicName, root);
-      this.schemaCache.set(filename, root);
-      this.registeredSchemas.add(schemaTopicName);
-
-      return { messageName: detectedMessageName, root };
+      const root = await loadRoot();
+      return this.publishLoadedRoot(root, filename, messageName, sourceLabel);
     });
+  }
+
+  /**
+   * Publishes an already-parsed root, sharing in-flight protection by schema topic name.
+   */
+  private async publishRoot(
+    root: protobuf.Root,
+    filename: string,
+    messageName?: string
+  ): Promise<{ messageName: string; root: protobuf.Namespace }> {
+    const schemaTopicName = `/.schema/proto:${filename}`;
+    if (this.registeredSchemas.has(schemaTopicName)) {
+      const cachedRoot = this.schemaCache.get(schemaTopicName);
+      if (cachedRoot) {
+        const detectedMessageName = messageName || this.getMessageNameFromProto(cachedRoot);
+        return { messageName: detectedMessageName, root: cachedRoot };
+      }
+    }
+
+    const operationKey = `schema:${schemaTopicName}`;
+    return this.client.getOrCreateInFlightOperation(operationKey, async () => {
+      return this.publishLoadedRoot(root, filename, messageName, filename);
+    });
+  }
+
+  /**
+   * Encodes a FileDescriptorProto from a root, publishes the schema topic, and caches it.
+   * Must be called inside an in-flight operation.
+   */
+  private async publishLoadedRoot(
+    root: protobuf.Root,
+    filename: string,
+    messageName: string | undefined,
+    sourceLabel: string
+  ): Promise<{ messageName: string; root: protobuf.Namespace }> {
+    const schemaTopicName = `/.schema/proto:${filename}`;
+
+    let encoded: Uint8Array;
+    try {
+      const descriptor = root.toDescriptor('proto3');
+      if (!descriptor?.file?.length) {
+        throw new Error('No file descriptor found in proto');
+      }
+      const fileDescriptorProto = descriptor.file[0];
+      encoded = this.fileDescriptorProtoType.encode(fileDescriptorProto).finish();
+    } catch (error) {
+      throw new Error(
+        `Failed to extract/encode FileDescriptorProto from "${sourceLabel}": ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    const detectedMessageName = messageName || this.getMessageNameFromProto(root);
+
+    let schemaTopic = this.client.getTopicFromName<Uint8Array>(schemaTopicName);
+    if (!schemaTopic) {
+      schemaTopic = new NetworkTablesTopic<Uint8Array>(
+        this.client,
+        schemaTopicName,
+        NetworkTablesTypeInfos.kUint8Array
+      );
+    }
+
+    const pubuid = this.client.messenger.getNextPubUID();
+    schemaTopic['_pubuid'] = pubuid;
+    await this.client.messenger.publish({
+      name: schemaTopicName,
+      pubuid,
+      type: 'proto:FileDescriptorProto',
+      properties: { retained: true },
+    });
+
+    this.client.updateServer(schemaTopic, encoded);
+
+    this.schemaCache.set(schemaTopicName, root);
+    this.schemaCache.set(filename, root);
+    this.registeredSchemas.add(schemaTopicName);
+
+    return { messageName: detectedMessageName, root };
   }
 }

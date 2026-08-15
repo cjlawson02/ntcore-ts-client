@@ -30,8 +30,11 @@ export class NetworkTablesSocket {
   private offset = 0;
   private bestRtt = -1;
   private heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+  private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   private connectionAttemptCount = 0;
   private lastConnectionLogTime = 0;
+  private tearingDown = false;
+  private readonly connectionWaiters = new Map<(error: Error) => void, () => void>();
   private static readonly CONNECTION_LOG_INTERVAL = 10000; // Log full details every 10 seconds
 
   private _websocket: WebSocket;
@@ -144,8 +147,10 @@ export class NetworkTablesSocket {
     }
 
     if (this._websocket) {
+      const ws = this._websocket;
       // Open handler
       this._websocket.onopen = () => {
+        if (this._websocket !== ws) return;
         // Reset connection attempt counter on successful connection
         if (this.connectionAttemptCount > 0) {
           socketLogger.info('Connection restored', {
@@ -182,6 +187,7 @@ export class NetworkTablesSocket {
 
       // Close handler
       this._websocket.onclose = (e: CloseEvent | WS_CloseEvent) => {
+        if (this._websocket !== ws) return;
         // Notify client and cancel heartbeat
         this.updateConnectionListeners();
         this.onSocketClose();
@@ -215,9 +221,11 @@ export class NetworkTablesSocket {
           });
         }
 
-        // Attempt to reconnect
-        if (this.autoConnect) {
-          setTimeout(() => {
+        if (this.autoConnect && !this.tearingDown) {
+          this.clearReconnectTimer();
+          this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = undefined;
+            if (!this.autoConnect || this.tearingDown) return;
             this._websocket = new WebSocket(this.serverUrl, [
               NetworkTablesSocket.PROTOCOL_V4_1,
               NetworkTablesSocket.PROTOCOL_V4_0,
@@ -230,8 +238,14 @@ export class NetworkTablesSocket {
       this._websocket.binaryType = 'arraybuffer';
 
       // Set up event listeners for messages and errors
-      this._websocket.onmessage = (event: MessageEvent | WS_MessageEvent) => this.onMessage(event);
-      this._websocket.onerror = (event: Event | WS_ErrorEvent) => this.onError(event);
+      this._websocket.onmessage = (event: MessageEvent | WS_MessageEvent) => {
+        if (this._websocket !== ws) return;
+        this.onMessage(event);
+      };
+      this._websocket.onerror = (event: Event | WS_ErrorEvent) => {
+        if (this._websocket !== ws) return;
+        this.onError(event);
+      };
     }
   }
 
@@ -241,7 +255,17 @@ export class NetworkTablesSocket {
    */
   reinstantiate(serverUrl: string) {
     socketLogger.info('Socket reinstantiation', { oldUrl: this.serverUrl, newUrl: serverUrl });
-    this.close();
+    this.clearReconnectTimer();
+    if (this.heartbeatInterval != null) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = undefined;
+    }
+    const previous = this._websocket;
+    previous.onopen = null;
+    previous.onclose = null;
+    previous.onmessage = null;
+    previous.onerror = null;
+    previous.close();
     this.serverUrl = serverUrl;
     this._websocket = new WebSocket(this.serverUrl, [
       NetworkTablesSocket.PROTOCOL_V4_1,
@@ -271,18 +295,24 @@ export class NetworkTablesSocket {
    * @returns A promise that resolves when the socket is connected.
    */
   waitForConnection() {
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
+      if (this.tearingDown) {
+        reject(new Error('Socket closed'));
+        return;
+      }
       if (this.isConnected()) {
         resolve();
-      } else {
-        const listener = () => {
-          if (this.isConnected()) {
-            this.removeConnectionListener(listener);
-            resolve();
-          }
-        };
-        this.addConnectionListener(listener);
+        return;
       }
+      const listener = () => {
+        if (this.isConnected()) {
+          this.connectionWaiters.delete(reject);
+          this.removeConnectionListener(listener);
+          resolve();
+        }
+      };
+      this.connectionWaiters.set(reject, listener);
+      this.addConnectionListener(listener);
     });
   }
 
@@ -343,14 +373,40 @@ export class NetworkTablesSocket {
   stopAutoConnect() {
     socketLogger.info('Auto-connect disabled');
     this.autoConnect = false;
+    this.clearReconnectTimer();
   }
 
   /**
-   * Starts auto-reconnecting to the server.
+   * Starts auto-reconnecting to the server. If the socket is closed, opens a new connection.
    */
   startAutoConnect() {
     socketLogger.info('Auto-connect enabled');
     this.autoConnect = true;
+    if (this.tearingDown) return;
+    const readyState = this._websocket.readyState;
+    if (readyState === WebSocket.CLOSED || readyState === WebSocket.CLOSING) {
+      this._websocket = new WebSocket(this.serverUrl, [
+        NetworkTablesSocket.PROTOCOL_V4_1,
+        NetworkTablesSocket.PROTOCOL_V4_0,
+      ]);
+      this.init();
+    }
+  }
+
+  private clearReconnectTimer() {
+    if (this.reconnectTimer != null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+  }
+
+  private rejectConnectionWaiters() {
+    const error = new Error('Socket closed');
+    for (const [reject, listener] of this.connectionWaiters) {
+      this.removeConnectionListener(listener);
+      reject(error);
+    }
+    this.connectionWaiters.clear();
   }
 
   /**
@@ -596,7 +652,25 @@ export class NetworkTablesSocket {
    * Close the websocket connection.
    */
   close() {
+    this.tearingDown = true;
+    this.stopAutoConnect();
+    this.rejectConnectionWaiters();
+    if (this.heartbeatInterval != null) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = undefined;
+    }
     this._websocket.close();
+  }
+
+  /**
+   * Removes this socket from the singleton map so a later getInstance can create a new one.
+   */
+  releaseInstance(): void {
+    for (const [key, instance] of NetworkTablesSocket.instances) {
+      if (instance === this) {
+        NetworkTablesSocket.instances.delete(key);
+      }
+    }
   }
 }
 

@@ -248,6 +248,35 @@ describe('ProtobufSchemaManager', () => {
     });
   });
 
+  describe('registerSchemaFromSource', () => {
+    const SIMPLE_PROTO_SOURCE = `syntax = "proto3";
+package fixture;
+message Simple {
+  int32 value = 1;
+}
+`;
+
+    it('parses proto source without using the filesystem', async () => {
+      const manager = new ProtobufSchemaManager(client);
+      const result = await manager.registerSchemaFromSource(SIMPLE_PROTO_SOURCE);
+      expect(result.messageName).toBe('fixture.Simple');
+      expect(result.root).toBeDefined();
+      expect(manager.fetchMessageType('fixture.Simple')).toBeDefined();
+    });
+
+    it('throws a clear error when protoFilePath is used without Node', async () => {
+      const versions = process.versions as { node?: string };
+      const original = versions.node;
+      delete versions.node;
+      try {
+        const manager = new ProtobufSchemaManager(client);
+        await expect(manager.registerSchema('/tmp/x.proto')).rejects.toThrow(/protoSource or messageType/);
+      } finally {
+        versions.node = original;
+      }
+    });
+  });
+
   describe('handleSchemaUpdate (via prefix subscription)', () => {
     it('does not throw when subscription callback receives null', () => {
       const manager = new ProtobufSchemaManager(client);

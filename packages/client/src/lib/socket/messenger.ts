@@ -650,4 +650,16 @@ export class Messenger {
     messengerLogger.debug('Next SubUID generated', { subuid });
     return subuid;
   }
+
+  /**
+   * Removes this messenger and its socket from their singleton maps.
+   */
+  releaseInstance(): void {
+    for (const [key, instance] of Messenger._instances) {
+      if (instance === this) {
+        Messenger._instances.delete(key);
+      }
+    }
+    this._socket.releaseInstance();
+  }
 }

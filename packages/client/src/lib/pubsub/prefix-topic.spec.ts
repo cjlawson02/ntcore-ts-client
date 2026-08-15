@@ -93,6 +93,44 @@ describe('Prefix Topic', () => {
         } as SubscribeMessageParams,
       });
     });
+
+    it('replays cached subtopic values when immediateNotify is true', () => {
+      const prefixTopic = new NetworkTablesPrefixTopic(client, '/foo/');
+      prefixTopic.updateValue({ id: 1, name: '/foo/a', type: 'string', properties: {} }, 'va', Date.now());
+      prefixTopic.updateValue({ id: 2, name: '/foo/b', type: 'string', properties: {} }, 'vb', Date.now());
+      const immediate = vi.fn();
+      prefixTopic.subscribe(immediate, { immediateNotify: true });
+      expect(immediate).toHaveBeenCalledTimes(2);
+      expect(immediate).toHaveBeenCalledWith('va', expect.objectContaining({ name: '/foo/a' }));
+      expect(immediate).toHaveBeenCalledWith('vb', expect.objectContaining({ name: '/foo/b' }));
+      expect(immediate.mock.calls.some((call: unknown[]) => (call[1] as AnnounceMessageParams).name === '/foo/')).toBe(
+        false
+      );
+    });
+
+    it('does not replay cached values when immediateNotify is omitted', () => {
+      const prefixTopic = new NetworkTablesPrefixTopic(client, '/foo/');
+      prefixTopic.updateValue({ id: 1, name: '/foo/a', type: 'string', properties: {} }, 'va', Date.now());
+      prefixTopic.updateValue({ id: 2, name: '/foo/b', type: 'string', properties: {} }, 'vb', Date.now());
+      const delayed = vi.fn();
+      prefixTopic.subscribe(delayed);
+      expect(delayed).not.toHaveBeenCalled();
+    });
+
+    it('does not invent a callback for the prefix name itself', () => {
+      const prefixTopic = new NetworkTablesPrefixTopic(client, '/foo/');
+      prefixTopic.updateValue({ id: 1, name: '/foo/a', type: 'string', properties: {} }, 'va', Date.now());
+      const immediate = vi.fn();
+      prefixTopic.subscribe(immediate, { immediateNotify: true });
+      expect(immediate).toHaveBeenCalledTimes(1);
+      expect(immediate).toHaveBeenCalledWith('va', expect.objectContaining({ name: '/foo/a' }));
+      expect(
+        immediate.mock.calls.every((call: unknown[]) => (call[1] as AnnounceMessageParams).name !== prefixTopic.name)
+      ).toBe(true);
+      expect(immediate.mock.calls.every((call: unknown[]) => (call[1] as AnnounceMessageParams).name !== '/foo/')).toBe(
+        true
+      );
+    });
   });
 
   describe('unsubscribe', () => {
@@ -147,7 +185,7 @@ describe('Prefix Topic', () => {
   describe('setProperties', () => {
     it('should set the properties', () => {
       topic['client']['messenger']['_socket']['sendTextFrame'] = vi.fn();
-      topic.setProperties(true, true);
+      topic.setProperties({ persistent: true, retained: true });
       expect(topic['client']['messenger']['_socket']['sendTextFrame']).toHaveBeenCalledWith({
         method: 'setproperties',
         params: {

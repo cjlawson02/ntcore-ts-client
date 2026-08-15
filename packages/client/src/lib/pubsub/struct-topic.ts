@@ -20,10 +20,7 @@ function structTypeInfo(typeName: string, isArray: boolean): [5, string] {
   return [5, isArray ? `struct:${typeName}[]` : `struct:${typeName}`];
 }
 
-export class NetworkTablesStructTopic<T extends StructPlainObject | StructPlainObject[]> extends NetworkTablesTopic<
-  Uint8Array,
-  T
-> {
+export class NetworkTablesStructTopic<T extends object | object[]> extends NetworkTablesTopic<Uint8Array, T> {
   private decodedValue: T | null = null;
   private _typeName: string;
   private _isArray: boolean;
@@ -67,17 +64,13 @@ export class NetworkTablesStructTopic<T extends StructPlainObject | StructPlainO
     }
   }
 
+  /**
+   * Applies options to this topic. Used when returning a cached topic from getStructTopic.
+   * A later `validator` replaces any previous validator because the topic is a singleton.
+   * @param options - The options to apply.
+   */
   applyOptions(options?: { typeName?: string; schema?: string; defaultValue?: T; validator?: z.ZodSchema<T> }): void {
     if (!options) return;
-    if (options.typeName !== undefined) {
-      const typeName = options.typeName;
-      const isArray = typeName.endsWith('[]');
-      const baseTypeName = isArray ? typeName.slice(0, -2) : typeName;
-      this._typeName = baseTypeName || typeName;
-      this._isArray = isArray;
-      this._descriptor = null;
-      this._pendingSchema = null;
-    }
     if (options.schema !== undefined) {
       const schema = options.schema;
       this._pendingSchema = schema || null;
@@ -102,7 +95,7 @@ export class NetworkTablesStructTopic<T extends StructPlainObject | StructPlainO
       this._descriptor = getBuiltInDescriptor(this._typeName) ?? null;
     }
     if (options.validator !== undefined) this._validator = options.validator;
-    if (options.defaultValue !== undefined) this.decodedValue = options.defaultValue;
+    if (options.defaultValue !== undefined && this.decodedValue == null) this.decodedValue = options.defaultValue;
   }
 
   private ensureDescriptor(): StructDescriptor {

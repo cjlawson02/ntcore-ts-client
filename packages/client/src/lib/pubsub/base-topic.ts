@@ -9,6 +9,7 @@ import type {
   PropertiesMessage,
   SetPropertiesMessageParams,
   SubscribeOptions,
+  TopicProperties,
 } from '../types/types';
 
 export type CallbackFn<T> = (value: T | null, params: AnnounceMessageParams) => void;
@@ -115,14 +116,29 @@ export abstract class NetworkTablesBaseTopic<T> {
   // ----------- //
 
   /**
-   * Creates a new subscriber. This should only be called by the PubSubClient.
+   * Creates a new subscriber.
+   * @param callback - The callback to call when the topic value changes.
+   * @param options - The options for the subscriber. `id` and `save` are not part of the public API;
+   *   use {@link subscribeWithId} for reconnect internals.
+   * @returns The UID of the subscriber.
+   */
+  abstract subscribe(callback: CallbackFn<T>, options?: Omit<SubscribeOptions, 'prefix'>): number;
+
+  /**
+   * Creates a new subscriber, optionally reusing a subscription UID.
+   * @internal Used by resubscribeAll and tests. Not part of the public subscribe() signature.
    * @param callback - The callback to call when the topic value changes.
    * @param options - The options for the subscriber.
    * @param id - The UID of the subscriber.
    * @param save - Whether to save the subscriber.
    * @returns The UID of the subscriber.
    */
-  abstract subscribe(callback: CallbackFn<T>, options?: SubscribeOptions, id?: number, save?: boolean): number;
+  protected abstract subscribeWithId(
+    callback: CallbackFn<T>,
+    options?: Omit<SubscribeOptions, 'prefix'>,
+    id?: number,
+    save?: boolean
+  ): number;
 
   /**
    * Resubscribes all local subscribers.
@@ -155,23 +171,31 @@ export abstract class NetworkTablesBaseTopic<T> {
     this.subscribers.forEach((_, subuid) => this.unsubscribe(subuid));
   }
 
+  /**
+   * Strips client-only subscribe options (e.g. `immediateNotify`) before sending to the NT server.
+   * @param options - The subscriber options, possibly including client-only fields.
+   * @returns Protocol subscribe options.
+   */
+  protected toProtocolSubscribeOptions(
+    options: Omit<SubscribeOptions, 'prefix'> = {}
+  ): Omit<SubscribeOptions, 'prefix' | 'immediateNotify'> {
+    const { immediateNotify: _ignored, ...rest } = options;
+    return rest;
+  }
+
   // ---------- //
   // PUBLISHING //
   // ---------- //
 
   /**
    * Sets the properties of the topic.
-   * @param persistent - If true, the last set value will be periodically saved to persistent storage on the server and be restored during server startup. Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
-   * @param retained - Topics with this property set to true will not be deleted by the server when the last publisher stops publishing.
+   * @param properties - Topic properties to update (e.g. `{ persistent: true, retained: true }`).
    * @returns The server's response.
    */
-  async setProperties(persistent?: boolean, retained?: boolean): Promise<PropertiesMessage> {
+  async setProperties(properties: TopicProperties = {}): Promise<PropertiesMessage> {
     const setPropertiesParams: SetPropertiesMessageParams = {
       name: this.name,
-      update: {
-        persistent,
-        retained,
-      },
+      update: properties,
     };
 
     // Send the set properties request

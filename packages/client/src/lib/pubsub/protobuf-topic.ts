@@ -14,6 +14,18 @@ import type { PubSubClient } from './pubsub';
 import type { Type } from 'protobufjs';
 import type { z } from 'zod';
 
+/** Options for creating a protobuf topic. */
+export interface ProtobufTopicOptions<T extends object> {
+  defaultValue?: T;
+  validator?: z.ZodSchema<T>;
+  /** Path to a .proto file. Node.js only (uses the filesystem). */
+  protoFilePath?: string;
+  /** Contents of a .proto file. Parsed in-memory; safe in the browser. */
+  protoSource?: string;
+  /** Prebuilt protobufjs Type. Safe in the browser. */
+  messageType?: Type;
+}
+
 export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesTopic<Uint8Array<ArrayBufferLike>, T> {
   // Protobuf support
   private decodedValue: T | null = null;
@@ -21,6 +33,8 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
   private _protobufMessageType: Type | null = null;
   private _validator?: z.ZodSchema<T>;
   private _protoFilePath?: string;
+  private _protoSource?: string;
+  private _providedMessageType?: Type;
   private _messageTypeString?: string;
   private _schemaRegistered = false;
   /** Stored error when constructor's fire-and-forget loadProtoSchema fails; re-thrown by ensureMessageType. */
@@ -34,29 +48,46 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
    * @param options - The options for the topic.
    * @param options.defaultValue
    * @param options.validator
-   * @param options.protoFilePath
+   * @param options.protoFilePath - Node.js only. Use protoSource or messageType in the browser.
+   * @param options.protoSource - In-memory .proto text. Safe in the browser.
+   * @param options.messageType - Prebuilt protobufjs Type. Safe in the browser.
    */
-  constructor(
-    client: PubSubClient,
-    name: string,
-    options?: {
-      defaultValue?: T;
-      validator?: z.ZodSchema<T>;
-      protoFilePath?: string;
-    }
-  ) {
+  constructor(client: PubSubClient, name: string, options?: ProtobufTopicOptions<T>) {
     // Note: We can't encode the default value here because we don't have the message type yet.
     // The default value will be encoded when setValue is called or when the schema is available.
     super(client, name, NetworkTablesTypeInfos.kProtobuf, undefined);
     this._validator = options?.validator;
     this._protoFilePath = options?.protoFilePath;
+    this._protoSource = options?.protoSource;
+    this._providedMessageType = options?.messageType;
     // Store the default value to encode later when we have the schema
     if (options?.defaultValue !== undefined) {
       this.decodedValue = options.defaultValue;
     }
 
-    // If proto file path is provided, load the schema asynchronously to enable encoding
-    if (options?.protoFilePath) {
+    if (options?.messageType) {
+      this.applyMessageType(options.messageType);
+    } else if (options?.protoSource) {
+      try {
+        const { messageName, root } = this.client.protobufSchemaManager.parseSource(options.protoSource);
+        this._protobufMessageName = messageName;
+        this._messageTypeString = `proto:${messageName}`;
+        this._protobufMessageType = root.lookupType(messageName);
+      } catch (error) {
+        this._schemaLoadError =
+          error instanceof Error ? error : new Error(`Failed to parse proto source: ${String(error)}`);
+        console.error(`Failed to parse proto source for ${name}:`, error);
+      }
+      this.loadProtoSource(options.protoSource).catch((error) => {
+        if (this._protobufMessageType != null) {
+          console.error(`Failed to register proto source for ${name}:`, error);
+          return;
+        }
+        this._schemaLoadError =
+          error instanceof Error ? error : new Error(`Failed to parse proto source: ${String(error)}`);
+        console.error(`Failed to parse proto source for ${name}:`, error);
+      });
+    } else if (options?.protoFilePath) {
       this.loadProtoSchema(options.protoFilePath).catch((error) => {
         this._schemaLoadError =
           error instanceof Error ? error : new Error(`Failed to load proto schema: ${String(error)}`);
@@ -67,25 +98,69 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
 
   /**
    * Applies options to an existing protobuf topic.
-   * Used when returning a cached topic from createProtobufTopic so the returned
+   * Used when returning a cached topic from getProtobufTopic so the returned
    * instance has the requested validator, protoFilePath, and defaultValue.
+   * A later `validator` replaces any previous validator because the topic is a singleton.
    * @param options - The options to apply.
    */
-  applyOptions(options?: { defaultValue?: T; validator?: z.ZodSchema<T>; protoFilePath?: string }): void {
+  applyOptions(options?: ProtobufTopicOptions<T>): void {
     if (options?.validator !== undefined) {
       this._validator = options.validator;
     }
-    if (options?.protoFilePath !== undefined) {
-      this._protoFilePath = options.protoFilePath;
+    if (options?.messageType !== undefined) {
+      this.assertMessageTypeUnchanged(this.normalizeMessageName(options.messageType.fullName));
+      this._providedMessageType = options.messageType;
       this._schemaLoadError = null;
-      this.loadProtoSchema(options.protoFilePath).catch((error) => {
-        this._schemaLoadError =
-          error instanceof Error ? error : new Error(`Failed to load proto schema: ${String(error)}`);
-        console.error(`Failed to load proto schema from ${options.protoFilePath}:`, error);
-      });
+      this.applyMessageType(options.messageType);
+      if (!this._publisher) this._schemaRegistered = false;
+    } else if (options?.protoSource !== undefined) {
+      let parsed;
+      try {
+        parsed = this.client.protobufSchemaManager.parseSource(options.protoSource);
+      } catch (error) {
+        if (this._protobufMessageType == null) {
+          this._schemaLoadError =
+            error instanceof Error ? error : new Error(`Failed to parse proto source: ${String(error)}`);
+        }
+        console.error(`Failed to parse proto source for ${this.name}:`, error);
+        return;
+      }
+      this.assertMessageTypeUnchanged(parsed.messageName);
+      this._protoSource = options.protoSource;
+      this._schemaLoadError = null;
+      this._protobufMessageName = parsed.messageName;
+      this._messageTypeString = `proto:${parsed.messageName}`;
+      this._protobufMessageType = parsed.root.lookupType(parsed.messageName);
+      if (!this._publisher) this._schemaRegistered = false;
+    } else if (options?.protoFilePath !== undefined) {
+      if (!this._publisher) this._schemaRegistered = false;
+      this.loadProtoSchema(options.protoFilePath)
+        .then(() => {
+          this._protoFilePath = options.protoFilePath;
+          this._schemaLoadError = null;
+        })
+        .catch((error) => {
+          if (this._protobufMessageType == null) {
+            this._schemaLoadError =
+              error instanceof Error ? error : new Error(`Failed to load proto schema: ${String(error)}`);
+          }
+          console.error(`Failed to load proto schema from ${options.protoFilePath}:`, error);
+        });
     }
-    if (options?.defaultValue !== undefined) {
+    if (options?.defaultValue !== undefined && this.decodedValue == null) {
       this.decodedValue = options.defaultValue;
+    }
+  }
+
+  private normalizeMessageName(name: string): string {
+    return name.startsWith('.') ? name.slice(1) : name;
+  }
+
+  private assertMessageTypeUnchanged(messageName: string): void {
+    if (this._protobufMessageName && this._protobufMessageName !== messageName) {
+      throw new Error(
+        `Cannot change protobuf message type on published topic "${this.name}" from "${this._protobufMessageName}" to "${messageName}".`
+      );
     }
   }
 
@@ -228,16 +303,16 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
   }
 
   /**
-   * Loads a proto schema from a file path.
+   * Loads a proto schema from a file path (Node.js only).
    * @param protoFilePath - Path to the .proto file.
    */
   private async loadProtoSchema(protoFilePath: string): Promise<void> {
     try {
       const { messageName, root } = await this.client.protobufSchemaManager.registerSchema(protoFilePath);
+      this.assertMessageTypeUnchanged(messageName);
       this._protobufMessageName = messageName;
       this._messageTypeString = `proto:${messageName}`;
 
-      // Get the message type from the root
       const messageType = root.lookupType(messageName);
       if (messageType) {
         this._protobufMessageType = messageType;
@@ -245,6 +320,34 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
     } catch (error) {
       throw new Error(`Failed to load proto schema: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  /**
+   * Loads a proto schema from an in-memory source string.
+   * @param protoSource - Contents of a .proto file.
+   */
+  private async loadProtoSource(protoSource: string): Promise<void> {
+    try {
+      const { messageName, root } = this.client.protobufSchemaManager.parseSource(protoSource);
+      this._protobufMessageName = messageName;
+      this._messageTypeString = `proto:${messageName}`;
+      this._protobufMessageType = root.lookupType(messageName);
+      await this.client.protobufSchemaManager.registerSchemaFromSource(protoSource);
+    } catch (error) {
+      throw new Error(`Failed to parse proto source: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Applies a prebuilt protobufjs Type for encode/decode.
+   * @param messageType - The protobufjs Type.
+   */
+  private applyMessageType(messageType: Type): void {
+    const normalize = (name: string) => (name.startsWith('.') ? name.slice(1) : name);
+    const messageName = normalize(messageType.fullName);
+    this._protobufMessageName = messageName;
+    this._messageTypeString = `proto:${messageName}`;
+    this._protobufMessageType = messageType;
   }
 
   // ----------- //
@@ -273,13 +376,19 @@ export class NetworkTablesProtobufTopic<T extends object> extends NetworkTablesT
         return;
       }
 
-      // If proto file path is provided and schema not yet registered, register it first
-      // Note: loadProtoSchema() -> registerSchema() already uses unified protection,
-      // so concurrent calls will share the same schema registration
-      if (this._protoFilePath && !this._schemaRegistered) {
+      // If a schema source is provided and schema not yet registered, register it first
+      if (!this._schemaRegistered) {
         try {
-          await this.loadProtoSchema(this._protoFilePath);
-          this._schemaRegistered = true;
+          if (this._providedMessageType) {
+            await this.client.protobufSchemaManager.registerSchemaFromType(this._providedMessageType);
+            this._schemaRegistered = true;
+          } else if (this._protoSource) {
+            await this.loadProtoSource(this._protoSource);
+            this._schemaRegistered = true;
+          } else if (this._protoFilePath) {
+            await this.loadProtoSchema(this._protoFilePath);
+            this._schemaRegistered = true;
+          }
         } catch (error) {
           throw new Error(
             `Failed to register protobuf schema before publishing: ${error instanceof Error ? error.message : String(error)}`

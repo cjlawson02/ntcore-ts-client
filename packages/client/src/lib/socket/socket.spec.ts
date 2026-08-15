@@ -451,6 +451,48 @@ describe('NetworkTablesSocket', () => {
       const reconnectCall = setTimeoutSpy.mock.calls.find((c: [unknown, number?, ...unknown[]]) => c[1] === 1000);
       expect(reconnectCall).toBeUndefined();
     });
+
+    it('should not schedule a reconnect after close()', () => {
+      const onClose = socket.websocket.onclose;
+      const setTimeoutSpy = vi
+        .spyOn(globalThis, 'setTimeout')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .mockImplementation(((_fn: any, _ms?: any) => 1 as any) as any);
+
+      socket.close();
+      onClose?.({
+        code: 1000,
+        reason: 'test',
+        target: socket.websocket,
+        wasClean: true,
+        type: 'close',
+      });
+
+      const reconnectCall = setTimeoutSpy.mock.calls.find((c: [unknown, number?, ...unknown[]]) => c[1] === 1000);
+      expect(reconnectCall).toBeUndefined();
+    });
+
+    it('should ignore onclose from the previous websocket after reinstantiate', () => {
+      const previous = socket.websocket;
+      const previousOnClose = previous.onclose;
+      socket.reinstantiate('ws://localhost:5810/nt/reinstantiate');
+      const setTimeoutSpy = vi
+        .spyOn(globalThis, 'setTimeout')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .mockImplementation(((_fn: any, _ms?: any) => 1 as any) as any);
+
+      previousOnClose?.({
+        code: 1000,
+        reason: 'stale',
+        target: previous,
+        wasClean: true,
+        type: 'close',
+      });
+
+      const reconnectCall = setTimeoutSpy.mock.calls.find((c: [unknown, number?, ...unknown[]]) => c[1] === 1000);
+      expect(reconnectCall).toBeUndefined();
+      expect(socket.websocket).not.toBe(previous);
+    });
   });
 
   describe('updateConnectionListeners', () => {

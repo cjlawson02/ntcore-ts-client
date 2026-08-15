@@ -62,7 +62,7 @@ export const topicSchema = z.object({
 /** Schema for subscription options in the NT protocol. */
 export const subscriptionOptionsSchema = z
   .object({
-    periodic: integerSchema,
+    periodic: finiteNumSchema.nonnegative(),
     all: z.boolean(),
     topicsonly: z.boolean(),
     prefix: z.boolean(),

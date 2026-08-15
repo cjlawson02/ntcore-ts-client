@@ -30,14 +30,9 @@ export class StructSchemaManager {
     // Create a prefix topic for all struct schema topics
     this.schemaPrefixTopic = new NetworkTablesPrefixTopic(client, STRUCT_SCHEMA_PREFIX);
     // Subscribe to all schema topics and automatically decode and cache them
-    this.schemaPrefixTopic.subscribe(
-      (value, params) => {
-        this.handleSchemaUpdate(value as Uint8Array | null, params);
-      },
-      {},
-      undefined,
-      true
-    );
+    this.schemaPrefixTopic.subscribe((value, params) => {
+      this.handleSchemaUpdate(value as Uint8Array | null, params);
+    });
   }
 
   /**

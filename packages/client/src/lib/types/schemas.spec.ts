@@ -62,6 +62,10 @@ describe('schema', () => {
           prefix: true,
         }).success
       ).toBe(true);
+      expect(subscriptionOptionsSchema.safeParse({ periodic: 0.02 }).success).toBe(true);
+      expect(subscriptionOptionsSchema.safeParse({ periodic: 0 }).success).toBe(true);
+      expect(subscriptionOptionsSchema.safeParse({ periodic: -1 }).success).toBe(false);
+      expect(subscriptionOptionsSchema.safeParse({ periodic: Number.POSITIVE_INFINITY }).success).toBe(false);
       expect(subscriptionOptionsSchema.safeParse({}).success).toBe(true);
     });
   });

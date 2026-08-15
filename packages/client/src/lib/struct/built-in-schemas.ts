@@ -1,7 +1,7 @@
 import { buildStructDescriptor, parseSchema } from './struct-parser';
 import type { StructDescriptor } from './struct-descriptor';
 
-const SCHEMAS: Record<string, string> = {
+const SCHEMAS = {
   Translation2d: 'double x;double y',
   Rotation2d: 'double value',
   Pose2d: 'Translation2d translation;Rotation2d rotation',
@@ -13,7 +13,9 @@ const SCHEMAS: Record<string, string> = {
   Pose3d: 'Translation3d translation;Rotation3d rotation',
   Transform3d: 'Translation3d translation;Rotation3d rotation',
   Twist3d: 'double dx;double dy;double dz;double rx;double ry;double rz',
-};
+} as const;
+
+const SCHEMA_STRINGS: Record<string, string> = SCHEMAS;
 
 const builtInDescriptors = new Map<string, StructDescriptor>();
 
@@ -37,7 +39,7 @@ function initBuiltIns(): void {
   ];
   for (const typeName of order) {
     if (builtInDescriptors.has(typeName)) continue;
-    const schema = SCHEMAS[typeName];
+    const schema = SCHEMA_STRINGS[typeName];
     if (!schema) continue;
     const fields = parseSchema(schema);
     const descriptor = buildStructDescriptor(typeName, fields, getBuiltIn);
@@ -49,7 +51,7 @@ export function getBuiltInDescriptor(typeName: string): StructDescriptor | null 
   if (builtInDescriptors.size === 0) initBuiltIns();
   const cached = builtInDescriptors.get(typeName);
   if (cached) return cached;
-  const schema = SCHEMAS[typeName];
+  const schema = SCHEMA_STRINGS[typeName];
   if (!schema) return null;
   const fields = parseSchema(schema);
   const descriptor = buildStructDescriptor(typeName, fields, getBuiltIn);
@@ -58,9 +60,9 @@ export function getBuiltInDescriptor(typeName: string): StructDescriptor | null 
 }
 
 /** All built-in struct type names (WPILib geometry). */
-export const BUILT_IN_STRUCT_TYPE_NAMES = Object.keys(SCHEMAS);
+export const BUILT_IN_STRUCT_TYPE_NAMES = Object.keys(SCHEMAS) as (keyof typeof SCHEMAS)[];
 
 /** Returns the schema string for a built-in type, or undefined. */
 export function getBuiltInSchemaString(typeName: string): string | undefined {
-  return SCHEMAS[typeName];
+  return SCHEMA_STRINGS[typeName];
 }
