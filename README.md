@@ -10,7 +10,7 @@ A TypeScript library for communication over [WPILib's NetworkTables 4.1 protocol
 - Callbacks for connection listeners
 - Wildcard prefix listeners for multiple topics
 - Protobuf support with optional type generation and Zod validation
-- Struct support for WPILib types (Pose2d, Translation2d, etc.) with `createStructTopic` and `useStructTopic`
+- Struct support for WPILib types (`getStructTopic(name, Pose2d)`, `useStructTopic(name, Pose2d)`)
 - Retrying for messages queued during a connection loss
 - On-the-fly server switching with resubscribing and republishing
 - Generic types for Topics
@@ -29,6 +29,8 @@ This section will help get you started with sending and receiving data over Netw
 ### Installation
 
 `npm install --save @ntcore-ts/client`
+
+[Zod](https://github.com/colinhacks/zod) v4 is a dependency of the client. Install it in your app only if you write custom validators (`npm install zod@^4`).
 
 ### Connecting to the NetworkTables Server
 
@@ -62,68 +64,57 @@ NetworkTables.getInstanceByURI(uri: string, port?)
 
 > This creates the instance using a custom URI, i.e. 127.0.0.1, localhost, google.com, etc.
 
+### Closing the client
+
+Call `ntcore.close()` to disconnect, unsubscribe/unpublish, and drop the singleton so it does not leak. In the browser the client also registers a `beforeunload` listener (it does not overwrite `window.onbeforeunload`).
+
 ### Publishing and Subscribing to a Topic
 
-To use a Topic, it must be created through the NetworkTables client using the function:
+Prefer the typed factories (`getDoubleTopic`, `getStringTopic`, …). `createTopic(name, typeInfo, defaultValue?)` remains for cases where the type is not known until runtime.
 
 ```typescript
-createTopic<T extends NetworkTablesTypes>(name: string, typeInfo: NetworkTablesTypeInfo, defaultValue?: T)
+getDoubleTopic(name: string, defaultValue?: number)
+getStringTopic(name: string, defaultValue?: string)
+getBooleanTopic(name: string, defaultValue?: boolean)
+getIntegerTopic(name: string, defaultValue?: number)
+getFloatTopic(name: string, defaultValue?: number)
+getBooleanArrayTopic(name: string, defaultValue?: boolean[])
+getDoubleArrayTopic(name: string, defaultValue?: number[])
+getIntegerArrayTopic(name: string, defaultValue?: number[])
+getFloatArrayTopic(name: string, defaultValue?: number[])
+getStringArrayTopic(name: string, defaultValue?: string[])
+getRawTopic(name: string, defaultValue?: Uint8Array)
+getJsonTopic<T extends object>(name: string, defaultValue?: T, options?: { validator?: ZodSchema<T> })
 ```
 
-> The valid `NetworkTablesTypes` are `string | number | boolean | string[] | Uint8Array | boolean[] | number[]` (plus `object` for JSON topics)
->
-> The valid `NetworkTablesTypeInfo`s are:
->
-> - `NetworkTablesTypeInfos.kBoolean`
-> - `NetworkTablesTypeInfos.kDouble`
-> - `NetworkTablesTypeInfos.kInteger`
-> - `NetworkTablesTypeInfos.kFloat`
-> - `NetworkTablesTypeInfos.kString`
-> - `NetworkTablesTypeInfos.kJson`
-> - `NetworkTablesTypeInfos.kUint8Array` (raw binary)
-> - `NetworkTablesTypeInfos.kRPC`
-> - `NetworkTablesTypeInfos.kMsgpack`
-> - `NetworkTablesTypeInfos.kProtobuf` (use `createProtobufTopic` instead of `createTopic`)
-> - `NetworkTablesTypeInfos.kBooleanArray`
-> - `NetworkTablesTypeInfos.kDoubleArray`
-> - `NetworkTablesTypeInfos.kIntegerArray`
-> - `NetworkTablesTypeInfos.kFloatArray`
-> - `NetworkTablesTypeInfos.kStringArray`
-
-Once a topic has been created, it can be used as a subscriber:
+Once a topic has been created, subscribe with:
 
 ```typescript
 subscribe(
   callback: (value: T | null, params: AnnounceMessageParams) => void,
-  options: SubscribeOptions = {},
-  id?: number,
-  save = true
+  options?: SubscribeOptions
 )
 ```
 
-and/or a publisher:
+and/or publish with:
 
 ```typescript
-await publish(properties: TopicProperties = {}, id?: number)
+await publish(properties: TopicProperties = {})
 ```
 
 For example, here's a subscription for a Gyro:
 
 ```typescript
-import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore-ts/client';
+import { NetworkTables } from '@ntcore-ts/client';
 
-// Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
 
-// Create the gyro topic
-const gyroTopic = ntcore.createTopic<number>('/MyTable/Gyro', NetworkTablesTypeInfos.kDouble);
+const gyroTopic = ntcore.getDoubleTopic('/MyTable/Gyro');
 
-// Subscribe and immediately call the callback with the current value
 gyroTopic.subscribe((value) => {
   console.log(`Got Gyro Value: ${value}`);
 });
 
-// Or you can use the topic's announce parameters to get more info, like the topic ID
 gyroTopic.subscribe((value, params) => {
   console.log(`Got Gyro Value: ${value} at from topic id ${params.id}`);
 });
@@ -132,18 +123,14 @@ gyroTopic.subscribe((value, params) => {
 Or a publisher for an auto mode:
 
 ```typescript
-import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore-ts/client';
+import { NetworkTables } from '@ntcore-ts/client';
 
-// Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByTeam(973);
 
-// Create the AutoMode topic w/ a default return value of 'No Auto'
-const autoModeTopic = ntcore.createTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, 'No Auto');
+const autoModeTopic = ntcore.getStringTopic('/MyTable/AutoMode', 'No Auto');
 
-// Make us the publisher
 await autoModeTopic.publish();
 
-// Set a new value, this will error if we aren't the publisher!
 autoModeTopic.setValue('25 Ball Auto and Climb');
 ```
 
@@ -160,7 +147,7 @@ import { NetworkTables } from '@ntcore-ts/client';
 const ntcore = NetworkTables.getInstanceByTeam(973);
 
 // Create the accelerometer prefix topic
-const accelerometerTopic = ntcore.createPrefixTopic('/MyTable/Accelerometer/');
+const accelerometerTopic = ntcore.getPrefixTopic('/MyTable/Accelerometer/');
 
 let x, y, z;
 
@@ -191,32 +178,28 @@ accelerometerTopic.subscribe((value, params) => {
 
 ### Protobuf Topics
 
-For custom message types using [Protocol Buffers](https://protobuf.dev/), use `createProtobufTopic` instead of `createTopic`. The library fetches the schema from NetworkTables and can decode values in subscriber callbacks. For type-safe decoding, pass a [Zod](https://github.com/colinhacks/zod) schema as a runtime validator.
+For custom message types using [Protocol Buffers](https://protobuf.dev/), use `getProtobufTopic`. The library fetches the schema from NetworkTables and can decode values in subscriber callbacks. For type-safe decoding, pass a [Zod](https://github.com/colinhacks/zod) schema as a runtime validator.
 
 **Subscribing to a protobuf topic** (e.g. a topic announced by the robot with a known shape):
 
 ```typescript
-import { NetworkTables } from '@ntcore-ts/client';
-import { z } from 'zod';
+import { NetworkTables, Pose2d, Pose2dSchema } from '@ntcore-ts/client';
 
 const ntcore = NetworkTables.getInstanceByTeam(973);
 
-// Define a validator for the decoded protobuf shape
-const poseSchema = z.object({
-  translation: z.object({ x: z.number(), y: z.number() }),
-  rotation: z.object({ value: z.number() }),
-});
-type Pose = z.infer<typeof poseSchema>;
-
-const poseTopic = ntcore.createProtobufTopic<Pose>('/MyTable/Pose', {
-  validator: poseSchema,
+const poseTopic = ntcore.getProtobufTopic<Pose2d>('/MyTable/Pose', {
+  validator: Pose2dSchema,
 });
 poseTopic.subscribe((value) => {
   console.log(`Pose: x=${value?.translation.x}, y=${value?.translation.y}`);
 });
 ```
 
-**Publishing to a protobuf topic** (with a local `.proto` file so the client can encode and register the schema):
+**Publishing to a protobuf topic** (so the client can encode and register the schema):
+
+- `protoFilePath` — path to a `.proto` file. **Node.js only** (uses the filesystem).
+- `protoSource` — contents of a `.proto` file, parsed in memory. **Safe in the browser.**
+- `messageType` — a prebuilt protobufjs `Type`. **Safe in the browser.**
 
 ```typescript
 import * as path from 'path';
@@ -224,9 +207,9 @@ import { NetworkTables } from '@ntcore-ts/client';
 
 const ntcore = NetworkTables.getInstanceByURI('localhost');
 
-// Type can be generated from the .proto file (e.g. with ts-proto)
-const sensorTopic = ntcore.createProtobufTopic<{ timestamp: number; value: number }>('/MyTable/Sensor', {
+const sensorTopic = ntcore.getProtobufTopic<{ timestamp: number; value: number }>('/MyTable/Sensor', {
   protoFilePath: path.join(__dirname, 'sensor.proto'),
+  // Browser: protoSource: protoText, or messageType: myType,
 });
 
 await sensorTopic.publish();
@@ -235,28 +218,18 @@ sensorTopic.setValue({ timestamp: Date.now(), value: 42.5 });
 
 ### Struct Topics
 
-For WPILib struct types (e.g., `Pose2d`, `Translation2d`) over NetworkTables, use `createStructTopic` instead of `createTopic`. Structs use fixed-size binary serialization and interoperate with WPILib Java and C++ clients.
+For WPILib struct types over NetworkTables, use `getStructTopic(name, Pose2d)`. Structs use fixed-size binary serialization and interoperate with WPILib Java and C++ clients. Geometry types (`Pose2d`, `Translation2d`, …) and matching Zod schemas are exported from `@ntcore-ts/client`.
 
 **Built-in struct types:** Translation2d, Rotation2d, Pose2d, Transform2d, Twist2d, Translation3d, Quaternion, Rotation3d, Pose3d, Transform3d, Twist3d.
 
 **Subscribing to a struct topic** (e.g., a topic announced by the robot):
 
 ```typescript
-import { NetworkTables } from '@ntcore-ts/client';
-import { z } from 'zod';
+import { NetworkTables, Pose2d } from '@ntcore-ts/client';
 
 const ntcore = NetworkTables.getInstanceByTeam(973);
 
-const pose2dSchema = z.object({
-  translation: z.object({ x: z.number(), y: z.number() }),
-  rotation: z.object({ value: z.number() }),
-});
-type Pose2d = z.infer<typeof pose2dSchema>;
-
-const poseTopic = ntcore.createStructTopic<Pose2d>('/MyTable/PoseStruct', {
-  typeName: 'Pose2d',
-  validator: pose2dSchema,
-});
+const poseTopic = ntcore.getStructTopic('/MyTable/PoseStruct', Pose2d);
 poseTopic.subscribe((value) => {
   console.log(`Pose: x=${value?.translation.x}, y=${value?.translation.y}`);
 });
@@ -265,7 +238,7 @@ poseTopic.subscribe((value) => {
 **Publishing to a struct topic** (with custom schema for types not built-in):
 
 ```typescript
-const customTopic = ntcore.createStructTopic<{ x: number; y: number }>('/MyTable/Custom2d', {
+const customTopic = ntcore.getStructTopic<{ x: number; y: number }>('/MyTable/Custom2d', {
   typeName: 'Custom2d',
   schema: 'double x;double y',
 });
@@ -293,7 +266,7 @@ import { NetworkTables } from '@ntcore-ts/client';
 const ntcore = NetworkTables.getInstanceByTeam(973);
 
 // Create a prefix for all topics
-const allTopics = ntcore.createPrefixTopic('/');
+const allTopics = ntcore.getPrefixTopic('/');
 
 // Subscribe to all topics
 allTopics.subscribe((value, params) => {

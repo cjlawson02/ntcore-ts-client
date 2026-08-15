@@ -12,9 +12,9 @@ The client can publish values to topics that a NetworkTables server (or other su
 
 | ID    | Description                                                                                                                              |
 | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| PUB-1 | The client shall publish struct-encoded values via `createStructTopic(...).publish({ retained: true })` + `setValue(value)`.             |
+| PUB-1 | The client shall publish struct-encoded values via `getStructTopic(...).publish({ retained: true })` + `setValue(value)`.                |
 | PUB-2 | Values published by the client shall be consumed by the server and visible to other subscribers (verified via an echo topic).            |
-| PUB-3 | The client shall publish arrays of struct values (e.g. `Translation2d[]`) via `createStructTopic` with an array `typeName`.              |
+| PUB-3 | The client shall publish arrays of struct values (e.g. `Translation2d[]`) via `getStructTopic` with an array `typeName`.                 |
 | PUB-4 | Published values shall be retrievable locally via `getValue()` immediately after `setValue(...)`, without requiring a server round-trip. |
 | PUB-5 | Struct array topics shall have a `typeInfo[1]` NT type string of `struct:<TypeName>[]`.                                                  |
 

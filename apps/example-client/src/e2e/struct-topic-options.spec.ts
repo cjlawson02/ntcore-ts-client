@@ -20,12 +20,12 @@ describe('Feature: Struct Topic Options', () => {
   }, CONNECTION_WAIT_MS + 2_000);
 
   it(
-    '[STR-1, STR-2, STR-3] createStructTopic reuse applies options (schema + defaultValue)',
+    '[STR-1, STR-2, STR-3] getStructTopic reuse applies options (schema + defaultValue)',
     () => {
       const name = '/MyTable/StructReuseE2E';
 
-      const topic1 = nt.createStructTopic<{ x: number; y: number }>(name, { typeName: 'Translation2d' });
-      const topic2 = nt.createStructTopic<{ x: number; y: number }>(name, {
+      const topic1 = nt.getStructTopic<{ x: number; y: number }>(name, { typeName: 'Translation2d' });
+      const topic2 = nt.getStructTopic<{ x: number; y: number }>(name, {
         typeName: 'Translation2d',
         schema: 'double x;double y',
         defaultValue: { x: 10, y: 20 },

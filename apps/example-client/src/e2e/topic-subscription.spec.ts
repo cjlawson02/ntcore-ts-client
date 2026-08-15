@@ -8,7 +8,7 @@
  * apps/example-client/specs/README.md for the rules.
  */
 /// <reference types="vitest/globals" />
-import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore-ts/client';
+import { NetworkTables } from '@ntcore-ts/client';
 
 import {
   CONNECTION_WAIT_MS,
@@ -31,7 +31,7 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   it(
     '[SUB-1] receives kDouble Gyro value from server',
     async () => {
-      const gyroTopic = nt.createTopic<number>('/MyTable/Gyro', NetworkTablesTypeInfos.kDouble);
+      const gyroTopic = nt.getDoubleTopic('/MyTable/Gyro');
 
       const value = await waitForValue<number>(
         gyroTopic,
@@ -47,9 +47,9 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   );
 
   it(
-    '[SUB-2, SUB-4] receives Pose2d via createProtobufTopic and validates schema',
+    '[SUB-2, SUB-4] receives Pose2d via getProtobufTopic and validates schema',
     async () => {
-      const poseTopic = nt.createProtobufTopic<Pose2d>('/MyTable/Pose', {
+      const poseTopic = nt.getProtobufTopic<Pose2d>('/MyTable/Pose', {
         validator: pose2dSchema,
       });
 
@@ -70,9 +70,9 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   );
 
   it(
-    '[SUB-3, SUB-4] receives Pose2d via createStructTopic and validates schema',
+    '[SUB-3, SUB-4] receives Pose2d via getStructTopic and validates schema',
     async () => {
-      const poseStructTopic = nt.createStructTopic<Pose2d>('/MyTable/PoseStruct', {
+      const poseStructTopic = nt.getStructTopic<Pose2d>('/MyTable/PoseStruct', {
         typeName: 'Pose2d',
         validator: pose2dSchema,
       });
@@ -100,7 +100,7 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   it(
     '[SUB-5] receives kBoolean value from server',
     async () => {
-      const topic = nt.createTopic<boolean>('/MyTable/Scalars/Bool', NetworkTablesTypeInfos.kBoolean);
+      const topic = nt.getBooleanTopic('/MyTable/Scalars/Bool');
       const value = await waitForValue<boolean>(topic, (v) => typeof v === 'boolean', 'Bool scalar timeout');
       expect(typeof value).toBe('boolean');
     },
@@ -110,7 +110,7 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   it(
     '[SUB-6] receives kInteger value from server',
     async () => {
-      const topic = nt.createTopic<number>('/MyTable/Scalars/Int', NetworkTablesTypeInfos.kInteger);
+      const topic = nt.getIntegerTopic('/MyTable/Scalars/Int');
       const value = await waitForValue<number>(
         topic,
         (v) => typeof v === 'number' && Number.isInteger(v),
@@ -125,7 +125,7 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   it(
     '[SUB-7] receives kFloat value from server',
     async () => {
-      const topic = nt.createTopic<number>('/MyTable/Scalars/Float', NetworkTablesTypeInfos.kFloat);
+      const topic = nt.getFloatTopic('/MyTable/Scalars/Float');
       const value = await waitForValue<number>(
         topic,
         (v) => typeof v === 'number' && Number.isFinite(v),
@@ -140,7 +140,7 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   it(
     '[SUB-8] receives kBooleanArray value from server',
     async () => {
-      const topic = nt.createTopic<boolean[]>('/MyTable/Scalars/BoolArray', NetworkTablesTypeInfos.kBooleanArray);
+      const topic = nt.getBooleanArrayTopic('/MyTable/Scalars/BoolArray');
       const value = await waitForValue<boolean[]>(
         topic,
         (v) => Array.isArray(v) && v.length === 3 && v.every((x) => typeof x === 'boolean'),
@@ -154,7 +154,7 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   it(
     '[SUB-9] receives kDoubleArray value from server',
     async () => {
-      const topic = nt.createTopic<number[]>('/MyTable/Scalars/DoubleArray', NetworkTablesTypeInfos.kDoubleArray);
+      const topic = nt.getDoubleArrayTopic('/MyTable/Scalars/DoubleArray');
       const value = await waitForValue<number[]>(
         topic,
         (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite),
@@ -171,7 +171,7 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   it(
     '[SUB-10] receives kIntegerArray value from server',
     async () => {
-      const topic = nt.createTopic<number[]>('/MyTable/Scalars/IntArray', NetworkTablesTypeInfos.kIntegerArray);
+      const topic = nt.getIntegerArrayTopic('/MyTable/Scalars/IntArray');
       const value = await waitForValue<number[]>(
         topic,
         (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isInteger),
@@ -185,7 +185,7 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   it(
     '[SUB-11] receives kFloatArray value from server',
     async () => {
-      const topic = nt.createTopic<number[]>('/MyTable/Scalars/FloatArray', NetworkTablesTypeInfos.kFloatArray);
+      const topic = nt.getFloatArrayTopic('/MyTable/Scalars/FloatArray');
       const value = await waitForValue<number[]>(
         topic,
         (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite),
@@ -202,7 +202,7 @@ describe('Feature: Topic Subscription (robot → client)', () => {
   it(
     '[SUB-12] receives kStringArray value from server',
     async () => {
-      const topic = nt.createTopic<string[]>('/MyTable/Scalars/StringArray', NetworkTablesTypeInfos.kStringArray);
+      const topic = nt.getStringArrayTopic('/MyTable/Scalars/StringArray');
       const value = await waitForValue<string[]>(
         topic,
         (v) => Array.isArray(v) && v.length === 3 && v.every((x) => typeof x === 'string'),

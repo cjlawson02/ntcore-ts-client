@@ -1,16 +1,8 @@
-import { z } from 'zod';
+import { Pose2d } from '@ntcore-ts/client';
 import { useStructTopic } from '@ntcore-ts/react';
 import { mathDegreesToDisplayDegrees, normalizeDegrees, useShortestPathDisplay } from '../utils/angle';
 import { ValueCard } from './ValueCard';
 import './PoseCard.scss';
-
-const translation2dSchema = z.object({ x: z.number(), y: z.number() });
-const rotation2dSchema = z.object({ value: z.number() });
-const pose2dSchema = z.object({
-  translation: translation2dSchema,
-  rotation: rotation2dSchema,
-});
-type Pose2d = z.infer<typeof pose2dSchema>;
 
 const FIELD_HALF = 4;
 
@@ -19,10 +11,7 @@ function radToDeg(rad: number): number {
 }
 
 export function PoseStructCard() {
-  const { value: pose } = useStructTopic<Pose2d>('/MyTable/PoseStruct', {
-    typeName: 'Pose2d',
-    validator: pose2dSchema,
-  });
+  const { value: pose } = useStructTopic('/MyTable/PoseStruct', Pose2d);
 
   const x = pose?.translation.x ?? 0;
   const y = pose?.translation.y ?? 0;

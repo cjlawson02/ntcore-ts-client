@@ -1,6 +1,6 @@
 # Example React Dashboard
 
-A minimal React dashboard that uses [@ntcore-ts/react](../../packages/react) to display and control NetworkTables topics from [example-robot](../example-robot) (Java FRC).
+A minimal React dashboard that uses [@ntcore-ts/react](../../packages/react) to display and control NetworkTables topics from [example-robot](../example-robot) (Java FRC). The same robot binary is also the NT server fixture for [example-client](../example-client) e2e tests, so it publishes extra scalar, Waypoint, and echo topics beyond what this dashboard shows.
 
 ## Run with the robot (local simulation)
 
@@ -20,7 +20,15 @@ A minimal React dashboard that uses [@ntcore-ts/react](../../packages/react) to 
 
    Open the URL shown (e.g. http://localhost:4200).
 
-3. The dashboard shows connection status, Gyro, Accelerometer X/Y, Pose (protobuf), and Auto Mode. You can change Auto Mode from the dropdown; the robot reads it in `autonomousInit()`.
+3. The dashboard shows:
+
+   - **Connection status** — click to reopen the connection overlay after the first connect.
+   - **Connection overlay** — shown until the first successful connect (unless dismissed). Team number or address/port fields seed from the current NT client when available. Escape or Close resumes auto-connect.
+   - **Sensors** — Gyro and Accelerometer X/Y/Z.
+   - **Pose** — protobuf `/MyTable/Pose` with a top-down field view.
+   - **Pose (Struct)** — struct `/MyTable/PoseStruct` (`Pose2d`) with the same visualization.
+   - **Auto Mode** — subscribe and publish `/MyTable/AutoMode` (retained string).
+   - **All topics** — live table of every announced topic under `/`.
 
 ## Environment
 

@@ -8,7 +8,7 @@
  * apps/example-client/specs/README.md for the rules.
  */
 /// <reference types="vitest/globals" />
-import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore-ts/client';
+import { NetworkTables } from '@ntcore-ts/client';
 
 import {
   CONNECTION_WAIT_MS,
@@ -35,7 +35,7 @@ describe('Feature: Topic Lifecycle (unsubscribe / unpublish)', () => {
       // Gyro is published continuously by the robot when in testPeriodic; even in disabled mode
       // its initial value (0) is delivered once via retained/last-value semantics. We use the
       // accelerometer X which is set on disabledInit so we always see at least one update.
-      const topic = nt.createTopic<number>('/MyTable/Accelerometer/X', NetworkTablesTypeInfos.kDouble);
+      const topic = nt.getDoubleTopic('/MyTable/Accelerometer/X');
 
       // First: wait for any value to confirm the subscription is live.
       let callCount = 0;
@@ -65,7 +65,7 @@ describe('Feature: Topic Lifecycle (unsubscribe / unpublish)', () => {
   it(
     '[LIF-2] unsubscribeAll removes every subscriber and stops updates',
     async () => {
-      const topic = nt.createTopic<number>('/MyTable/Accelerometer/Y', NetworkTablesTypeInfos.kDouble);
+      const topic = nt.getDoubleTopic('/MyTable/Accelerometer/Y');
       let calls = 0;
       topic.subscribe(() => {
         calls++;
@@ -93,11 +93,7 @@ describe('Feature: Topic Lifecycle (unsubscribe / unpublish)', () => {
   it(
     '[LIF-3] unpublish clears publisher state and causes setValue to throw',
     async () => {
-      const topic = nt.createTopic<string>(
-        '/MyTable/Lifecycle/UnpublishTarget',
-        NetworkTablesTypeInfos.kString,
-        'initial'
-      );
+      const topic = nt.getStringTopic('/MyTable/Lifecycle/UnpublishTarget', 'initial');
       await topic.publish({ retained: true });
       expect(topic.publisher).toBe(true);
       expect(topic.pubuid).toBeDefined();
@@ -115,11 +111,7 @@ describe('Feature: Topic Lifecycle (unsubscribe / unpublish)', () => {
   it(
     '[LIF-4] republish after unpublish allocates a new pubuid and accepts new setValue',
     async () => {
-      const topic = nt.createTopic<string>(
-        '/MyTable/Lifecycle/RepublishTarget',
-        NetworkTablesTypeInfos.kString,
-        'initial'
-      );
+      const topic = nt.getStringTopic('/MyTable/Lifecycle/RepublishTarget', 'initial');
       await topic.publish({ retained: true });
       const firstPubuid = topic.pubuid;
       expect(firstPubuid).toBeDefined();

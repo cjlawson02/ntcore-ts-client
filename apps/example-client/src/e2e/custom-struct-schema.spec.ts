@@ -40,7 +40,7 @@ describe('Feature: Custom Struct Schema Auto-Fetch', () => {
     async () => {
       // Note: we deliberately do NOT pass a `schema` option — the client must fetch the
       // Waypoint schema from the server's /.schema/struct:Waypoint topic at runtime.
-      const topic = nt.createStructTopic<Waypoint>('/MyTable/Waypoint', {
+      const topic = nt.getStructTopic<Waypoint>('/MyTable/Waypoint', {
         typeName: 'Waypoint',
         validator: waypointSchema,
       });

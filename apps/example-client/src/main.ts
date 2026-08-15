@@ -2,7 +2,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { z as zod } from 'zod';
 
-import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore-ts/client';
+import { NetworkTables, Pose2d, Pose2dSchema } from '@ntcore-ts/client';
 
 // Import types generated from the proto file
 import type { TestData } from './generated/customproto';
@@ -12,14 +12,17 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 // Get or create the NT client instance
 const ntcore = NetworkTables.getInstanceByURI('localhost');
 
+ntcore.addRobotConnectionListener((connected) => {
+  console.log(`[Connection] Robot ${connected ? 'connected' : 'disconnected'}`);
+});
+
 // ------------------------------------------------ //
 // Example of using a topic to subscribe to a value //
 // ------------------------------------------------ //
 
-// Create the gyro topic
-const gyroTopic = ntcore.createTopic<number>('/MyTable/Gyro', NetworkTablesTypeInfos.kDouble);
+const gyroTopic = ntcore.getDoubleTopic('/MyTable/Gyro');
 
-// Subscribe and immediately call the callback with the current value
+// Subscribe; the callback runs when the server sends a value
 gyroTopic.subscribe((value) => {
   console.log(`[Gyro Topic] Got Gyro Value: ${value}`);
 });
@@ -34,8 +37,9 @@ gyroTopic.subscribe((value, params) => {
 // ---------------------------------------------- //
 
 // Create the AutoMode topic w/ a default return value of 'No Auto'
+// Note: this retained publisher contends with example-react if both run against the same server.
 (async () => {
-  const autoModeTopic = ntcore.createTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, 'No Auto');
+  const autoModeTopic = ntcore.getStringTopic('/MyTable/AutoMode', 'No Auto');
 
   // Make us the publisher
   console.log('[Auto Topic] Publishing Auto Mode Topic');
@@ -52,23 +56,8 @@ gyroTopic.subscribe((value, params) => {
 // Example of using a protobuf topic to subscribe to a value //
 // --------------------------------------------------------- //
 
-// The library automatically fetches the protobuf schema from NetworkTables
-// and decodes values in subscriber callbacks. However, we cannot know at
-// compile time what the schema will be, so the library supports passing a
-// Zod schema to validate the decoded values at runtime.
-const translation2dSchema = zod.object({
-  x: zod.number(),
-  y: zod.number(),
-});
-const rotation2dSchema = zod.object({
-  value: zod.number(),
-});
-const pose2dSchema = zod.object({
-  translation: translation2dSchema,
-  rotation: rotation2dSchema,
-});
-const poseTopic = ntcore.createProtobufTopic<zod.infer<typeof pose2dSchema>>('/MyTable/Pose', {
-  validator: pose2dSchema,
+const poseTopic = ntcore.getProtobufTopic<Pose2d>('/MyTable/Pose', {
+  validator: Pose2dSchema,
 });
 poseTopic.subscribe((value) => {
   console.log(
@@ -80,10 +69,7 @@ poseTopic.subscribe((value) => {
 // Example of using a struct topic to subscribe to a value    //
 // --------------------------------------------------------- //
 
-const poseStructTopic = ntcore.createStructTopic<zod.infer<typeof pose2dSchema>>('/MyTable/PoseStruct', {
-  typeName: 'Pose2d',
-  validator: pose2dSchema,
-});
+const poseStructTopic = ntcore.getStructTopic('/MyTable/PoseStruct', Pose2d);
 poseStructTopic.subscribe((value) => {
   console.log(
     `[Pose Struct Topic] Got Pose Value: x: ${value?.translation.x}, y: ${value?.translation.y}, rotation: ${value?.rotation.value}`
@@ -94,8 +80,7 @@ poseStructTopic.subscribe((value) => {
 // Example of using a prefix topic to subscribe to multiple topics //
 // --------------------------------------------------------------- //
 
-// Create the accelerator topic
-const accelerometerTopic = ntcore.createPrefixTopic('/MyTable/Accelerometer/');
+const accelerometerTopic = ntcore.getPrefixTopic('/MyTable/Accelerometer/');
 
 let x: number;
 let y: number;
@@ -131,13 +116,14 @@ accelerometerTopic.subscribe((value, params) => {
 // Example of using a prefix topic to subscribe to all topics //
 // ---------------------------------------------------------- //
 
-// Create a prefix for all topics
-const allTopics = ntcore.createPrefixTopic('/');
+if (process.env.NT_DUMP_ALL === '1') {
+  // Create a prefix for all topics (very noisy — opt in with NT_DUMP_ALL=1)
+  const allTopics = ntcore.getPrefixTopic('/');
 
-// Subscribe to all topics
-allTopics.subscribe((value, params) => {
-  console.log(`[All Topics] Got Value: ${value} from topic ${params.name}`);
-});
+  allTopics.subscribe((value, params) => {
+    console.log(`[All Topics] Got Value: ${value} from topic ${params.name}`);
+  });
+}
 
 // --------------------------------------------------------- //
 // Example of using a protobuf topic to publish a value //
@@ -146,7 +132,7 @@ allTopics.subscribe((value, params) => {
 (async () => {
   // Create a protobuf topic with the proto file path
   // The schema will be automatically registered to NetworkTables when publishing
-  const customProtoTopic = ntcore.createProtobufTopic<TestData>('/MyTable/CustomProto', {
+  const customProtoTopic = ntcore.getProtobufTopic<TestData>('/MyTable/CustomProto', {
     // The build copies `customproto.proto` next to the output JS file
     protoFilePath: path.join(currentDir, 'customproto.proto'),
   });

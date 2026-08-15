@@ -19,11 +19,11 @@ decode it **without** passing a `schema` option.
 
 ## Acceptance criteria
 
-| ID    | Description                                                                                                                            |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| CSS-1 | `createStructTopic(name, { typeName: 'Waypoint' })` + `subscribe` shall decode values for a server-published non-built-in struct type. |
-| CSS-2 | Integer fields (`int32`) in a fetched custom schema shall be decoded as JS `number` with the exact integer value.                      |
-| CSS-3 | The decoded struct's double fields shall match the server-published values to within floating-point precision.                         |
+| ID    | Description                                                                                                                         |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| CSS-1 | `getStructTopic(name, { typeName: 'Waypoint' })` + `subscribe` shall decode values for a server-published non-built-in struct type. |
+| CSS-2 | Integer fields (`int32`) in a fetched custom schema shall be decoded as JS `number` with the exact integer value.                   |
+| CSS-3 | The decoded struct's double fields shall match the server-published values to within floating-point precision.                      |
 
 ## Tests
 

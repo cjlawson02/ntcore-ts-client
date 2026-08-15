@@ -31,7 +31,7 @@ describe('Feature: Topic Publishing (client → robot)', () => {
   it(
     '[PUB-1, PUB-2] publishes Pose2d struct and server echoes it back to PoseStructEcho',
     async () => {
-      const publishTopic = nt.createStructTopic<Pose2d>('/MyTable/PoseStructFromClient', {
+      const publishTopic = nt.getStructTopic<Pose2d>('/MyTable/PoseStructFromClient', {
         typeName: 'Pose2d',
         validator: pose2dSchema,
       });
@@ -43,7 +43,7 @@ describe('Feature: Topic Publishing (client → robot)', () => {
       };
       publishTopic.setValue(testPose);
 
-      const echoTopic = nt.createStructTopic<Pose2d>('/MyTable/PoseStructEcho', {
+      const echoTopic = nt.getStructTopic<Pose2d>('/MyTable/PoseStructEcho', {
         typeName: 'Pose2d',
         validator: pose2dSchema,
       });
@@ -69,7 +69,7 @@ describe('Feature: Topic Publishing (client → robot)', () => {
     '[PUB-3, PUB-4, PUB-5] publishes Translation2d[] struct array with correct typeInfo and round-trips via getValue',
     async () => {
       type Translation2d = { x: number; y: number };
-      const topic = nt.createStructTopic<Translation2d[]>('/MyTable/Translation2dArray', {
+      const topic = nt.getStructTopic<Translation2d[]>('/MyTable/Translation2dArray', {
         typeName: 'Translation2d[]',
       });
 

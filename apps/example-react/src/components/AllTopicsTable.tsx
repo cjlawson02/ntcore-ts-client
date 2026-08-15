@@ -115,6 +115,7 @@ function JsonExpander({ value, expansionKeyPrefix, expanded, onToggle, depth = 0
 
 interface ValueCellProps {
   value: NetworkTablesTypes | null;
+  type?: string;
   rowKey: string;
   expanded: Set<string>;
   onToggleJsonKey: (key: string) => void;
@@ -122,8 +123,8 @@ interface ValueCellProps {
   isExpandable?: boolean;
 }
 
-function ValueCell({ value, rowKey, expanded, onToggleJsonKey, isExpandable }: ValueCellProps) {
-  const json = parseJsonValue(value);
+function ValueCell({ value, type, rowKey, expanded, onToggleJsonKey, isExpandable }: ValueCellProps) {
+  const json = type === 'json' ? parseJsonValue(value) : null;
   if (json !== null) {
     return <JsonExpander value={json} expansionKeyPrefix={rowKey} expanded={expanded} onToggle={onToggleJsonKey} />;
   }
@@ -137,12 +138,13 @@ interface TopicNode {
   segment: string;
   fullPath: string;
   value: NetworkTablesTypes | null;
+  type?: string;
   children: TopicNode[];
 }
 
-function buildTree(rows: [string, NetworkTablesTypes | null][]): TopicNode {
+function buildTree(rows: [string, NetworkTablesTypes | null, string][]): TopicNode {
   const root: TopicNode = { segment: '', fullPath: '', value: null, children: [] };
-  for (const [name, value] of rows) {
+  for (const [name, value, type] of rows) {
     const segments = name.split('/').filter(Boolean);
     let current = root;
     for (let i = 0; i < segments.length; i++) {
@@ -154,11 +156,13 @@ function buildTree(rows: [string, NetworkTablesTypes | null][]): TopicNode {
           segment: key,
           fullPath,
           value: i === segments.length - 1 ? value : null,
+          type: i === segments.length - 1 ? type : undefined,
           children: [],
         };
         current.children.push(child);
       } else if (i === segments.length - 1) {
         child.value = value;
+        child.type = type;
       }
       current = child;
     }
@@ -180,7 +184,13 @@ export function AllTopicsTable() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [jsonExpanded, setJsonExpanded] = useState<Set<string>>(new Set());
 
-  const rows = useMemo(() => Object.entries(byName ?? {}).sort(([a], [b]) => a.localeCompare(b)), [byName]);
+  const rows = useMemo(
+    () =>
+      Object.entries(byName)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, entry]) => [name, entry.value, entry.type] as [string, NetworkTablesTypes | null, string]),
+    [byName]
+  );
 
   const tree = useMemo(() => buildTree(rows), [rows]);
 
@@ -237,9 +247,11 @@ export function AllTopicsTable() {
                 </span>
               </span>
             </td>
+            <td className="all-topics-table__type">{node.type ?? ''}</td>
             <td className="all-topics-table__value">
               <ValueCell
                 value={node.value}
+                type={node.type}
                 rowKey={node.fullPath}
                 expanded={jsonExpanded}
                 onToggleJsonKey={toggleJsonKey}
@@ -261,6 +273,7 @@ export function AllTopicsTable() {
           <thead>
             <tr>
               <th>Topic</th>
+              <th>Type</th>
               <th>Value</th>
             </tr>
           </thead>

@@ -8,7 +8,7 @@
  * in sync — see apps/example-client/specs/README.md for the rules.
  */
 /// <reference types="vitest/globals" />
-import { NetworkTables, NetworkTablesTypeInfos } from '@ntcore-ts/client';
+import { NetworkTables } from '@ntcore-ts/client';
 
 import { CONNECTION_WAIT_MS, NT_SERVER_HOST, NT_SERVER_PORT, VALUE_WAIT_MS, waitForConnection } from './_support';
 
@@ -26,7 +26,7 @@ describe('Feature: Retained Values & Connection Lifecycle', () => {
       const autoModeValue = 'E2E Retained After Reconnect';
 
       // RET-1: publish with retained=true and setValue.
-      const autoModeTopic = nt.createTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, 'Default');
+      const autoModeTopic = nt.getStringTopic('/MyTable/AutoMode', 'Default');
       await autoModeTopic.publish({ retained: true });
       autoModeTopic.setValue(autoModeValue);
 
@@ -37,7 +37,7 @@ describe('Feature: Retained Values & Connection Lifecycle', () => {
 
       const retained = await new Promise<string>((resolve, reject) => {
         const t = setTimeout(() => reject(new Error('Retained readback timeout')), VALUE_WAIT_MS);
-        const readTopic = nt.createTopic<string>('/MyTable/AutoMode', NetworkTablesTypeInfos.kString, 'Default');
+        const readTopic = nt.getStringTopic('/MyTable/AutoMode', 'Default');
         readTopic.subscribe((v) => {
           if (v != null && v === autoModeValue) {
             clearTimeout(t);

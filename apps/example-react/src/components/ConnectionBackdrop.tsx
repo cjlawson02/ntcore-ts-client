@@ -1,6 +1,6 @@
 import './ConnectionBackdrop.scss';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { useConnectionStatus, useNtcore } from '@ntcore-ts/react';
+import { useConnectionStatus, useNtcore, type NetworkTables } from '@ntcore-ts/react';
 import { HelpDialog } from './HelpDialog';
 
 type ConnectionBackdropProps = {
@@ -19,12 +19,12 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
   const [port, setPort] = useState(5810);
   const [helpOpen, setHelpOpen] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [seededNt, setSeededNt] = useState<typeof nt>(null);
+  const [seededNt, setSeededNt] = useState<NetworkTables | null>(null);
 
   if (!open && helpOpen) setHelpOpen(false);
   if (connected && isConnecting) setIsConnecting(false);
 
-  if (nt && nt !== seededNt) {
+  if (nt !== seededNt) {
     const currentUri = nt.getURI();
     const match = currentUri.match(/^roborio-(\d+)-frc\.local$/);
     if (match) {
@@ -39,12 +39,12 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
   }
 
   const handleFormChange = () => {
-    nt?.stopAutoConnect();
+    nt.stopAutoConnect();
     setIsConnecting(false);
   };
 
   const handleClose = useCallback(() => {
-    nt?.startAutoConnect();
+    nt.startAutoConnect();
     onClose();
   }, [nt, onClose]);
 
@@ -67,12 +67,12 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
       const teamNum = parseInt(team.trim(), 10);
       if (!Number.isFinite(teamNum) || teamNum < 1 || teamNum > 99999) return;
       setIsConnecting(true);
-      nt?.changeURI(`roborio-${teamNum}-frc.local`, effectivePort);
+      nt.changeURI(`roborio-${teamNum}-frc.local`, effectivePort);
     } else {
       const trimmed = uri.trim();
       if (!trimmed) return;
       setIsConnecting(true);
-      nt?.changeURI(trimmed, effectivePort);
+      nt.changeURI(trimmed, effectivePort);
     }
   };
 

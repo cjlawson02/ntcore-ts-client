@@ -22,36 +22,36 @@ msgpack encode/decode path round-trips correctly for every concrete wire type.
 
 ## Acceptance criteria
 
-| ID     | Description                                                                                                                       |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| SUB-1  | The client shall receive scalar `kDouble` values via `createTopic` + `subscribe` from a server that is publishing the topic.      |
-| SUB-2  | The client shall receive protobuf-encoded values via `createProtobufTopic` + `subscribe`, automatically decoded to typed objects. |
-| SUB-3  | The client shall receive struct-encoded values via `createStructTopic` + `subscribe`, automatically decoded to typed objects.     |
-| SUB-4  | Decoded protobuf and struct values shall pass a supplied Zod validator before being delivered to subscribers.                     |
-| SUB-5  | The client shall receive scalar `kBoolean` values via `createTopic` + `subscribe`, delivered as JS `boolean`.                     |
-| SUB-6  | The client shall receive scalar `kInteger` values via `createTopic` + `subscribe`, delivered as a JS integer `number`.            |
-| SUB-7  | The client shall receive scalar `kFloat` values via `createTopic` + `subscribe`, delivered as a finite JS `number`.               |
-| SUB-8  | The client shall receive `kBooleanArray` values via `createTopic` + `subscribe`, delivered as `boolean[]`.                        |
-| SUB-9  | The client shall receive `kDoubleArray` values via `createTopic` + `subscribe`, delivered as `number[]`.                          |
-| SUB-10 | The client shall receive `kIntegerArray` values via `createTopic` + `subscribe`, delivered as an integer `number[]`.              |
-| SUB-11 | The client shall receive `kFloatArray` values via `createTopic` + `subscribe`, delivered as a finite `number[]`.                  |
-| SUB-12 | The client shall receive `kStringArray` values via `createTopic` + `subscribe`, delivered as `string[]`.                          |
+| ID     | Description                                                                                                                     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| SUB-1  | The client shall receive scalar `kDouble` values via `getDoubleTopic` + `subscribe` from a server that is publishing the topic. |
+| SUB-2  | The client shall receive protobuf-encoded values via `getProtobufTopic` + `subscribe`, automatically decoded to typed objects.  |
+| SUB-3  | The client shall receive struct-encoded values via `getStructTopic` + `subscribe`, automatically decoded to typed objects.      |
+| SUB-4  | Decoded protobuf and struct values shall pass a supplied Zod validator before being delivered to subscribers.                   |
+| SUB-5  | The client shall receive scalar `kBoolean` values via `getBooleanTopic` + `subscribe`, delivered as JS `boolean`.               |
+| SUB-6  | The client shall receive scalar `kInteger` values via `getIntegerTopic` + `subscribe`, delivered as a JS integer `number`.      |
+| SUB-7  | The client shall receive scalar `kFloat` values via `getFloatTopic` + `subscribe`, delivered as a finite JS `number`.           |
+| SUB-8  | The client shall receive `kBooleanArray` values via `getBooleanArrayTopic` + `subscribe`, delivered as `boolean[]`.             |
+| SUB-9  | The client shall receive `kDoubleArray` values via `getDoubleArrayTopic` + `subscribe`, delivered as `number[]`.                |
+| SUB-10 | The client shall receive `kIntegerArray` values via `getIntegerArrayTopic` + `subscribe`, delivered as an integer `number[]`.   |
+| SUB-11 | The client shall receive `kFloatArray` values via `getFloatArrayTopic` + `subscribe`, delivered as a finite `number[]`.         |
+| SUB-12 | The client shall receive `kStringArray` values via `getStringArrayTopic` + `subscribe`, delivered as `string[]`.                |
 
 ## Tests
 
-| Test                                                                          | Covers       | Status      |
-| ----------------------------------------------------------------------------- | ------------ | ----------- |
-| `[SUB-1] receives kDouble Gyro value from server`                             | SUB-1        | Implemented |
-| `[SUB-2, SUB-4] receives Pose2d via createProtobufTopic and validates schema` | SUB-2, SUB-4 | Implemented |
-| `[SUB-3, SUB-4] receives Pose2d via createStructTopic and validates schema`   | SUB-3, SUB-4 | Implemented |
-| `[SUB-5] receives kBoolean value from server`                                 | SUB-5        | Implemented |
-| `[SUB-6] receives kInteger value from server`                                 | SUB-6        | Implemented |
-| `[SUB-7] receives kFloat value from server`                                   | SUB-7        | Implemented |
-| `[SUB-8] receives kBooleanArray value from server`                            | SUB-8        | Implemented |
-| `[SUB-9] receives kDoubleArray value from server`                             | SUB-9        | Implemented |
-| `[SUB-10] receives kIntegerArray value from server`                           | SUB-10       | Implemented |
-| `[SUB-11] receives kFloatArray value from server`                             | SUB-11       | Implemented |
-| `[SUB-12] receives kStringArray value from server`                            | SUB-12       | Implemented |
+| Test                                                                       | Covers       | Status      |
+| -------------------------------------------------------------------------- | ------------ | ----------- |
+| `[SUB-1] receives kDouble Gyro value from server`                          | SUB-1        | Implemented |
+| `[SUB-2, SUB-4] receives Pose2d via getProtobufTopic and validates schema` | SUB-2, SUB-4 | Implemented |
+| `[SUB-3, SUB-4] receives Pose2d via getStructTopic and validates schema`   | SUB-3, SUB-4 | Implemented |
+| `[SUB-5] receives kBoolean value from server`                              | SUB-5        | Implemented |
+| `[SUB-6] receives kInteger value from server`                              | SUB-6        | Implemented |
+| `[SUB-7] receives kFloat value from server`                                | SUB-7        | Implemented |
+| `[SUB-8] receives kBooleanArray value from server`                         | SUB-8        | Implemented |
+| `[SUB-9] receives kDoubleArray value from server`                          | SUB-9        | Implemented |
+| `[SUB-10] receives kIntegerArray value from server`                        | SUB-10       | Implemented |
+| `[SUB-11] receives kFloatArray value from server`                          | SUB-11       | Implemented |
+| `[SUB-12] receives kStringArray value from server`                         | SUB-12       | Implemented |
 
 ## Coverage
 
