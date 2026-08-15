@@ -3,18 +3,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => ({
   root: __dirname,
   cacheDir: '../../node_modules/.vite/packages/client',
-  plugins: [
-    tsconfigPaths({
-      root: path.join(__dirname, '../..'),
-    }),
-  ],
   test: {
     watch: false,
     globals: true,
@@ -33,6 +27,7 @@ export default defineConfig(() => ({
     exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
   },
   resolve: {
+    tsconfigPaths: true,
     alias: {
       'isomorphic-ws': path.resolve(__dirname, 'src/__mocks__/isomorphic-ws.ts'),
     },

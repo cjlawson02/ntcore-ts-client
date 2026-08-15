@@ -8,7 +8,13 @@ export default [
   ...nx.configs['flat/javascript'],
   ...tseslint.configs.recommended,
   {
-    ignores: ['**/dist', '**/vite.config.*.timestamp*', '**/vitest.config.*.timestamp*', '**/test-output'],
+    ignores: [
+      '**/dist',
+      '**/vite.config.*.timestamp*',
+      '**/vitest.config.*.timestamp*',
+      '**/rollup.config-*.mjs',
+      '**/test-output',
+    ],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],

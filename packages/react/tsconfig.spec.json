@@ -7,6 +7,7 @@
   "include": [
     "vite.config.ts",
     "vite.config.mts",
+    "rollup.config.mts",
     "src/**/*.test.ts",
     "src/**/*.spec.ts",
     "src/**/*.test.tsx",

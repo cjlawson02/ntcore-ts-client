@@ -9,7 +9,7 @@
       "outputs": ["{projectRoot}/{options.outDir}", "{workspaceRoot}/dist/apps/example-react"],
       "defaultConfiguration": "production",
       "options": {
-        "config": "./vite.config.ts",
+        "config": "./vite.config.mts",
         "outDir": "../../dist/apps/example-react"
       },
       "configurations": {
@@ -24,7 +24,7 @@
     "serve": {
       "defaultConfiguration": "development",
       "options": {
-        "configFile": "apps/example-react/vite.config.ts"
+        "configFile": "apps/example-react/vite.config.mts"
       },
       "configurations": {
         "development": {},
@@ -34,7 +34,7 @@
     "test": {
       "outputs": ["{projectRoot}/{options.coverage.reportsDirectory}", "{workspaceRoot}/coverage/apps/example-react"],
       "options": {
-        "config": "./vite.config.ts",
+        "config": "./vite.config.mts",
         "coverage.reportsDirectory": "../../coverage/apps/example-react"
       }
     }

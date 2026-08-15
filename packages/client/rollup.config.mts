@@ -1,6 +1,10 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-const { readFileSync } = require('node:fs');
-const { withNx } = require('@nx/rollup/with-nx');
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+
+import { withNx } from '@nx/rollup/with-nx';
+import type { Plugin } from 'rollup';
+
+const require = createRequire(import.meta.url);
 
 const VIRTUAL_DESCRIPTOR_ID = '\0protobuf-descriptor-json';
 
@@ -8,7 +12,7 @@ const VIRTUAL_DESCRIPTOR_ID = '\0protobuf-descriptor-json';
  * Load protobuf descriptor.json via fs so Rollup bundles it (avoids parse issues
  * with @rollup/plugin-json on this large file from node_modules).
  */
-function protobufDescriptorJson() {
+function protobufDescriptorJson(): Plugin {
   return {
     name: 'protobuf-descriptor-json',
     resolveId(id) {
@@ -33,11 +37,11 @@ const options = {
   outputPath: '../../dist/packages/client',
   main: './src/index.ts',
   tsConfig: './tsconfig.lib.json',
-  format: ['esm', 'cjs'],
+  format: ['esm', 'cjs'] as ('esm' | 'cjs')[],
   generateExportsField: true,
   sourceMap: true,
 };
 
-module.exports = withNx(options, {
+export default withNx(options, {
   plugins: [protobufDescriptorJson()],
 });

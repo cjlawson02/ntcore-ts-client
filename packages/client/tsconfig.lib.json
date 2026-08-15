@@ -10,5 +10,5 @@
     "types": ["node"]
   },
   "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts", "src/**/*.bench.ts", "src/**/*.benchmark.ts", "src/__mocks__"],
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "rollup.config.mts"]
 }

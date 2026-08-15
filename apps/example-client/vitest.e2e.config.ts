@@ -1,5 +1,3 @@
-import path from 'path';
-
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -17,8 +15,6 @@ export default defineConfig({
     fileParallelism: false,
   },
   resolve: {
-    alias: {
-      '@ntcore-ts/client': path.resolve(__dirname, '../../packages/client/src/index.ts'),
-    },
+    tsconfigPaths: true,
   },
 });
