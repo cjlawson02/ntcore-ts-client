@@ -1,5 +1,6 @@
 import WSMock from 'vitest-websocket-mock';
 
+import { completeRttHandshake, disableSocketIdleTimeout } from '../../../tests/rtt-handshake';
 import { NetworkTablesPrefixTopic } from './prefix-topic';
 import { PubSubClient } from './pubsub';
 
@@ -17,9 +18,11 @@ describe('Prefix Topic', () => {
     client = PubSubClient.getInstance(serverUrl);
 
     await server.connected;
+    await completeRttHandshake(server, client.messenger.socket);
   });
 
   beforeEach(() => {
+    disableSocketIdleTimeout(client.messenger.socket);
     topic = new NetworkTablesPrefixTopic(client, 'test');
   });
 

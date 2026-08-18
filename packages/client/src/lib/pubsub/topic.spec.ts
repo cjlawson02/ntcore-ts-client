@@ -1,5 +1,6 @@
 import WSMock from 'vitest-websocket-mock';
 
+import { completeRttHandshake, disableSocketIdleTimeout } from '../../../tests/rtt-handshake';
 import { NetworkTablesTypeInfos } from '../types/types';
 
 import { PubSubClient } from './pubsub';
@@ -18,9 +19,13 @@ describe('Topic', () => {
     client = PubSubClient.getInstance(serverUrl);
 
     await server.connected;
+    await completeRttHandshake(server, client.messenger.socket);
+    disableSocketIdleTimeout(client.messenger.socket);
+    client.messenger.socket.stopAutoConnect();
   });
 
   beforeEach(() => {
+    disableSocketIdleTimeout(client.messenger.socket);
     topic = new NetworkTablesTopic<string>(client, 'test', NetworkTablesTypeInfos.kString, 'default');
   });
 
@@ -333,6 +338,8 @@ describe('Topic', () => {
       const isolatedServer = new WSMock(isolatedUrl);
       const isolatedClient = PubSubClient.getInstance(isolatedUrl);
       await isolatedServer.connected;
+      await completeRttHandshake(isolatedServer, isolatedClient.messenger.socket);
+      disableSocketIdleTimeout(isolatedClient.messenger.socket);
 
       const isolatedTopic = new NetworkTablesTopic<string>(
         isolatedClient,
@@ -345,10 +352,13 @@ describe('Topic', () => {
       try {
         const publishPromise = isolatedTopic.publish({}, 1);
         await Promise.resolve();
+        await Promise.resolve();
         vi.advanceTimersByTime(3000);
         await expect(publishPromise).rejects.toThrow('was not announced within 3 seconds');
       } finally {
         vi.useRealTimers();
+        isolatedClient.messenger.socket.stopAutoConnect();
+        isolatedClient.messenger.socket.close();
       }
     });
 
@@ -369,6 +379,7 @@ describe('Topic', () => {
         },
       };
       server.send(JSON.stringify([announceMessage]));
+      disableSocketIdleTimeout(client.messenger.socket);
 
       // Wait for publish to complete
       await publishPromise;
@@ -405,6 +416,7 @@ describe('Topic', () => {
           },
         };
         server.send(JSON.stringify([announceMessage]));
+        disableSocketIdleTimeout(client.messenger.socket);
       }, 100);
 
       // Call publish concurrently multiple times
@@ -428,6 +440,8 @@ describe('Topic', () => {
       const isolatedServer = new WSMock(isolatedUrl);
       const isolatedClient = PubSubClient.getInstance(isolatedUrl);
       await isolatedServer.connected;
+      await completeRttHandshake(isolatedServer, isolatedClient.messenger.socket);
+      disableSocketIdleTimeout(isolatedClient.messenger.socket);
 
       const isolatedTopic = new NetworkTablesTopic<string>(
         isolatedClient,
@@ -541,6 +555,7 @@ describe('Topic', () => {
       };
       const publishPromise = topic.publish({}, 5000);
       server.send(JSON.stringify([announceMessage]));
+      disableSocketIdleTimeout(client.messenger.socket);
       await publishPromise;
 
       // Test setProperties timeout cleanup
@@ -556,6 +571,7 @@ describe('Topic', () => {
         },
       };
       server.send(JSON.stringify([propertiesResponse]));
+      disableSocketIdleTimeout(client.messenger.socket);
 
       // Wait for setProperties to complete
       const result = await setPropertiesPromise;

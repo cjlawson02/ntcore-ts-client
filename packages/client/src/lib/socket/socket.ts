@@ -23,13 +23,18 @@ export class NetworkTablesSocket {
   private static readonly PROTOCOL_V4_0 = 'networktables.first.wpi.edu';
   private static readonly PROTOCOL_V4_1 = 'v4.1.networktables.first.wpi.edu';
   private static readonly RECONNECT_TIMEOUT = 1000;
-  private static readonly RTT_PERIOD_V4_0 = 1000;
+  /** Timestamp keepalive period when WebSocket PING cannot be sent (NT 4.0 and JS 4.1). */
+  private static readonly RTT_PERIOD_MS = 1000;
+  /** Disconnect if no server frames arrive. Spec: ~3s when using timestamp messages for aliveness. */
+  private static readonly IDLE_TIMEOUT_MS = 3000;
 
   private readonly connectionListeners = new Set<(_: boolean) => void>();
-  private lastHeartbeatDate = 0;
   private offset = 0;
   private bestRtt = -1;
+  /** True after the first valid RTT reply; required before control frames and strong value publishes. */
+  private clockSynced = false;
   private heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+  private idleTimer: ReturnType<typeof setTimeout> | undefined;
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   private connectionAttemptCount = 0;
   private lastConnectionLogTime = 0;
@@ -140,11 +145,8 @@ export class NetworkTablesSocket {
    * the socket to refresh itself.
    */
   private init() {
-    // Clear any existing heartbeat interval before creating new socket
-    if (this.heartbeatInterval != null) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = undefined;
-    }
+    this.clearHeartbeatInterval();
+    this.clearIdleTimer();
 
     if (this._websocket) {
       const ws = this._websocket;
@@ -166,36 +168,28 @@ export class NetworkTablesSocket {
           }
         }
 
-        // Send initial RTT ping for both 4.0 and 4.1 (per spec: timestamp sync immediately after connect).
+        // Spec: timestamp sync immediately after connect, before other control messages.
         this.heartbeat();
+        this.resetIdleTimer();
 
         // Periodic RTT pings for keepalive. Spec says 4.1 uses WebSocket PING, but Node/JS clients
-        // cannot send PING/PONG, so we use binary RTT for both 4.0 and 4.1.
+        // cannot send PING, so we use binary RTT for both 4.0 and 4.1.
         this.heartbeatInterval = setInterval(() => {
-          if (this.isConnected()) {
+          if (this.isSocketOpen()) {
             this.heartbeat();
           }
-        }, NetworkTablesSocket.RTT_PERIOD_V4_0);
-
-        socketLogger.info('Robot Connected!');
-        // Ensure protocol re-subscribe/re-publish happens before notifying connection listeners.
-        // Otherwise callers may race value sends ahead of publish frames on reconnect.
-        this.onSocketOpen();
-        this.sendQueuedMessages();
-        this.updateConnectionListeners();
+        }, NetworkTablesSocket.RTT_PERIOD_MS);
       };
 
       // Close handler
       this._websocket.onclose = (e: CloseEvent | WS_CloseEvent) => {
         if (this._websocket !== ws) return;
         // Notify client and cancel heartbeat
+        this.resetClockSync();
+        this.clearHeartbeatInterval();
+        this.clearIdleTimer();
         this.updateConnectionListeners();
         this.onSocketClose();
-
-        if (this.heartbeatInterval != null) {
-          clearInterval(this.heartbeatInterval);
-          this.heartbeatInterval = undefined;
-        }
 
         // Increment connection attempt counter
         this.connectionAttemptCount++;
@@ -256,10 +250,9 @@ export class NetworkTablesSocket {
   reinstantiate(serverUrl: string) {
     socketLogger.info('Socket reinstantiation', { oldUrl: this.serverUrl, newUrl: serverUrl });
     this.clearReconnectTimer();
-    if (this.heartbeatInterval != null) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = undefined;
-    }
+    this.clearHeartbeatInterval();
+    this.clearIdleTimer();
+    this.resetClockSync();
     const previous = this._websocket;
     previous.onopen = null;
     previous.onclose = null;
@@ -267,6 +260,7 @@ export class NetworkTablesSocket {
     previous.onerror = null;
     previous.close();
     this.serverUrl = serverUrl;
+    this.updateConnectionListeners();
     this._websocket = new WebSocket(this.serverUrl, [
       NetworkTablesSocket.PROTOCOL_V4_1,
       NetworkTablesSocket.PROTOCOL_V4_0,
@@ -275,19 +269,19 @@ export class NetworkTablesSocket {
   }
 
   /**
-   * Returns whether the socket is connected.
-   * @returns Whether the socket is connected.
+   * Returns whether the socket is open and the client clock is synchronized with the server.
+   * @returns Whether the robot connection is ready for control and value frames.
    */
   isConnected() {
-    return this._websocket.readyState === WebSocket.OPEN;
+    return this.isSocketOpen() && this.clockSynced;
   }
 
   /**
-   * Returns whether the socket is connecting.
-   * @returns Whether the socket is connecting.
+   * Returns whether the socket is connecting (including waiting for the first RTT).
+   * @returns Whether the robot connection is not yet ready.
    */
   isConnecting() {
-    return this._websocket.readyState === WebSocket.CONNECTING;
+    return this._websocket.readyState === WebSocket.CONNECTING || (this.isSocketOpen() && !this.clockSynced);
   }
 
   /**
@@ -414,10 +408,7 @@ export class NetworkTablesSocket {
    * @param event - The message event.
    */
   private onMessage(event: MessageEvent | WS_MessageEvent) {
-    if (this.connectionListeners.size > 0) {
-      const connected = this.isConnected();
-      this.connectionListeners.forEach((f) => f(connected));
-    }
+    this.resetIdleTimer();
 
     if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
       socketLogger.debug('Binary frame received', { size: event.data.byteLength });
@@ -477,7 +468,7 @@ export class NetworkTablesSocket {
         messageCount++;
         if (messageData.topicId === -1) {
           heartbeatCount++;
-          this.handleRTT(messageData.serverTime);
+          this.handleRTT(messageData.serverTime, messageData.value);
         } else {
           topicUpdateCount++;
           this.onTopicUpdate(messageData);
@@ -569,11 +560,16 @@ export class NetworkTablesSocket {
    * @returns The time the message was sent, or -1 if not connected.
    */
   sendValueToTopic(pubuid: number, value: NetworkTablesTypes, typeInfo: NetworkTablesTypeInfo) {
-    if (!this.isConnected()) {
+    if (!this.isSocketOpen()) {
       socketLogger.debug('sendValueToTopic skipped (not connected)', { pubuid, typeNum: typeInfo[0] });
       return -1;
     }
-    const time = Math.ceil(this.getServerTime());
+    // Spec: do not send strong (non-RTT) values until the client clock is synchronized.
+    if (pubuid !== -1 && !this.clockSynced) {
+      socketLogger.debug('sendValueToTopic skipped (awaiting clock sync)', { pubuid, typeNum: typeInfo[0] });
+      return -1;
+    }
+    const time = pubuid === -1 ? 0 : Math.ceil(this.getServerTime());
     const message = Util.createBinaryMessage(pubuid, time, value, typeInfo);
 
     const cleanMsg = msgPackSchema.parse(message);
@@ -588,36 +584,52 @@ export class NetworkTablesSocket {
   }
 
   /**
-   * Send a heartbeat message to the server.
+   * Send a timestamp ping to the server (topic id -1, timestamp 0, value = client microseconds).
    */
   private heartbeat() {
-    const time = Util.getMicros();
-    socketLogger.debug('Heartbeat sent', { time });
-    this.sendValueToTopic(-1, time, NetworkTablesTypeInfos.kDouble);
-    this.lastHeartbeatDate = time;
+    if (!this.isSocketOpen()) {
+      return;
+    }
+    const clientTime = Math.round(Util.getMicros());
+    socketLogger.debug('Heartbeat sent', { time: clientTime });
+    const message = Util.createBinaryMessage(-1, 0, clientTime, NetworkTablesTypeInfos.kInteger);
+    const cleanMsg = msgPackSchema.parse(message);
+    this._websocket.send(encode(cleanMsg));
   }
 
   /**
    * Handle a round trip time message from the server.
    *
-   * This is used to calculate the offset between the client and server time
-   * in order to estimate the current server time for binary messages.
-   * @param serverTime - The server time.
+   * RTT is `now - echoed client time` (the MessagePack value). Clock offset is updated only when
+   * this RTT is the best so far (Cristian's algorithm / NT spec).
+   * @param serverTime - Server timestamp from the reply.
+   * @param clientEcho - Client time echoed back from the ping.
    */
-  private handleRTT(serverTime: number) {
-    const rtt = this.calcTimeDelta(this.lastHeartbeatDate);
-    const wasUpdated = rtt < this.bestRtt || this.bestRtt === -1;
+  private handleRTT(serverTime: number, clientEcho: NetworkTablesTypes) {
+    if (typeof clientEcho !== 'number' || !Number.isFinite(clientEcho)) {
+      socketLogger.warn('Ignoring RTT reply with non-numeric client echo', { clientEcho });
+      return;
+    }
+    const now = Util.getMicros();
+    const rtt = now - clientEcho;
+    if (rtt < 0) {
+      socketLogger.debug('Ignoring RTT with negative delta', { rtt, clientEcho, now });
+      return;
+    }
+    const wasUpdated = this.bestRtt < 0 || rtt < this.bestRtt;
     if (wasUpdated) {
       this.bestRtt = rtt;
-      this.offset = Util.getMicros() - serverTime;
+      this.offset = now - serverTime;
     }
     socketLogger.debug('RTT calculated', {
       rtt,
       bestRtt: this.bestRtt,
       offset: this.offset,
       serverTime,
+      clientEcho,
       updated: wasUpdated,
     });
+    this.completeHandshakeIfNeeded();
   }
 
   /**
@@ -636,16 +648,55 @@ export class NetworkTablesSocket {
     return serverTime;
   }
 
-  /**
-   * Calculate the time delta between the current time and a given time.
-   * @param sentDate - The time to calculate the delta from.
-   * @returns The time delta.
-   */
-  private calcTimeDelta(sentDate: number) {
-    const currentTime = Util.getMicros();
-    const delta = currentTime - sentDate;
-    socketLogger.trace('Time delta calculated', { sentDate, currentTime, delta });
-    return delta;
+  private isSocketOpen() {
+    return this._websocket.readyState === WebSocket.OPEN;
+  }
+
+  private resetClockSync() {
+    this.clockSynced = false;
+    this.bestRtt = -1;
+    this.offset = 0;
+  }
+
+  private completeHandshakeIfNeeded() {
+    if (this.clockSynced || !this.isSocketOpen()) {
+      return;
+    }
+    this.clockSynced = true;
+    socketLogger.info('Robot Connected!');
+    // Re-subscribe/re-publish before notifying listeners so value sends cannot race ahead of publish frames.
+    this.onSocketOpen();
+    this.sendQueuedMessages();
+    this.updateConnectionListeners();
+  }
+
+  private resetIdleTimer() {
+    this.clearIdleTimer();
+    if (this.tearingDown || !this.isSocketOpen()) {
+      return;
+    }
+    this.idleTimer = setTimeout(() => {
+      this.idleTimer = undefined;
+      if (this.tearingDown || !this.isSocketOpen()) {
+        return;
+      }
+      socketLogger.warn('No data for idle timeout, closing', { timeoutMs: NetworkTablesSocket.IDLE_TIMEOUT_MS });
+      this._websocket.close();
+    }, NetworkTablesSocket.IDLE_TIMEOUT_MS);
+  }
+
+  private clearIdleTimer() {
+    if (this.idleTimer != null) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = undefined;
+    }
+  }
+
+  private clearHeartbeatInterval() {
+    if (this.heartbeatInterval != null) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = undefined;
+    }
   }
 
   /**
@@ -655,10 +706,9 @@ export class NetworkTablesSocket {
     this.tearingDown = true;
     this.stopAutoConnect();
     this.rejectConnectionWaiters();
-    if (this.heartbeatInterval != null) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = undefined;
-    }
+    this.clearHeartbeatInterval();
+    this.clearIdleTimer();
+    this.resetClockSync();
     this._websocket.close();
   }
 

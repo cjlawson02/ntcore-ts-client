@@ -1,6 +1,7 @@
 import WSMock from 'vitest-websocket-mock';
 import { z } from 'zod';
 
+import { completeRttHandshake, disableSocketIdleTimeout } from '../../../tests/rtt-handshake';
 import { NetworkTablesJsonTopic } from './json-topic';
 import { PubSubClient } from './pubsub';
 
@@ -16,9 +17,11 @@ describe('NetworkTablesJsonTopic', () => {
     server = new WSMock(serverUrl);
     client = PubSubClient.getInstance(serverUrl);
     await server.connected;
+    await completeRttHandshake(server, client.messenger.socket);
   });
 
   beforeEach(() => {
+    disableSocketIdleTimeout(client.messenger.socket);
     topic = new NetworkTablesJsonTopic(client, '/json/test', { foo: 'bar', n: 1 });
   });
 

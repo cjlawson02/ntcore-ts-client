@@ -1,5 +1,6 @@
 import WSMock from 'vitest-websocket-mock';
 
+import { completeRttHandshake, disableSocketIdleTimeout } from '../../../tests/rtt-handshake';
 import { PubSubClient } from './pubsub';
 import { NetworkTablesStructTopic } from './struct-topic';
 
@@ -12,9 +13,11 @@ describe('NetworkTablesStructTopic', () => {
     const server = new WSMock(serverUrl);
     client = PubSubClient.getInstance(serverUrl);
     await server.connected;
+    await completeRttHandshake(server, client.messenger.socket);
   });
 
   beforeEach(() => {
+    disableSocketIdleTimeout(client.messenger.socket);
     client['topics'].clear();
     // Do not clear prefixTopics: StructSchemaManager's prefix (/.schema/struct:) is needed for deferred-schema test
     client['knownTopicParams'].clear();

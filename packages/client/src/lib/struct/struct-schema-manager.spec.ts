@@ -1,5 +1,6 @@
 import WSMock from 'vitest-websocket-mock';
 
+import { completeRttHandshake, disableSocketIdleTimeout } from '../../../tests/rtt-handshake';
 import { PubSubClient } from '../pubsub/pubsub';
 import { StructSchemaManager } from './struct-schema-manager';
 
@@ -12,9 +13,11 @@ describe('StructSchemaManager', () => {
     server = new WSMock(serverUrl);
     client = PubSubClient.getInstance(serverUrl);
     await server.connected;
+    await completeRttHandshake(server, client.messenger.socket);
   });
 
   beforeEach(() => {
+    disableSocketIdleTimeout(client.messenger.socket);
     client['topics'].clear();
     client['prefixTopics'].clear();
     client['knownTopicParams'].clear();

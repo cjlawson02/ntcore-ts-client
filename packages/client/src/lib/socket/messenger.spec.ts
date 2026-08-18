@@ -1,5 +1,6 @@
 import WSMock from 'vitest-websocket-mock';
 
+import { completeRttHandshake, disableSocketIdleTimeout } from '../../../tests/rtt-handshake';
 import { NetworkTablesTypeInfos } from '../types/types';
 
 import { Messenger } from './messenger';
@@ -48,6 +49,8 @@ describe('Messenger', () => {
     messenger = Messenger.getInstance(serverUrl, onTopicUpdate, onAnnounce, onUnannounce, onTopicProperties);
 
     await server.connected;
+    await completeRttHandshake(server, messenger.socket);
+    disableSocketIdleTimeout(messenger.socket);
   }, 30000);
 
   afterEach(async () => {

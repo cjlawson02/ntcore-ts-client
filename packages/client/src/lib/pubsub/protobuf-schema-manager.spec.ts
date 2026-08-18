@@ -9,6 +9,7 @@ import { NetworkTablesTypeInfos } from '../types/types';
 import { PubSubClient } from './pubsub';
 import { ProtobufSchemaManager } from './protobuf-schema-manager';
 import { autoAnnounceOnPublish } from '../../../tests/auto-announce';
+import { completeRttHandshake, disableSocketIdleTimeout } from '../../../tests/rtt-handshake';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SIMPLE_PROTO_PATH = path.join(__dirname, '__fixtures__', 'simple.proto');
@@ -22,10 +23,12 @@ describe('ProtobufSchemaManager', () => {
     server = new WSMock(serverUrl);
     client = PubSubClient.getInstance(serverUrl);
     await server.connected;
+    await completeRttHandshake(server, client.messenger.socket);
     autoAnnounceOnPublish(client, server);
   });
 
   beforeEach(() => {
+    disableSocketIdleTimeout(client.messenger.socket);
     client['topics'].clear();
     client['prefixTopics'].clear();
     client['knownTopicParams'].clear();

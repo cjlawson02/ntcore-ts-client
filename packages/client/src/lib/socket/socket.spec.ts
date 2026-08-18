@@ -1,7 +1,8 @@
-import { encode } from '@msgpack/msgpack';
+import { decode, encode } from '@msgpack/msgpack';
 import WebSocket from 'isomorphic-ws';
 import WSMock from 'vitest-websocket-mock';
 
+import { completeRttHandshake } from '../../../tests/rtt-handshake';
 import { NetworkTablesTypeInfos } from '../types/types';
 import { LogLevel, setLogLevel } from '../util/logger';
 import { Util } from '../util/util';
@@ -56,6 +57,7 @@ describe('NetworkTablesSocket', () => {
     );
 
     await server.connected;
+    await completeRttHandshake(server, socket);
   });
 
   afterEach(async () => {
@@ -83,7 +85,7 @@ describe('NetworkTablesSocket', () => {
   });
 
   describe('isConnected', () => {
-    it('should return true if the WebSocket is open', () => {
+    it('should return true if the WebSocket is open and the clock is synced', () => {
       expect(socket.isConnected()).toBe(true);
     });
 
@@ -94,6 +96,12 @@ describe('NetworkTablesSocket', () => {
       } as WebSocket;
 
       expect(socket.isConnected()).toBe(false);
+    });
+
+    it('should return false while open but waiting for the first RTT', () => {
+      socket['clockSynced'] = false;
+      expect(socket.isConnected()).toBe(false);
+      expect(socket.isConnecting()).toBe(true);
     });
   });
 
@@ -114,6 +122,23 @@ describe('NetworkTablesSocket', () => {
       const queued = socket['messageQueue'][socket['messageQueue'].length - 1];
       expect(typeof queued).toBe('string');
       expect(queued).toBe(JSON.stringify([msg]));
+    });
+
+    it('should queue control frames until the first RTT completes', () => {
+      const send = vi.fn();
+      socket['_websocket'] = {
+        ...socket.websocket,
+        readyState: WebSocket.OPEN,
+        send,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+      socket['clockSynced'] = false;
+
+      const msg: UnsubscribeMessage = { method: 'unsubscribe', params: { subuid: 1 } };
+      socket.sendTextFrame(msg);
+
+      expect(send).not.toHaveBeenCalled();
+      expect(socket['messageQueue'][socket['messageQueue'].length - 1]).toBe(JSON.stringify([msg]));
     });
   });
 
@@ -194,9 +219,6 @@ describe('NetworkTablesSocket', () => {
 
   describe('sendQueuedMessages', () => {
     it('should send all queued messages through the WebSocket', async () => {
-      // Drain the initial RTT ping sent on connect (both 4.0 and 4.1)
-      await server.nextMessage;
-
       // Queue some messages
       const messages = ['Hello, world!', 'Foo', 'Bar'];
       socket['messageQueue'].push(...messages);
@@ -261,8 +283,11 @@ describe('NetworkTablesSocket', () => {
         send,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
+      socket['clockSynced'] = true;
+      socket['bestRtt'] = 0;
+      socket['offset'] = 0;
 
-      const getMicrosSpy = vi.spyOn(Util, 'getMicros').mockReturnValueOnce(1000);
+      const getMicrosSpy = vi.spyOn(Util, 'getMicros').mockReturnValue(1000);
 
       const result = socket.sendValueToTopic(123, 456, NetworkTablesTypeInfos.kInteger);
       expect(result).not.toBe(-1);
@@ -272,7 +297,7 @@ describe('NetworkTablesSocket', () => {
   });
 
   describe('connection open ordering', () => {
-    it('should run onSocketOpen before notifying connection listeners', async () => {
+    it('should run onSocketOpen before notifying connection listeners, only after RTT', async () => {
       const order: string[] = [];
       const orderingServerUrl = 'ws://localhost:5810/nt/ordering-test';
       const orderingServer = new WSMock(orderingServerUrl);
@@ -289,18 +314,18 @@ describe('NetworkTablesSocket', () => {
       );
 
       await orderingServer.connected;
-
-      // The mock server connection will have already triggered one open cycle.
-      // Clear any prior calls so this test only asserts ordering for the manual (re)open below.
-      order.length = 0;
+      expect(order).toEqual([]);
+      expect(orderingSocket.isConnected()).toBe(false);
+      expect(orderingSocket.isConnecting()).toBe(true);
 
       orderingSocket.addConnectionListener(() => order.push('listener'));
-
-      // Simulate a (re)connect open event. We call the handler directly so the test is deterministic.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      orderingSocket['_websocket'].onopen?.(new Event('open') as any);
+      await completeRttHandshake(orderingServer, orderingSocket);
 
       expect(order).toEqual(['onSocketOpen', 'listener']);
+      expect(orderingSocket.isConnected()).toBe(true);
+
+      orderingSocket.stopAutoConnect();
+      orderingSocket.close();
     });
   });
 
@@ -310,13 +335,20 @@ describe('NetworkTablesSocket', () => {
       const send = vi.fn();
       socket['_websocket'] = {
         ...socket.websocket,
+        readyState: WebSocket.OPEN,
         send,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
-      // Send a heartbeat message
+      vi.spyOn(Util, 'getMicros').mockReturnValue(12345.6);
       socket['heartbeat']();
 
       expect(send).toHaveBeenCalled();
+      const sent = send.mock.calls[0][0] as Uint8Array;
+      const decoded = decode(sent) as unknown[];
+      expect(decoded[0]).toBe(-1);
+      expect(decoded[1]).toBe(0);
+      expect(decoded[2]).toBe(2);
+      expect(decoded[3]).toBe(12346);
     });
 
     it('should start a periodic heartbeat when connected on NT 4.0', () => {
@@ -362,30 +394,27 @@ describe('NetworkTablesSocket', () => {
 
   describe('RTT handling', () => {
     it('should process heartbeat messages (topicId=-1) without calling onTopicUpdate', () => {
-      socket['lastHeartbeatDate'] = 100;
       socket['bestRtt'] = -1;
       socket['offset'] = 0;
 
-      const microsSpy = vi.spyOn(Util, 'getMicros');
-      microsSpy.mockReturnValueOnce(150).mockReturnValueOnce(200);
+      vi.spyOn(Util, 'getMicros').mockReturnValue(150);
 
-      const heartbeatMessage: BinaryMessage = [-1, 123, 2, 456];
+      const heartbeatMessage: BinaryMessage = [-1, 123, 2, 100];
       const encoded = encode(heartbeatMessage);
       socket['onMessage']({ data: encoded } as unknown as MessageEvent);
 
       expect(onTopicUpdate).not.toHaveBeenCalled();
       expect(socket['bestRtt']).toBe(50);
-      expect(socket['offset']).toBe(77);
+      expect(socket['offset']).toBe(27);
     });
 
     it('should not update offset/bestRtt when RTT is worse than bestRtt', () => {
-      socket['lastHeartbeatDate'] = 100;
       socket['bestRtt'] = 10;
       socket['offset'] = 999;
 
-      vi.spyOn(Util, 'getMicros').mockReturnValueOnce(150);
+      vi.spyOn(Util, 'getMicros').mockReturnValue(150);
 
-      const heartbeatMessage: BinaryMessage = [-1, 123, 2, 456];
+      const heartbeatMessage: BinaryMessage = [-1, 123, 2, 100];
       const encoded = encode(heartbeatMessage);
       socket['onMessage']({ data: encoded } as unknown as MessageEvent);
 
@@ -396,6 +425,47 @@ describe('NetworkTablesSocket', () => {
     it('getBestRttMs returns -1 when not connected or RTT not yet measured', () => {
       socket['bestRtt'] = -1;
       expect(socket.getBestRttMs()).toBe(-1);
+    });
+
+    it('should skip strong value publishes until the clock is synced', () => {
+      socket['clockSynced'] = false;
+      const send = vi.fn();
+      socket['_websocket'] = {
+        ...socket.websocket,
+        readyState: WebSocket.OPEN,
+        send,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+
+      const result = socket.sendValueToTopic(123, 456, NetworkTablesTypeInfos.kInteger);
+      expect(result).toBe(-1);
+      expect(send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('idle timeout', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('closes the websocket if no data arrives within the idle timeout', () => {
+      socket.stopAutoConnect();
+      vi.useFakeTimers();
+      const closeSpy = vi.spyOn(socket.websocket, 'close');
+      socket['resetIdleTimer']();
+      vi.advanceTimersByTime(NetworkTablesSocket['IDLE_TIMEOUT_MS']);
+      expect(closeSpy).toHaveBeenCalled();
+    });
+
+    it('does not close if a frame arrives before the idle timeout', () => {
+      socket.stopAutoConnect();
+      vi.useFakeTimers();
+      const closeSpy = vi.spyOn(socket.websocket, 'close');
+      socket['resetIdleTimer']();
+      vi.advanceTimersByTime(NetworkTablesSocket['IDLE_TIMEOUT_MS'] - 1);
+      socket['resetIdleTimer']();
+      vi.advanceTimersByTime(NetworkTablesSocket['IDLE_TIMEOUT_MS'] - 1);
+      expect(closeSpy).not.toHaveBeenCalled();
     });
   });
 
