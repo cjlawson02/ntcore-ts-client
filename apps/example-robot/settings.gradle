@@ -2,28 +2,33 @@ import org.gradle.internal.os.OperatingSystem
 
 pluginManagement {
     repositories {
-        mavenLocal()
-        gradlePluginPortal()
-        String frcYear = '2026'
-        File frcHome
+        String wpilibYear = '2027_alpha5'
+        File wpilibHome
         if (OperatingSystem.current().isWindows()) {
             String publicFolder = System.getenv('PUBLIC')
             if (publicFolder == null) {
                 publicFolder = "C:\\Users\\Public"
             }
             def homeRoot = new File(publicFolder, "wpilib")
-            frcHome = new File(homeRoot, frcYear)
+            wpilibHome = new File(homeRoot, wpilibYear)
         } else {
             def userFolder = System.getProperty("user.home")
             def homeRoot = new File(userFolder, "wpilib")
-            frcHome = new File(homeRoot, frcYear)
+            wpilibHome = new File(homeRoot, wpilibYear)
         }
-        def frcHomeMaven = new File(frcHome, 'maven')
+        def wpilibHomeMaven = new File(wpilibHome, 'maven')
         maven {
-            name = 'frcHome'
-            url = frcHomeMaven
+            name = 'wpilibHome'
+            url = wpilibHomeMaven
         }
+        mavenLocal()
+        gradlePluginPortal()
     }
+}
+
+// Not in the WPILib VS Code clone. Auto-provisions JDK 25 for the Java toolchain.
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 
 Properties props = System.getProperties();

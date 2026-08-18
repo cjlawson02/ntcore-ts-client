@@ -6,8 +6,10 @@ const DEFAULT_HELP_CONTENT = (
     <li>Connect to the robot&apos;s network or FMS.</li>
     <li>
       If the dashboard doesn&apos;t automatically connect, choose &quot;Team number&quot; and enter your team (e.g.{' '}
-      <code>973</code>), or choose &quot;Address&quot; to enter a hostname (e.g. <code>localhost</code> or{' '}
-      <code>roborio-973-frc.local</code>) and optionally the port.
+      <code>973</code>), picking SystemCore (<code>10.TE.AM.2</code>) or RoboRIO (
+      <code>roborio-&lt;team&gt;-frc.local</code>
+      ). Or choose &quot;Address&quot; for a hostname (e.g. <code>localhost</code> or <code>robot.local</code>) and
+      optionally the port.
     </li>
     <li>Click Connect.</li>
   </ol>

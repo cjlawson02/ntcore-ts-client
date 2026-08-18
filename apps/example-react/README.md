@@ -35,4 +35,4 @@ A minimal React dashboard that uses [@ntcore-ts/react](../../packages/react) to 
 - `VITE_NT_URI` – NetworkTables server host (default: `localhost`).
 - `VITE_NT_PORT` – NetworkTables server port (default: `5810`).
 
-Example for a real robot: `VITE_NT_URI=roborio-973-frc.local nx run example-react:serve`.
+Example for a real robot: `VITE_NT_URI=10.9.73.2 nx run example-react:serve` (SystemCore) or `VITE_NT_URI=roborio-973-frc.local nx run example-react:serve` (RoboRIO).

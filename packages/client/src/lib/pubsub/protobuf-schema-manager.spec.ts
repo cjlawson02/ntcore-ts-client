@@ -8,6 +8,7 @@ import { NetworkTablesTypeInfos } from '../types/types';
 
 import { PubSubClient } from './pubsub';
 import { ProtobufSchemaManager } from './protobuf-schema-manager';
+import { autoAnnounceOnPublish } from '../../../tests/auto-announce';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SIMPLE_PROTO_PATH = path.join(__dirname, '__fixtures__', 'simple.proto');
@@ -21,6 +22,7 @@ describe('ProtobufSchemaManager', () => {
     server = new WSMock(serverUrl);
     client = PubSubClient.getInstance(serverUrl);
     await server.connected;
+    autoAnnounceOnPublish(client, server);
   });
 
   beforeEach(() => {

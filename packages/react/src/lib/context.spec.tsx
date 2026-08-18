@@ -25,12 +25,12 @@ const mockNt = {
   release: vi.fn(),
 };
 
-const mockGetInstanceByTeam = vi.fn((_team: number, _port?: number) => mockNt);
+const mockGetInstanceByTeam = vi.fn((_team: number, _port?: number, _platform?: string) => mockNt);
 const mockGetInstanceByURI = vi.fn((_uri: string, _port?: number) => mockNt);
 
 vi.mock('@ntcore-ts/client', () => ({
   NetworkTables: {
-    getInstanceByTeam: (team: number, port?: number) => mockGetInstanceByTeam(team, port),
+    getInstanceByTeam: (...args: [number, number?, string?]) => mockGetInstanceByTeam(...args),
     getInstanceByURI: (uri: string, port?: number) => mockGetInstanceByURI(uri, port),
   },
   NetworkTablesTypeInfos: {},
@@ -52,6 +52,17 @@ describe('NtcoreProvider and useNtcore', () => {
     const { result } = renderHook(() => useNtcore(), { wrapper });
     expect(result.current).toBe(mockNt);
     expect(mockGetInstanceByTeam).toHaveBeenCalledWith(973, 5810);
+  });
+
+  it('useNtcore returns instance when wrapped with NtcoreProvider (team, systemcore)', () => {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <NtcoreProvider team={973} platform="systemcore">
+        {children}
+      </NtcoreProvider>
+    );
+    const { result } = renderHook(() => useNtcore(), { wrapper });
+    expect(result.current).toBe(mockNt);
+    expect(mockGetInstanceByTeam).toHaveBeenCalledWith(973, 5810, 'systemcore');
   });
 
   it('useNtcore returns instance when wrapped with NtcoreProvider (uri)', () => {

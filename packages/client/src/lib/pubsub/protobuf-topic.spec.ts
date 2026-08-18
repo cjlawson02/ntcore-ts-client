@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { AnnounceMessage } from '../types/types';
 import { PubSubClient } from './pubsub';
 import { NetworkTablesProtobufTopic } from './protobuf-topic';
+import { autoAnnounceOnPublish } from '../../../tests/auto-announce';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SIMPLE_PROTO_PATH = path.join(__dirname, '__fixtures__', 'simple.proto');
@@ -44,6 +45,7 @@ describe('NetworkTablesProtobufTopic', () => {
     server = new WSMock(serverUrl);
     client = PubSubClient.getInstance(serverUrl);
     await server.connected;
+    autoAnnounceOnPublish(client, server);
   });
 
   beforeEach(() => {

@@ -1,9 +1,15 @@
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
+
 package frc.robot;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.networktables.*;
-import edu.wpi.first.wpilibj.TimedRobot;
+import org.wpilib.framework.TimedRobot;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.networktables.*;
+import org.wpilib.smartdashboard.SendableChooser;
+import org.wpilib.smartdashboard.SmartDashboard;
 
 /**
  * The methods in this class are called automatically corresponding to each mode, as described in
@@ -13,35 +19,37 @@ import edu.wpi.first.wpilibj.TimedRobot;
 public class Robot extends TimedRobot {
   private static final String kDefaultAuto = "Default";
   private static final String kCustomAuto = "My Auto";
-  private String m_autoSelected;
+  private String autoSelected;
+  private final SendableChooser<String> chooser = new SendableChooser<>();
   private static final NetworkTableInstance nt = NetworkTableInstance.getDefault();
 
-  private DoublePublisher m_xPub;
-  private DoublePublisher m_yPub;
-  private DoublePublisher m_gyroPub;
-  private StringSubscriber m_autoSub;
-  private ProtobufPublisher<Pose2d> m_posePub;
-  private StructPublisher<Pose2d> m_poseStructPub;
+  private DoublePublisher xPub;
+  private DoublePublisher yPub;
+  private DoublePublisher gyroPub;
+  /** Retained so `/MyTable/AutoMode` stays advertised for example-react / e2e. */
+  private StringSubscriber autoSub;
+  private ProtobufPublisher<Pose2d> posePub;
+  private StructPublisher<Pose2d> poseStructPub;
   /** Subscribes to client-published struct, echoes to PoseStructEcho for E2E verification. */
-  private StructSubscriber<Pose2d> m_poseStructFromClientSub;
-  private StructPublisher<Pose2d> m_poseStructEchoPub;
+  private StructSubscriber<Pose2d> poseStructFromClientSub;
+  private StructPublisher<Pose2d> poseStructEchoPub;
 
   // --- Scalar primitives (E2E: topic-subscription.md SUB-5..SUB-7) ---
-  private BooleanPublisher m_scalarBoolPub;
-  private IntegerPublisher m_scalarIntPub;
-  private FloatPublisher m_scalarFloatPub;
+  private BooleanPublisher scalarBoolPub;
+  private IntegerPublisher scalarIntPub;
+  private FloatPublisher scalarFloatPub;
 
   // --- Scalar arrays (E2E: topic-subscription.md SUB-8..SUB-12) ---
-  private BooleanArrayPublisher m_scalarBoolArrayPub;
-  private DoubleArrayPublisher m_scalarDoubleArrayPub;
-  private IntegerArrayPublisher m_scalarIntArrayPub;
-  private FloatArrayPublisher m_scalarFloatArrayPub;
-  private StringArrayPublisher m_scalarStringArrayPub;
+  private BooleanArrayPublisher scalarBoolArrayPub;
+  private DoubleArrayPublisher scalarDoubleArrayPub;
+  private IntegerArrayPublisher scalarIntArrayPub;
+  private FloatArrayPublisher scalarFloatArrayPub;
+  private StringArrayPublisher scalarStringArrayPub;
 
   /** Custom (non-built-in) struct publisher used by the struct-schema-fetch E2E spec. */
-  private StructPublisher<Waypoint> m_waypointPub;
+  private StructPublisher<Waypoint> waypointPub;
 
-  private double m_demoTime = 0;
+  private double demoTime = 0;
   private static final double kDemoFigure8ScaleX = 1.8;
   private static final double kDemoFigure8ScaleY = 1.2;
   /** Y offset so path sits higher on pose grid (+Y = up on grid). */
@@ -53,58 +61,62 @@ public class Robot extends TimedRobot {
    * initialization code.
    */
   public Robot() {
-    // AutoMode string topic
-    m_autoSub = nt.getStringTopic("/MyTable/AutoMode").subscribe(kDefaultAuto);
+    chooser.setDefaultOption("Default Auto", kDefaultAuto);
+    chooser.addOption("My Auto", kCustomAuto);
+    SmartDashboard.putData("Auto choices", chooser);
+
+    // AutoMode string topic (example-react / e2e)
+    autoSub = nt.getStringTopic("/MyTable/AutoMode").subscribe(kDefaultAuto);
 
     // Accelerometer values
-    m_xPub = nt.getDoubleTopic("/MyTable/Accelerometer/X").publish();
-    m_yPub = nt.getDoubleTopic("/MyTable/Accelerometer/Y").publish();
+    xPub = nt.getDoubleTopic("/MyTable/Accelerometer/X").publish();
+    yPub = nt.getDoubleTopic("/MyTable/Accelerometer/Y").publish();
 
-    m_posePub = nt.getProtobufTopic("/MyTable/Pose", Pose2d.proto).publish();
-    m_posePub.set(new Pose2d(0, 0, new Rotation2d(0)));
+    posePub = nt.getProtobufTopic("/MyTable/Pose", Pose2d.proto).publish();
+    posePub.set(new Pose2d(0, 0, new Rotation2d(0)));
 
-    m_poseStructPub = nt.getStructTopic("/MyTable/PoseStruct", Pose2d.struct).publish();
-    m_poseStructPub.set(new Pose2d(0, 0, new Rotation2d(0)));
+    poseStructPub = nt.getStructTopic("/MyTable/PoseStruct", Pose2d.struct).publish();
+    poseStructPub.set(new Pose2d(0, 0, new Rotation2d(0)));
 
     // Subscribe to client-published struct topic and echo to PoseStructEcho for E2E verification
-    m_poseStructFromClientSub =
+    poseStructFromClientSub =
         nt.getStructTopic("/MyTable/PoseStructFromClient", Pose2d.struct)
             .subscribe(new Pose2d(0, 0, new Rotation2d(0)));
-    m_poseStructEchoPub = nt.getStructTopic("/MyTable/PoseStructEcho", Pose2d.struct).publish();
+    poseStructEchoPub = nt.getStructTopic("/MyTable/PoseStructEcho", Pose2d.struct).publish();
 
-    m_gyroPub = nt.getDoubleTopic("/MyTable/Gyro").publish();
+    gyroPub = nt.getDoubleTopic("/MyTable/Gyro").publish();
 
     // Scalar primitives — each exercised by one E2E test (topic-subscription.md SUB-5..SUB-12)
     // to prove the wire/msgpack path for its NT type number works end-to-end (unit tests only
     // cover zod validation of the value).
-    m_scalarBoolPub = nt.getBooleanTopic("/MyTable/Scalars/Bool").publish();
-    m_scalarBoolPub.set(true);
-    m_scalarIntPub = nt.getIntegerTopic("/MyTable/Scalars/Int").publish();
-    m_scalarIntPub.set(42L);
-    m_scalarFloatPub = nt.getFloatTopic("/MyTable/Scalars/Float").publish();
-    m_scalarFloatPub.set(1.5f);
+    scalarBoolPub = nt.getBooleanTopic("/MyTable/Scalars/Bool").publish();
+    scalarBoolPub.set(true);
+    scalarIntPub = nt.getIntegerTopic("/MyTable/Scalars/Int").publish();
+    scalarIntPub.set(42L);
+    scalarFloatPub = nt.getFloatTopic("/MyTable/Scalars/Float").publish();
+    scalarFloatPub.set(1.5f);
 
     // Scalar arrays
-    m_scalarBoolArrayPub = nt.getBooleanArrayTopic("/MyTable/Scalars/BoolArray").publish();
-    m_scalarBoolArrayPub.set(new boolean[] {true, false, true});
-    m_scalarDoubleArrayPub = nt.getDoubleArrayTopic("/MyTable/Scalars/DoubleArray").publish();
-    m_scalarDoubleArrayPub.set(new double[] {1.1, 2.2, 3.3});
-    m_scalarIntArrayPub = nt.getIntegerArrayTopic("/MyTable/Scalars/IntArray").publish();
-    m_scalarIntArrayPub.set(new long[] {10L, 20L, 30L});
-    m_scalarFloatArrayPub = nt.getFloatArrayTopic("/MyTable/Scalars/FloatArray").publish();
-    m_scalarFloatArrayPub.set(new float[] {0.5f, 1.5f, 2.5f});
-    m_scalarStringArrayPub = nt.getStringArrayTopic("/MyTable/Scalars/StringArray").publish();
-    m_scalarStringArrayPub.set(new String[] {"alpha", "beta", "gamma"});
+    scalarBoolArrayPub = nt.getBooleanArrayTopic("/MyTable/Scalars/BoolArray").publish();
+    scalarBoolArrayPub.set(new boolean[] {true, false, true});
+    scalarDoubleArrayPub = nt.getDoubleArrayTopic("/MyTable/Scalars/DoubleArray").publish();
+    scalarDoubleArrayPub.set(new double[] {1.1, 2.2, 3.3});
+    scalarIntArrayPub = nt.getIntegerArrayTopic("/MyTable/Scalars/IntArray").publish();
+    scalarIntArrayPub.set(new long[] {10L, 20L, 30L});
+    scalarFloatArrayPub = nt.getFloatArrayTopic("/MyTable/Scalars/FloatArray").publish();
+    scalarFloatArrayPub.set(new float[] {0.5f, 1.5f, 2.5f});
+    scalarStringArrayPub = nt.getStringArrayTopic("/MyTable/Scalars/StringArray").publish();
+    scalarStringArrayPub.set(new String[] {"alpha", "beta", "gamma"});
 
     // Custom struct type (not in the ntcore-ts built-in schema table) — forces the client to
     // fetch the schema from /.schema/struct:Waypoint at runtime (E2E: custom-struct-schema.md).
-    m_waypointPub = nt.getStructTopic("/MyTable/Waypoint", Waypoint.struct).publish();
-    m_waypointPub.set(new Waypoint(1.25, -2.5, Math.PI / 3, 7));
+    waypointPub = nt.getStructTopic("/MyTable/Waypoint", Waypoint.struct).publish();
+    waypointPub.set(new Waypoint(1.25, -2.5, Math.PI / 3, 7));
   }
 
   /**
    * This function is called every 20 ms, no matter the mode. Use this for items like diagnostics
-   * that you want ran during disabled, autonomous, teleoperated and test.
+   * that you want ran during disabled, autonomous, teleoperated and utility.
    *
    * <p>This runs after the mode specific periodic functions, but before LiveWindow and
    * SmartDashboard integrated updating.
@@ -112,8 +124,8 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     // Echo client-published struct values to PoseStructEcho for E2E verification
-    for (Pose2d received : m_poseStructFromClientSub.readQueueValues()) {
-      m_poseStructEchoPub.set(received);
+    for (Pose2d received : poseStructFromClientSub.readQueueValues()) {
+      poseStructEchoPub.set(received);
     }
   }
 
@@ -129,14 +141,15 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousInit() {
-    m_autoSelected = m_autoSub.get();
-    System.out.println("Auto selected: " + m_autoSub.get());
+    autoSelected = chooser.getSelected();
+    // autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
+    System.out.println("Auto selected: " + autoSelected);
   }
 
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    switch (m_autoSelected) {
+    switch (autoSelected) {
       case kCustomAuto:
         // Put custom auto code here
         break;
@@ -149,40 +162,37 @@ public class Robot extends TimedRobot {
 
   /** This function is called once when teleop is enabled. */
   @Override
-  public void teleopInit() {
-  }
+  public void teleopInit() {}
 
   /** This function is called periodically during operator control. */
   @Override
-  public void teleopPeriodic() {
-  }
+  public void teleopPeriodic() {}
 
   /** This function is called once when the robot is disabled. */
   @Override
   public void disabledInit() {
-    m_gyroPub.set(0);
-    m_xPub.set(0);
-    m_yPub.set(0);
-    m_posePub.set(new Pose2d(0, 0, new Rotation2d(0)));
-    m_poseStructPub.set(new Pose2d(0, 0, new Rotation2d(0)));
+    gyroPub.set(0);
+    xPub.set(0);
+    yPub.set(0);
+    posePub.set(new Pose2d(0, 0, new Rotation2d(0)));
+    poseStructPub.set(new Pose2d(0, 0, new Rotation2d(0)));
   }
 
   /** This function is called periodically when disabled. */
   @Override
-  public void disabledPeriodic() {
+  public void disabledPeriodic() {}
+
+  /** This function is called once when utility mode is enabled. */
+  @Override
+  public void utilityInit() {
+    demoTime = 0;
   }
 
-  /** This function is called once when test mode is enabled. */
+  /** This function is called periodically during utility mode. */
   @Override
-  public void testInit() {
-    m_demoTime = 0;
-  }
-
-  /** This function is called periodically during test mode. */
-  @Override
-  public void testPeriodic() {
-    m_demoTime += getPeriod();
-    double t = m_demoTime;
+  public void utilityPeriodic() {
+    demoTime += getPeriod();
+    double t = demoTime;
     double omega = 2 * Math.PI / kDemoFigure8PeriodSec;
 
     // Pose: figure-8 (Lissajous) with Y offset so path sits higher on pose grid
@@ -195,28 +205,26 @@ public class Robot extends TimedRobot {
 
     double thetaRad = Math.atan2(vy, vx);
     Pose2d pose = new Pose2d(x, y, new Rotation2d(thetaRad));
-    m_posePub.set(pose);
-    m_poseStructPub.set(pose);
+    posePub.set(pose);
+    poseStructPub.set(pose);
 
     // Gyro: match heading in degrees (CCW positive)
-    m_gyroPub.set(Math.toDegrees(thetaRad));
+    gyroPub.set(Math.toDegrees(thetaRad));
 
     // Accelerometer values (X, Y in robot frame)
     double cosT = Math.cos(thetaRad);
     double sinT = Math.sin(thetaRad);
     double axRobot = (axWorld * cosT + ayWorld * sinT) / 9.81;
     double ayRobot = (-axWorld * sinT + ayWorld * cosT) / 9.81;
-    m_xPub.set(axRobot);
-    m_yPub.set(ayRobot);
+    xPub.set(axRobot);
+    yPub.set(ayRobot);
   }
 
   /** This function is called once when the robot is first started up. */
   @Override
-  public void simulationInit() {
-  }
+  public void simulationInit() {}
 
   /** This function is called periodically whilst in simulation. */
   @Override
-  public void simulationPeriodic() {
-  }
+  public void simulationPeriodic() {}
 }

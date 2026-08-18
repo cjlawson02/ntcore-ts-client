@@ -14,7 +14,7 @@ import {
   type LoggerModule,
   type LogLevel,
 } from './util/logger';
-import { Util } from './util/util';
+import { Util, getRobotAddress, type RobotPlatform } from './util/util';
 
 import type { NetworkTablesTypeInfo, NetworkTablesTypes } from './types/types';
 
@@ -36,6 +36,8 @@ interface NT_PROPS {
   uri?: string;
   /** The port to connect to the robot on. */
   port: number;
+  /** Controller used to resolve `team` to a hostname. Ignored when `uri` is set. */
+  platform?: RobotPlatform;
 }
 
 /** NetworkTables class for interacting with NetworkTables over a WebSocket connection. */
@@ -59,8 +61,13 @@ export class NetworkTables {
    */
   private constructor(props: NT_PROPS) {
     if (props.team) {
-      this.uri = Util.getRobotAddress(props.team);
-      defaultLogger.debug('Instance created', { team: props.team, uri: this.uri, port: props.port });
+      this.uri = getRobotAddress(props.team, props.platform);
+      defaultLogger.debug('Instance created', {
+        team: props.team,
+        platform: props.platform ?? 'roborio',
+        uri: this.uri,
+        port: props.port,
+      });
     } else if (props.uri) {
       this.uri = props.uri;
       defaultLogger.debug('Instance created', { uri: this.uri, port: props.port });
@@ -79,16 +86,18 @@ export class NetworkTables {
    * Creates a new NetworkTables instance if it does not exist.
    * @param team - The team number of the robot.
    * @param port - The port to connect to the robot on. Defaults to 5810.
+   * @param platform - RoboRIO mDNS (`roborio-<team>-frc.local`, default) or SystemCore team IP (`10.TE.AM.2`).
    * @returns The NetworkTables instance.
    * @throws Error if the team number is not provided.
    */
-  static getInstanceByTeam(team: number, port = 5810) {
-    const key = `${Util.getRobotAddress(team)}:${port}`;
+  static getInstanceByTeam(team: number, port = 5810, platform: RobotPlatform = 'roborio') {
+    const uri = getRobotAddress(team, platform);
+    const key = `${uri}:${port}`;
     let instance = this._instances.get(key);
     if (!instance) {
-      instance = new this({ team, port });
+      instance = new this({ team, port, platform });
     } else {
-      defaultLogger.debug('Instance retrieved from cache', { team, uri: Util.getRobotAddress(team), port });
+      defaultLogger.debug('Instance retrieved from cache', { team, platform, uri, port });
     }
     return instance;
   }
@@ -134,6 +143,16 @@ export class NetworkTables {
     this.port = port;
     NetworkTables._instances.set(`${this.uri}:${this.port}`, this);
     this._client.reinstantiate(Util.createServerUrl(uri, port));
+  }
+
+  /**
+   * Changes the server using a team number.
+   * @param team - The team number of the robot.
+   * @param port - The port to connect to the server on. Defaults to 5810.
+   * @param platform - RoboRIO mDNS (default) or SystemCore team IP.
+   */
+  changeTeam(team: number, port = 5810, platform: RobotPlatform = 'roborio') {
+    this.changeURI(getRobotAddress(team, platform), port);
   }
 
   /**

@@ -1,6 +1,12 @@
 import './ConnectionBackdrop.scss';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { useConnectionStatus, useNtcore, type NetworkTables } from '@ntcore-ts/react';
+import {
+  parseRobotAddress,
+  useConnectionStatus,
+  useNtcore,
+  type NetworkTables,
+  type RobotPlatform,
+} from '@ntcore-ts/react';
 import { HelpDialog } from './HelpDialog';
 
 type ConnectionBackdropProps = {
@@ -15,6 +21,7 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
   const { connected } = useConnectionStatus();
   const [mode, setMode] = useState<ConnectionMode>('team');
   const [team, setTeam] = useState('973');
+  const [platform, setPlatform] = useState<RobotPlatform>('systemcore');
   const [uri, setUri] = useState('');
   const [port, setPort] = useState(5810);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -26,10 +33,11 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
 
   if (nt !== seededNt) {
     const currentUri = nt.getURI();
-    const match = currentUri.match(/^roborio-(\d+)-frc\.local$/);
-    if (match) {
+    const parsed = parseRobotAddress(currentUri);
+    if (parsed.team != null) {
       setMode('team');
-      setTeam(match[1]);
+      setTeam(String(parsed.team));
+      setPlatform(parsed.platform);
     } else {
       setMode('address');
       setUri(currentUri);
@@ -65,9 +73,11 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
     const effectivePort = mode === 'address' ? port : 5810;
     if (mode === 'team') {
       const teamNum = parseInt(team.trim(), 10);
-      if (!Number.isFinite(teamNum) || teamNum < 1 || teamNum > 99999) return;
+      if (!Number.isFinite(teamNum) || teamNum < 1) return;
+      if (platform === 'systemcore' && teamNum > 25599) return;
+      if (platform === 'roborio' && teamNum > 99999) return;
       setIsConnecting(true);
-      nt.changeURI(`roborio-${teamNum}-frc.local`, effectivePort);
+      nt.changeTeam(teamNum, effectivePort, platform);
     } else {
       const trimmed = uri.trim();
       if (!trimmed) return;
@@ -135,22 +145,53 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
                 </label>
               </fieldset>
               {mode === 'team' ? (
-                <label className="connection-dialog__label">
-                  <span>Team number</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={team}
-                    onChange={(e) => {
-                      handleFormChange();
-                      setTeam(e.target.value.replace(/\D/g, ''));
-                    }}
-                    placeholder="e.g. 973"
-                    className="connection-dialog__input"
-                    autoComplete="off"
-                  />
-                </label>
+                <>
+                  <fieldset className="connection-dialog__fieldset">
+                    <legend className="connection-dialog__legend">Controller</legend>
+                    <label className="connection-dialog__radio">
+                      <input
+                        type="radio"
+                        name="platform"
+                        value="systemcore"
+                        checked={platform === 'systemcore'}
+                        onChange={() => {
+                          handleFormChange();
+                          setPlatform('systemcore');
+                        }}
+                      />
+                      <span>SystemCore</span>
+                    </label>
+                    <label className="connection-dialog__radio">
+                      <input
+                        type="radio"
+                        name="platform"
+                        value="roborio"
+                        checked={platform === 'roborio'}
+                        onChange={() => {
+                          handleFormChange();
+                          setPlatform('roborio');
+                        }}
+                      />
+                      <span>RoboRIO</span>
+                    </label>
+                  </fieldset>
+                  <label className="connection-dialog__label">
+                    <span>Team number</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={team}
+                      onChange={(e) => {
+                        handleFormChange();
+                        setTeam(e.target.value.replace(/\D/g, ''));
+                      }}
+                      placeholder="e.g. 973"
+                      className="connection-dialog__input"
+                      autoComplete="off"
+                    />
+                  </label>
+                </>
               ) : (
                 <div className="connection-dialog__form-row">
                   <label className="connection-dialog__label">
@@ -162,7 +203,7 @@ export function ConnectionBackdrop({ open, onClose }: ConnectionBackdropProps) {
                         handleFormChange();
                         setUri(e.target.value);
                       }}
-                      placeholder="e.g. localhost or roborio-973-frc.local"
+                      placeholder="e.g. localhost, 10.9.73.2, or robot.local"
                       className="connection-dialog__input"
                       autoComplete="off"
                     />

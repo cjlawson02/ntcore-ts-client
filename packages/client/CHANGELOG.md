@@ -31,7 +31,8 @@ First stable release of `@ntcore-ts/client` under the `@ntcore-ts` scope. This i
 - **`getRttMs()`** — best round-trip time to the robot in milliseconds.
 - **Runtime data validation** — topic values are validated against their declared type using zod.
 - **Prefix topics** — `getPrefixTopic` wildcard subscriptions; local publishes notify prefix subscribers; `immediateNotify` replays cached matching subtopic values (client-side only; not a fake topic named the prefix).
-- **Optimistic publisher resolution** — workaround for WPILib server bug ([wpilibsuite/allwpilib#7680](https://github.com/wpilibsuite/allwpilib/issues/7680)) where announcements may not arrive after publish.
+- **SystemCore team addressing** — `getInstanceByTeam(team, port, 'systemcore')` connects to `10.TE.AM.2` (WPILib `SetServerTeam`). The default remains RoboRIO mDNS (`roborio-<team>-frc.local`). Also `changeTeam()`, `getRobotAddress()`, `getTeamIpAddress()`, `parseRobotAddress()`, and `SYSTEMCORE_MDNS_HOST` (`robot.local`).
+- **Publish waits for a real `announce`** — `publish()` resolves when the server sends `announce` with `pubuid` (WPILib 2027 / [allwpilib#8515](https://github.com/wpilibsuite/allwpilib/pull/8515)). The client does not synthesize announcements or send a subscribe hotfix for [wpilibsuite/allwpilib#7680](https://github.com/wpilibsuite/allwpilib/issues/7680).
 - **In-flight operation management** — prevents duplicate schema registrations and topic publishes during reconnection.
 - **Singleton topic reuse** — a later `getJsonTopic` / `getProtobufTopic` / `getStructTopic` for the same name returns the existing instance and applies options. A later `validator` replaces the previous one.
 - **Additional type numbers** — `float`, `json`, `rpc`, `msgpack`, `protobuf`, `structschema`, and `float[]` on `NetworkTablesTypeInfos`.

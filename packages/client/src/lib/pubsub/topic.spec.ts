@@ -341,10 +341,6 @@ describe('Topic', () => {
         'default'
       );
 
-      // Ensure publish() does NOT use the optimistic resolution workaround by creating an
-      // exact subscription match for this topic name.
-      isolatedTopic['subscribeWithId'](() => {}, {}, undefined, false);
-
       vi.useFakeTimers();
       try {
         const publishPromise = isolatedTopic.publish({}, 1);

@@ -10,5 +10,20 @@ export { useStructTopic } from './lib/use-struct-topic';
 export type { UseStructTopicOptions, UseStructTopicTypeOptions, UseStructTopicResult } from './lib/use-struct-topic';
 export { useConnectionStatus } from './lib/use-connection-status';
 
-export type { NetworkTablesTypeInfo, NetworkTablesTypes, SubscribeOptions, TopicProperties } from '@ntcore-ts/client';
-export { NetworkTables, NetworkTablesTypeInfos, LogLevel } from '@ntcore-ts/client';
+export type {
+  NetworkTablesTypeInfo,
+  NetworkTablesTypes,
+  SubscribeOptions,
+  TopicProperties,
+  RobotPlatform,
+  ParsedRobotAddress,
+} from '@ntcore-ts/client';
+export {
+  NetworkTables,
+  NetworkTablesTypeInfos,
+  LogLevel,
+  getRobotAddress,
+  getTeamIpAddress,
+  parseRobotAddress,
+  SYSTEMCORE_MDNS_HOST,
+} from '@ntcore-ts/client';

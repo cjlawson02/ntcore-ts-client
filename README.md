@@ -49,10 +49,10 @@ import { NetworkTables } from '@ntcore-ts/client';
 Use this function:
 
 ```typescript
-NetworkTables.getInstanceByTeam(team: number, port = 5810)
+NetworkTables.getInstanceByTeam(team: number, port = 5810, platform?: 'roborio' | 'systemcore')
 ```
 
-> This creates the instance using the team number. Connects to `roborio-<team>-frc.local`
+> RoboRIO (default): `roborio-<team>-frc.local`. SystemCore: `10.TE.AM.2` (team 973 → `10.9.73.2`). Use `getInstanceByURI('robot.local')` for SystemCore mDNS, or USB/WiFi IPs (`172.26.0.1` / `172.27.0.1` / `172.30.0.1`) as a URI.
 
 ### With URI
 

@@ -32,7 +32,7 @@ describe('Feature: Topic Lifecycle (unsubscribe / unpublish)', () => {
   it(
     '[LIF-1] unsubscribe stops further value updates',
     async () => {
-      // Gyro is published continuously by the robot when in testPeriodic; even in disabled mode
+      // Gyro is published continuously by the robot in utilityPeriodic; even in disabled mode
       // its initial value (0) is delivered once via retained/last-value semantics. We use the
       // accelerometer X which is set on disabledInit so we always see at least one update.
       const topic = nt.getDoubleTopic('/MyTable/Accelerometer/X');

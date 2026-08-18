@@ -29,6 +29,20 @@ describe('NetworkTables', () => {
     expect(networkTables.getURI()).toBe('roborio-973-frc.local');
   });
 
+  it('creates a SystemCore instance from the team IP', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973, 5810, 'systemcore');
+    expect(networkTables.getURI()).toBe('10.9.73.2');
+    expect(NetworkTables.getInstanceByURI('10.9.73.2')).toBe(networkTables);
+  });
+
+  it('keeps RoboRIO and SystemCore team instances separate', () => {
+    const roborio = NetworkTables.getInstanceByTeam(973, 5810, 'roborio');
+    const systemcore = NetworkTables.getInstanceByTeam(973, 5810, 'systemcore');
+    expect(roborio).not.toBe(systemcore);
+    expect(roborio.getURI()).toBe('roborio-973-frc.local');
+    expect(systemcore.getURI()).toBe('10.9.73.2');
+  });
+
   it('returns the same instance when calling getInstance multiple times', () => {
     const instance1 = NetworkTables.getInstanceByTeam(973);
     const instance2 = NetworkTables.getInstanceByTeam(973);
@@ -45,6 +59,13 @@ describe('NetworkTables', () => {
     const networkTables = NetworkTables.getInstanceByTeam(973);
     networkTables.changeURI('roborio-9973-frc.local');
     expect(networkTables.getURI()).toBe('roborio-9973-frc.local');
+  });
+
+  it('lets you change the team and platform', () => {
+    const networkTables = NetworkTables.getInstanceByTeam(973);
+    networkTables.changeTeam(254, 5810, 'systemcore');
+    expect(networkTables.getURI()).toBe('10.2.54.2');
+    expect(NetworkTables.getInstanceByURI('10.2.54.2')).toBe(networkTables);
   });
 
   it('returns the same instance by new URI/port after changeURI', () => {

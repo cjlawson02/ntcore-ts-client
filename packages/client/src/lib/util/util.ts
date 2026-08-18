@@ -1,5 +1,64 @@
 import type { BinaryMessage, NetworkTablesTypeInfo, NetworkTablesTypes } from '../types/types';
 
+/** Robot controller used to resolve a team number to a hostname. */
+export type RobotPlatform = 'roborio' | 'systemcore';
+
+/** SystemCore mDNS name (WPILib `SetServerFixed`). Use as a URI, not as a team mapping. */
+export const SYSTEMCORE_MDNS_HOST = 'robot.local';
+
+const ROBORIO_MDNS = /^roborio-(\d+)-frc\.local$/i;
+const TEAM_IP = /^10\.(\d{1,3})\.(\d{1,3})\.2$/;
+
+/** WPILib maximum team number for `10.TE.AM.2` addressing. */
+const MAX_TEAM_NUMBER = 25599;
+
+/**
+ * Field/radio IPv4 for a team (`10.TE.AM.2`), matching WPILib `SetServerTeam`.
+ * Team 973 → `10.9.73.2`.
+ */
+export function getTeamIpAddress(team: number): string {
+  const n = Math.trunc(team);
+  if (!Number.isFinite(n) || n < 1 || n > MAX_TEAM_NUMBER) {
+    throw new Error(`Team number must be an integer from 1 to ${MAX_TEAM_NUMBER}`);
+  }
+  return `10.${Math.floor(n / 100)}.${n % 100}.2`;
+}
+
+/**
+ * Hostname used for a team-number connection.
+ * RoboRIO (default): `roborio-<team>-frc.local`.
+ * SystemCore: `10.TE.AM.2` (WPILib `SetServerTeam`). Use {@link SYSTEMCORE_MDNS_HOST} as a URI for `robot.local`.
+ */
+export function getRobotAddress(team: number, platform: RobotPlatform = 'roborio'): string {
+  if (platform === 'systemcore') {
+    return getTeamIpAddress(team);
+  }
+  return `roborio-${team}-frc.local`;
+}
+
+export type ParsedRobotAddress =
+  { platform: 'roborio'; team: number } | { platform: 'systemcore'; team: number } | { platform: null; team: null };
+
+/** Detects a RoboRIO mDNS name or SystemCore team IP. Other hosts return `{ platform: null, team: null }`. */
+export function parseRobotAddress(host: string): ParsedRobotAddress {
+  const robo = host.match(ROBORIO_MDNS);
+  if (robo) {
+    return { platform: 'roborio', team: Number(robo[1]) };
+  }
+  const ip = host.match(TEAM_IP);
+  if (ip) {
+    const te = Number(ip[1]);
+    const am = Number(ip[2]);
+    if (te <= 255 && am <= 99) {
+      const team = te * 100 + am;
+      if (team >= 1 && team <= MAX_TEAM_NUMBER && getTeamIpAddress(team) === host) {
+        return { platform: 'systemcore', team };
+      }
+    }
+  }
+  return { platform: null, team: null };
+}
+
 /**
  * Class for holding utility functions.
  */
@@ -53,11 +112,12 @@ export class Util {
   }
 
   /**
-   * Get the mDNS address of a robot.
+   * Get the hostname of a robot for a team number.
    * @param team - The team number.
-   * @returns The mDNS address of the robot.
+   * @param platform - RoboRIO mDNS (default) or SystemCore team IP.
+   * @returns The hostname or IPv4 address.
    */
-  static getRobotAddress(team: number): string {
-    return `roborio-${team}-frc.local`;
+  static getRobotAddress(team: number, platform: RobotPlatform = 'roborio'): string {
+    return getRobotAddress(team, platform);
   }
 }

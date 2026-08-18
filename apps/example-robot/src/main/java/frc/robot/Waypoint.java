@@ -4,7 +4,7 @@
 
 package frc.robot;
 
-import edu.wpi.first.util.struct.Struct;
+import org.wpilib.util.struct.Struct;
 import java.nio.ByteBuffer;
 
 /**
@@ -31,7 +31,7 @@ public record Waypoint(double x, double y, double heading, int id) {
 
     @Override
     public int getSize() {
-      return kSizeDouble * 3 + kSizeInt32;
+      return DOUBLE_SIZE * 3 + INT32_SIZE;
     }
 
     @Override

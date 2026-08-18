@@ -14,7 +14,7 @@ npm install @ntcore-ts/react @ntcore-ts/client react react-dom
 
 Wrap your app with `NtcoreProvider` (by team number or URI), then use hooks in descendants. All hooks **throw** if used outside `NtcoreProvider`.
 
-Changing `NtcoreProvider` props `team`, `uri`, or `port` switches the underlying NetworkTables singleton so descendants reconnect automatically.
+Changing `NtcoreProvider` props `team`, `uri`, `port`, or `platform` switches the underlying NetworkTables singleton so descendants reconnect automatically.
 
 ```tsx
 import {
@@ -26,10 +26,10 @@ import {
   LogLevel,
 } from '@ntcore-ts/react';
 
-// By team number (e.g. 973 → roborio-973-frc.local)
+// By team number (e.g. 973 → roborio-973-frc.local, or platform="systemcore" → 10.9.73.2)
 function App() {
   return (
-    <NtcoreProvider team={973} port={5810}>
+    <NtcoreProvider team={973} port={5810} platform="systemcore">
       <Dashboard />
     </NtcoreProvider>
   );
@@ -139,6 +139,7 @@ const nt = useNtcore();
 
 // Manual connect form: pre-fill from nt.getURI(), nt.getPort(); on submit call nt.changeURI(uri, port)
 nt.changeURI('roborio-973-frc.local', 5810);
+nt.changeTeam(973, 5810, 'systemcore');
 
 // Dismiss connection overlay and stop auto-reconnect (e.g. on Escape)
 nt.stopAutoConnect();
@@ -150,7 +151,7 @@ NetworkTables.setLogLevel(LogLevel.DEBUG);
 
 ## API
 
-- **`NtcoreProvider`** – Props: `team?: number` | `uri: string`, and optional `port` (default `5810`). Provides a NetworkTables instance to the tree. Changing `team`, `uri`, or `port` switches to the matching singleton and closes the previous one.
+- **`NtcoreProvider`** – Props: `team?: number` | `uri: string`, optional `port` (default `5810`), and optional `platform` (`'roborio'` | `'systemcore'`) when using `team`. Provides a NetworkTables instance to the tree. Changing `team`, `uri`, `port`, or `platform` switches to the matching singleton and closes the previous one.
 - **`useNtcore()`** – Returns the `NetworkTables` instance from context. **Throws** when used outside a provider.
 - **`useTopic<T>(name, typeInfo, options?)`** – Subscribes to a topic. Returns `{ value, setValue, isReadyToWrite, error }`. For JSON, pass `NetworkTablesTypeInfos.kJson` with an object `T` (uses `getJsonTopic`). Unsubscribes on unmount; unpublishes on unmount when `publish` is set (unless `unpublishOnUnmount: false`). Options: `defaultValue`, `subscribeOptions`, `publish`, `unpublishOnUnmount`.
 - **`usePrefixTopic(prefix, subscribeOptions?)`** – Subscribes to all topics under a prefix. Returns only the **latest** update `PrefixTopicUpdate | null` (`{ name, value, type }`, subscribe-only). For a map of all topics, use `usePrefixTopicMap`.
@@ -159,9 +160,9 @@ NetworkTables.setLogLevel(LogLevel.DEBUG);
 - **`useProtobufTopic<T>(name, options?)`** – Subscribes to a protobuf topic. Returns `{ value, setValue, isReadyToWrite, error }`; when using `publish`, only call `setValue` when `isReadyToWrite` is true.
 - **`useConnectionStatus()`** – Returns `{ connected: boolean, connecting: boolean, rtt: number }`. `connecting` reflects `NetworkTables.isRobotConnecting()` while disconnected. `rtt` is round-trip time in ms (-1 when not connected or not yet measured).
 
-When using `useNtcore()`, the client exposes `getURI()`, `getPort()`, `changeURI(uri, port)`, `stopAutoConnect()`, and `startAutoConnect()` for connection-overlay UX (see Recommended connection UX above).
+When using `useNtcore()`, the client exposes `getURI()`, `getPort()`, `changeURI(uri, port)`, `changeTeam(team, port, platform?)`, `stopAutoConnect()`, and `startAutoConnect()` for connection-overlay UX (see Recommended connection UX above).
 
-Re-exports from @ntcore-ts/client: `NetworkTables`, `NetworkTablesTypeInfos`, `LogLevel`, and types `NetworkTablesTypeInfo`, `NetworkTablesTypes`, `SubscribeOptions`, `TopicProperties`. Geometry types (`Pose2d`, `Pose2dSchema`, …) are imported from `@ntcore-ts/client`.
+Re-exports from @ntcore-ts/client: `NetworkTables`, `NetworkTablesTypeInfos`, `LogLevel`, `getRobotAddress`, `getTeamIpAddress`, `parseRobotAddress`, `SYSTEMCORE_MDNS_HOST`, and types `NetworkTablesTypeInfo`, `NetworkTablesTypes`, `SubscribeOptions`, `TopicProperties`, `RobotPlatform`. Geometry types (`Pose2d`, `Pose2dSchema`, …) are imported from `@ntcore-ts/client`.
 
 ## Running unit tests
 

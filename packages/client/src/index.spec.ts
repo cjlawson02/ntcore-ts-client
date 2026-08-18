@@ -23,6 +23,9 @@ describe('barrel exports', () => {
     // Geometry types are public; protocol Zod schemas are not.
     expect(root.Pose2d).toBeDefined();
     expect(root.Pose2dSchema).toBeDefined();
+    expect(root.getRobotAddress).toBeDefined();
+    expect(root.getTeamIpAddress).toBeDefined();
+    expect(root.SYSTEMCORE_MDNS_HOST).toBe('robot.local');
     expect((root as { finiteNumSchema?: unknown }).finiteNumSchema).toBeUndefined();
     expect((types as { finiteNumSchema?: unknown }).finiteNumSchema).toBeUndefined();
   });

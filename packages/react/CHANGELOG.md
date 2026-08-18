@@ -15,7 +15,7 @@ First stable release of `@ntcore-ts/react` — React bindings for `@ntcore-ts/cl
 
 ### Components
 
-- **`NtcoreProvider`** — context provider. Accepts `team` (number) or `uri` (string) with optional `port`. Validates port at render time. Changing `team` / `uri` / `port` switches the singleton; the previous instance is released and closed when no provider still retains it.
+- **`NtcoreProvider`** — context provider. Accepts `team` (number) or `uri` (string) with optional `port` and, with `team`, optional `platform` (`'roborio'` | `'systemcore'`). Validates port at render time. Changing `team` / `uri` / `port` / `platform` switches the singleton; the previous instance is released and closed when no provider still retains it.
 - **`useNtcore`** — returns the `NetworkTables` instance from the nearest `NtcoreProvider`. **Throws** when used outside a provider.
 
 ### Publishing
@@ -26,5 +26,5 @@ First stable release of `@ntcore-ts/react` — React bindings for `@ntcore-ts/cl
 
 ### Re-exports
 
-- Re-exports `NetworkTables`, `NetworkTablesTypeInfos`, `LogLevel`, and types `NetworkTablesTypeInfo`, `NetworkTablesTypes`, `SubscribeOptions`, `TopicProperties` from `@ntcore-ts/client`.
+- Re-exports `NetworkTables`, `NetworkTablesTypeInfos`, `LogLevel`, `getRobotAddress`, `getTeamIpAddress`, `parseRobotAddress`, `SYSTEMCORE_MDNS_HOST`, and types `NetworkTablesTypeInfo`, `NetworkTablesTypes`, `SubscribeOptions`, `TopicProperties`, `RobotPlatform` from `@ntcore-ts/client`.
 - Geometry types (`Pose2d`, `Pose2dSchema`, …) are imported from `@ntcore-ts/client`, not from this package.

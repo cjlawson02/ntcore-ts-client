@@ -1,6 +1,6 @@
 import { NetworkTablesTypeInfos } from '../types/types';
 
-import { Util } from './util';
+import { Util, getRobotAddress, getTeamIpAddress, parseRobotAddress, SYSTEMCORE_MDNS_HOST } from './util';
 
 describe('Util', () => {
   describe('getMicros', () => {
@@ -43,8 +43,43 @@ describe('Util', () => {
   });
 
   describe('getRobotAddress', () => {
-    it('returns the correct address for a team number', () => {
+    it('returns the RoboRIO mDNS address by default', () => {
       expect(Util.getRobotAddress(973)).toEqual('roborio-973-frc.local');
+      expect(getRobotAddress(973)).toEqual('roborio-973-frc.local');
+    });
+
+    it('returns the SystemCore team IP when platform is systemcore', () => {
+      expect(getRobotAddress(973, 'systemcore')).toEqual('10.9.73.2');
+      expect(getRobotAddress(254, 'systemcore')).toEqual('10.2.54.2');
+      expect(getRobotAddress(1, 'systemcore')).toEqual('10.0.1.2');
+    });
+  });
+
+  describe('getTeamIpAddress', () => {
+    it('maps team numbers to 10.TE.AM.2', () => {
+      expect(getTeamIpAddress(973)).toEqual('10.9.73.2');
+      expect(getTeamIpAddress(25599)).toEqual('10.255.99.2');
+    });
+
+    it('rejects team numbers outside 1–25599', () => {
+      expect(() => getTeamIpAddress(0)).toThrow(/1 to 25599/);
+      expect(() => getTeamIpAddress(25600)).toThrow(/1 to 25599/);
+    });
+  });
+
+  describe('parseRobotAddress', () => {
+    it('parses RoboRIO mDNS names', () => {
+      expect(parseRobotAddress('roborio-973-frc.local')).toEqual({ platform: 'roborio', team: 973 });
+    });
+
+    it('parses SystemCore team IPs', () => {
+      expect(parseRobotAddress('10.9.73.2')).toEqual({ platform: 'systemcore', team: 973 });
+    });
+
+    it('returns null for other hosts', () => {
+      expect(parseRobotAddress('localhost')).toEqual({ platform: null, team: null });
+      expect(parseRobotAddress(SYSTEMCORE_MDNS_HOST)).toEqual({ platform: null, team: null });
+      expect(parseRobotAddress('10.9.73.1')).toEqual({ platform: null, team: null });
     });
   });
 });
